@@ -163,4 +163,5 @@ function gateGroup(subdir: string, format: MimeFormat): void {
 }
 
 gateGroup('messages', 'entity');
+gateGroup('partial', 'entity');
 gateGroup('mbox', 'mbox');

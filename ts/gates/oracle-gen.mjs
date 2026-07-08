@@ -100,6 +100,13 @@ const modes = {
     console.log(`messages: ${files.length} files`);
   },
 
+  partial() {
+    const files = listFiles(join(testData, 'partial'), (n) => n.endsWith('.eml'));
+    oracle('parse', '--base', testData, '--out', join(outRoot, 'tree'), ...files);
+    oracle('roundtrip', '--base', testData, '--out', join(outRoot, 'tree'), ...files);
+    console.log(`partial: ${files.length} files`);
+  },
+
   mbox() {
     const files = listFiles(join(testData, 'mbox'), (n) => n.endsWith('.mbox.txt'));
     oracle('parse', '--base', testData, '--out', join(outRoot, 'tree'), '--mbox', ...files);
