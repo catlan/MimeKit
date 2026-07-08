@@ -91,7 +91,11 @@ int RunTree(string[] rest, bool roundtrip)
 		Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
 		try {
 			using var stream = File.OpenRead(full);
-			var parser = new MimeParser(stream, mbox ? MimeFormat.Mbox : MimeFormat.Entity);
+			// Wave-4: the TypeScript port targets MimeKit's ExperimentalMimeParser (MimeReader-based
+			// rewrite, plan Q5), NOT the legacy MimeParser. The two differ in edge cases (e.g.
+			// an empty multipart epilogue is null under MimeParser but "" under Experimental),
+			// so this structure-dump oracle must use the parser the TS port reproduces.
+			var parser = new ExperimentalMimeParser(stream, mbox ? MimeFormat.Mbox : MimeFormat.Entity);
 			if (roundtrip) {
 				using var outStream = File.Create(outPath);
 				while (!parser.IsEndOfStream) {
