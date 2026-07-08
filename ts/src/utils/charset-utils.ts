@@ -34,6 +34,10 @@ export interface CharsetEncoding {
   encode(text: string): Uint8Array;
 }
 
+export interface CharsetStreamDecoder {
+  decode(bytes: Uint8Array, flush?: boolean): string;
+}
+
 class DecodeError extends Error {}
 
 class Utf8Encoding implements CharsetEncoding {
@@ -67,6 +71,14 @@ class Utf8Encoding implements CharsetEncoding {
 
   encode(text: string): Uint8Array {
     return this.encoder.encode(text);
+  }
+}
+
+class Utf8StreamDecoder implements CharsetStreamDecoder {
+  private readonly decoder = new TextDecoder('utf-8');
+
+  decode(bytes: Uint8Array, flush = false): string {
+    return this.decoder.decode(bytes, { stream: !flush });
   }
 }
 
@@ -104,6 +116,12 @@ class AsciiEncoding implements CharsetEncoding {
   }
 }
 
+class AsciiStreamDecoder implements CharsetStreamDecoder {
+  decode(bytes: Uint8Array, _flush = false): string {
+    return new AsciiEncoding().decode(bytes);
+  }
+}
+
 class Latin1Encoding implements CharsetEncoding {
   readonly codePage = 28591;
   readonly webName = 'iso-8859-1';
@@ -126,6 +144,12 @@ class Latin1Encoding implements CharsetEncoding {
       out[i] = c > 0xff ? 0x3f /* '?' */ : c;
     }
     return out;
+  }
+}
+
+class Latin1StreamDecoder implements CharsetStreamDecoder {
+  decode(bytes: Uint8Array, _flush = false): string {
+    return new Latin1Encoding().decode(bytes);
   }
 }
 
@@ -161,6 +185,18 @@ class TextDecoderEncoding implements CharsetEncoding {
 
   encode(_text: string): Uint8Array {
     throw new TypeError(`encoding to '${this.webName}' is not supported (utf-8-only generation, see plan Q3)`);
+  }
+}
+
+class TextDecoderStreamDecoder implements CharsetStreamDecoder {
+  private readonly decoder: TextDecoder;
+
+  constructor(label: string) {
+    this.decoder = new TextDecoder(label);
+  }
+
+  decode(bytes: Uint8Array, flush = false): string {
+    return this.decoder.decode(bytes, { stream: !flush });
   }
 }
 
@@ -412,6 +448,25 @@ export function getMimeCharset(charset: string | CharsetEncoding): string {
 
 export const latin1 = new Latin1Encoding();
 export const utf8 = new Utf8Encoding();
+
+/**
+ * Streaming decoder used by CharsetFilter. TextDecoder's stream mode preserves
+ * partial multibyte sequences across chunks; us-ascii and latin1 are stateless
+ * byte maps, so their streaming form is just per-chunk decoding.
+ */
+export function createStreamDecoder(encoding: CharsetEncoding): CharsetStreamDecoder {
+  switch (encoding.codePage) {
+  case 65001: return new Utf8StreamDecoder();
+  case 20127: return new AsciiStreamDecoder();
+  case 28591: return new Latin1StreamDecoder();
+  default: {
+    const entry = CODEPAGE_LABELS[encoding.codePage];
+    if (!entry)
+      throw new TypeError(`streaming decode for '${encoding.webName}' is not supported`);
+    return new TextDecoderStreamDecoder(entry[1]);
+  }
+  }
+}
 
 /**
  * C#: CharsetUtils.ConvertToUnicode(ParserOptions, ...) — probe utf-8, the
