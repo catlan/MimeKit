@@ -22,6 +22,8 @@
  * in the rfc2047 gates and get investigated there.
  */
 
+import { SINGLE_BYTE_TABLES } from './single-byte-tables.js';
+
 export interface CharsetEncoding {
   readonly codePage: number;
   /** Canonical MIME charset name (C#: Encoding.WebName, lowercase). */
@@ -153,6 +155,43 @@ class Latin1StreamDecoder implements CharsetStreamDecoder {
   }
 }
 
+/**
+ * Table-driven single-byte decoder generated from the C# oracle — exact
+ * .NET parity for every byte (host TextDecoders deviate: Node/ICU passes
+ * windows-1252 C1 bytes through as control characters).
+ */
+class SingleByteEncoding implements CharsetEncoding {
+  constructor(
+    readonly codePage: number,
+    readonly webName: string,
+    private readonly table: string,
+  ) {}
+
+  decode(bytes: Uint8Array, fatal = false): string {
+    let out = '';
+    for (let i = 0; i < bytes.length; i++) {
+      const ch = this.table[bytes[i]!]!;
+      if (fatal && ch === '\ufffd')
+        throw new DecodeError(`invalid ${this.webName} byte 0x${bytes[i]!.toString(16)} at ${i}`);
+      out += ch;
+    }
+    return out;
+  }
+
+  countInvalid(bytes: Uint8Array): number {
+    let count = 0;
+    for (let i = 0; i < bytes.length; i++) {
+      if (this.table[bytes[i]!] === '\ufffd')
+        count++;
+    }
+    return count;
+  }
+
+  encode(_text: string): Uint8Array {
+    throw new TypeError(`encoding to '${this.webName}' is not supported (utf-8-only generation, see plan Q3)`);
+  }
+}
+
 class TextDecoderEncoding implements CharsetEncoding {
   constructor(
     readonly codePage: number,
@@ -256,6 +295,9 @@ function createEncoding(codepage: number): CharsetEncoding | null {
     const entry = CODEPAGE_LABELS[codepage];
     if (!entry) return null;
     const [webName, label] = entry;
+    const table = SINGLE_BYTE_TABLES[codepage];
+    if (table !== undefined)
+      return new SingleByteEncoding(codepage, webName, table);
     try {
       new TextDecoder(label); // probe runtime support
     } catch {
@@ -473,6 +515,10 @@ export function createStreamDecoder(encoding: CharsetEncoding): CharsetStreamDec
   case 20127: return new AsciiStreamDecoder();
   case 28591: return new Latin1StreamDecoder();
   default: {
+    // Single-byte decodes are stateless per byte — the one-shot decoder IS
+    // the streaming decoder.
+    if (SINGLE_BYTE_TABLES[encoding.codePage] !== undefined)
+      return { decode: (bytes: Uint8Array, _flush = false) => encoding.decode(bytes) };
     const entry = CODEPAGE_LABELS[encoding.codePage];
     if (!entry)
       throw new TypeError(`streaming decode for '${encoding.webName}' is not supported`);
