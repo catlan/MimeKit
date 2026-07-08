@@ -11,12 +11,18 @@
 //   oracle hdr <addr|ctype|cdisp|date|rfc2047> <in-list> <out-json>
 //       in-list: one base64-encoded raw input per line
 
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using MimeKit;
 using MimeKit.Encodings;
 using MimeKit.Utils;
+
+// Match the upstream test suite: full codepage support + pinned culture.
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var jsonOptions = new JsonSerializerOptions {
 	WriteIndented = true,

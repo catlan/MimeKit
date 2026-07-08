@@ -7,12 +7,15 @@
     <AssemblyName>oracle</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- NOT InvariantGlobalization: the parity target is MimeKit with the
+         CodePages provider registered (MimeKitLite references it and the
+         upstream test suite registers it). Culture is pinned in Program.cs. -->
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Reference MimeKitLite so the oracle can only exercise in-scope APIs. -->
     <ProjectReference Include="../MimeKit/MimeKitLite.csproj" SetTargetFramework="TargetFramework=net10.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.9" />
   </ItemGroup>
 
 </Project>
