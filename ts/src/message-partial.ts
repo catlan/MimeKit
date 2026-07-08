@@ -1,8 +1,52 @@
-import { Parameter } from './parameter.js';
-import type { MimeMessage } from './mime-message.js';
+import { FormatOptions } from './format-options.js';
+import { Header } from './header.js';
+import { HeaderId } from './header-id.js';
+import { BoundStream } from './io/bound-stream.js';
+import { ChainedStream } from './io/chained-stream.js';
+import { MemoryStream, Stream } from './io/stream.js';
+import { MimeContent } from './mime-content.js';
+import { MimeMessage } from './mime-message.js';
+import { newMimeParser } from './parser-hook.js';
 import { MimePart } from './mime-part.js';
 import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
+import { Parameter } from './parameter.js';
+import { ParserOptions } from './parser-options.js';
+import { generateMessageId } from './utils/mime-utils.js';
+
+// C#: the set of header ids that survive MessagePartial.Split (everything else
+// is hidden). Kept in sync with rfc2046 §5.2.2.1 / the C# switch statement.
+const SPLIT_KEEP: ReadonlySet<HeaderId> = new Set<HeaderId>([
+  HeaderId.Subject,
+  HeaderId.MessageId,
+  HeaderId.Encrypted,
+  HeaderId.MimeVersion,
+  HeaderId.ContentAlternative,
+  HeaderId.ContentBase,
+  HeaderId.ContentClass,
+  HeaderId.ContentDescription,
+  HeaderId.ContentDisposition,
+  HeaderId.ContentDuration,
+  HeaderId.ContentFeatures,
+  HeaderId.ContentId,
+  HeaderId.ContentIdentifier,
+  HeaderId.ContentLanguage,
+  HeaderId.ContentLength,
+  HeaderId.ContentLocation,
+  HeaderId.ContentMd5,
+  HeaderId.ContentReturn,
+  HeaderId.ContentTransferEncoding,
+  HeaderId.ContentTranslationType,
+  HeaderId.ContentType,
+]);
+
+// rfc2046: headers copied/kept when reassembling a partial message.
+const JOIN_KEEP: ReadonlySet<HeaderId> = new Set<HeaderId>([
+  HeaderId.Subject,
+  HeaderId.MessageId,
+  HeaderId.Encrypted,
+  HeaderId.MimeVersion,
+]);
 
 export class MessagePartial extends MimePart {
   constructor(args: MimeEntityConstructorArgs);
@@ -35,17 +79,169 @@ export class MessagePartial extends MimePart {
     visitor.visitMessagePartial(this);
   }
 
-  static split(_message: MimeMessage, _maxSize: number): MimeMessage[] {
-    // deferred(wave-3e/4): requires MimeMessage cloning/serialization and parser reassembly semantics.
-    throw new Error('deferred(wave-3e/4): MessagePartial.split requires MimeMessage and parser support.');
+  /** C#: MessagePartial.Split. */
+  static split(message: MimeMessage, maxSize: number): MimeMessage[] {
+    if (message == null) throw new TypeError('message cannot be null or undefined');
+    if (!Number.isInteger(maxSize) || maxSize < 1) throw new RangeError('maxSize out of range');
+
+    const options = FormatOptions.default.clone();
+    for (const id of Object.values(HeaderId) as HeaderId[]) {
+      if (!SPLIT_KEEP.has(id)) options.hiddenHeaders.add(id);
+    }
+
+    const memory = new MemoryStream();
+    message.writeTo(options, memory);
+    memory.position = 0;
+
+    const length = memory.length;
+    if (length <= maxSize) return [message];
+
+    const buf = memory.toArray();
+    const streams: Stream[] = [];
+    let startIndex = 0;
+
+    while (startIndex < length) {
+      // Prefer splitting on a whole-line boundary; fall back to the raw size.
+      let endIndex = Math.min(length, startIndex + maxSize);
+
+      if (endIndex < length) {
+        let ebx = endIndex;
+        while (ebx > startIndex + 1 && buf[ebx] !== 0x0a /* '\n' */) ebx--;
+        if (buf[ebx] === 0x0a) endIndex = ebx + 1;
+      }
+
+      streams.push(new BoundStream(memory, startIndex, endIndex, true));
+      startIndex = endIndex;
+    }
+
+    const msgid = message.messageId ?? generateMessageId();
+    const result: MimeMessage[] = [];
+
+    for (let i = 0; i < streams.length; i++) {
+      const msg = MessagePartial.cloneMessage(message);
+      const partial = new MessagePartial(msgid, i + 1, streams.length);
+      partial.content = new MimeContent(streams[i]!);
+      msg.body = partial;
+      result.push(msg);
+    }
+
+    return result;
   }
 
-  static join(_message: MimeMessage, _partials: Iterable<MessagePartial>): MimeMessage | null {
-    // deferred(wave-3e/4): requires chained partial content parsing into MimeMessage.
-    throw new Error('deferred(wave-3e/4): MessagePartial.join requires MimeMessage and parser support.');
+  /** C#: MessagePartial.Join. */
+  static join(message: MimeMessage, partials: Iterable<MessagePartial>): MimeMessage | null;
+  static join(options: ParserOptions, message: MimeMessage, partials: Iterable<MessagePartial>): MimeMessage | null;
+  static join(
+    a: MimeMessage | ParserOptions,
+    b: MimeMessage | Iterable<MessagePartial>,
+    c?: Iterable<MessagePartial>,
+  ): MimeMessage | null {
+    let options: ParserOptions;
+    let message: MimeMessage;
+    let partials: Iterable<MessagePartial>;
+
+    if (a instanceof ParserOptions) {
+      options = a;
+      message = b as MimeMessage;
+      partials = c as Iterable<MessagePartial>;
+    } else {
+      options = ParserOptions.default;
+      message = a;
+      partials = b as Iterable<MessagePartial>;
+    }
+
+    if (options == null) throw new TypeError('options cannot be null or undefined');
+    if (message == null) throw new TypeError('message cannot be null or undefined');
+    if (partials == null) throw new TypeError('partials cannot be null or undefined');
+
+    const parts = [...partials];
+    if (parts.length === 0) return null;
+
+    parts.sort(partialCompare);
+
+    const lastTotal = parts[parts.length - 1]!.total;
+    if (lastTotal == null) throw new TypeError('The last partial does not have a Total.');
+    if (parts.length !== lastTotal) throw new TypeError('The number of partials provided does not match the expected count.');
+
+    const chained = new ChainedStream();
+    for (let i = 0; i < parts.length; i++) {
+      const number = parts[i]!.number!; // partialCompare guarantees non-null.
+      if (number !== i + 1) throw new TypeError('One or more partials is missing.');
+      const content = parts[i]!.content;
+      if (content != null) chained.add(content.open());
+    }
+
+    const parser = newMimeParser(options, chained, 'entity');
+    const result = parser.parseMessage();
+    if (!result.ok) throw new Error(result.error.message);
+
+    const joined = result.value;
+    combineHeaders(message, joined);
+
+    return joined;
+  }
+
+  private static cloneMessage(message: MimeMessage): MimeMessage {
+    const options = message.headers.options;
+    const clone = new MimeMessage(options);
+
+    for (const header of message.headers) clone.headers.add(header.clone());
+
+    clone.headers.replace(HeaderId.MessageId, '<' + generateMessageId() + '>');
+
+    return clone;
   }
 }
 
+/** C#: MessagePartial.PartialCompare. */
+function partialCompare(partial1: MessagePartial, partial2: MessagePartial): number {
+  if (partial1.id !== partial2.id) throw new TypeError('Partial messages have mismatching identifiers.');
+  if (partial1.number == null || partial2.number == null)
+    throw new TypeError('One or more partial messages have missing numbers.');
+  return partial1.number - partial2.number;
+}
+
+/** C#: MessagePartial.CombineHeaders. */
+function combineHeaders(message: MimeMessage, joined: MimeMessage): void {
+  const headers: Header[] = [];
+  let i = 0;
+
+  // Keep only Subject/Message-ID/Encrypted/MIME-Version from the enclosed message.
+  while (i < joined.headers.count) {
+    const header = joined.headers.at(i);
+    if (JOIN_KEEP.has(header.id)) {
+      headers.push(header);
+      header.offset = null;
+      i++;
+    } else {
+      joined.headers.removeAt(i);
+    }
+  }
+
+  // Copy (in order) all non-Content- headers from the enclosing message.
+  i = 0;
+  for (const header of message.headers) {
+    if (JOIN_KEEP.has(header.id)) {
+      for (let j = 0; j < headers.length; j++) {
+        if (headers[j]!.id === header.id) {
+          const original = headers[j]!;
+          joined.headers.remove(original);
+          joined.headers.insert(i++, original);
+          headers.splice(j, 1);
+          break;
+        }
+      }
+    } else {
+      const clone = header.clone();
+      clone.offset = null;
+      joined.headers.insert(i++, clone);
+    }
+  }
+
+  if (joined.body != null) {
+    for (const header of joined.body.headers) header.offset = null;
+  }
+}
 
 function isConstructorArgs(value: unknown): value is MimeEntityConstructorArgs {
   return typeof value === 'object' && value !== null && 'parserOptions' in value && 'contentType' in value && 'headers' in value;

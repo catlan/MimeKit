@@ -1,5 +1,6 @@
 import { MessageDeliveryStatus } from './message-delivery-status.js';
 import { MessageDispositionNotification } from './message-disposition-notification.js';
+import { MessageFeedbackReport } from './message-feedback-report.js';
 import { MessagePartial } from './message-partial.js';
 import { MessagePart } from './message-part.js';
 import type { MimeMessage } from './mime-message.js';
@@ -18,6 +19,7 @@ export class MimeVisitor {
     if (entity instanceof TextRfc822Headers) return this.visitTextRfc822Headers(entity);
     if (entity instanceof MessageDeliveryStatus) return this.visitMessageDeliveryStatus(entity);
     if (entity instanceof MessageDispositionNotification) return this.visitMessageDispositionNotification(entity);
+    if (entity instanceof MessageFeedbackReport) return this.visitMessageFeedbackReport(entity);
     if (entity instanceof MessagePartial) return this.visitMessagePartial(entity);
     if (entity instanceof MessagePart) return this.visitMessagePart(entity);
     if (entity instanceof MultipartAlternative) return this.visitMultipartAlternative(entity);
@@ -59,5 +61,6 @@ export class MimeVisitor {
   visitMessagePartial(entity: MessagePartial): void { this.visitMimePart(entity); }
   visitMessageDeliveryStatus(entity: MessageDeliveryStatus): void { this.visitMimePart(entity); }
   visitMessageDispositionNotification(entity: MessageDispositionNotification): void { this.visitMimePart(entity); }
+  visitMessageFeedbackReport(entity: MessageFeedbackReport): void { this.visitMimePart(entity); }
   visitTextRfc822Headers(entity: TextRfc822Headers): void { this.visitMessagePart(entity); }
 }

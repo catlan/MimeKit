@@ -20,13 +20,16 @@ export class MessageDispositionNotification extends MimePart {
 
   get Fields(): HeaderList { return this.fields; }
   get fields(): HeaderList {
+    this.checkDisposed('MessageDispositionNotification');
     if (this.fieldsValue == null) {
       if (this.content == null) {
         this.content = new MimeContent(new MemoryStream());
         this.fieldsValue = new HeaderList();
       } else {
-        // deferred(wave-4): HeaderList.Load from content stream.
-        this.fieldsValue = new HeaderList();
+        const stream = this.content.open();
+        const result = HeaderList.load(stream, this.headers.options);
+        this.fieldsValue = result.ok ? result.value : new HeaderList();
+        stream.dispose();
       }
       this.fieldsValue.onChanged = () => this.onFieldsChanged();
     }
