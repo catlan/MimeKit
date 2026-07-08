@@ -35,6 +35,16 @@ export { PassThroughDecoder } from './encodings/pass-through-decoder.js';
 export { parseDate, formatDate, type DateTimeOffset } from './utils/date-utils.js';
 export type { ParseCursor, ParseError } from './utils/parse-utils.js';
 export {
+  tryParseVersion,
+  tryParse as tryParseContentEncoding,
+  unquote,
+  quote,
+  appendQuoted,
+  tryParseMessageId,
+  enumerateReferences,
+  generateMessageId,
+} from './utils/mime-utils.js';
+export {
   tryParseInt32,
   skipWhiteSpace,
   skipComment,
