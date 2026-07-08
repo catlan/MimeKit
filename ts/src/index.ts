@@ -1,6 +1,13 @@
 export type { Result, Ok, Err, MimeError } from './result.js';
 export { ok, err, mimeError, unwrap } from './result.js';
 export type { ContentEncoding } from './content-encoding.js';
+export { ParserOptions, type RfcComplianceMode } from './parser-options.js';
+export { FormatOptions, type NewLineFormat, type ParameterEncodingMethod } from './format-options.js';
+export { DomainList } from './domain-list.js';
+export { InternetAddress } from './internet-address.js';
+export { MailboxAddress } from './mailbox-address.js';
+export { GroupAddress } from './group-address.js';
+export { InternetAddressList } from './internet-address-list.js';
 export type { MimeEncoder, MimeDecoder } from './encodings/types.js';
 export { Stream, MemoryStream, type SeekOrigin } from './io/stream.js';
 export { BoundStream } from './io/bound-stream.js';
