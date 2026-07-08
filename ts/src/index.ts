@@ -118,3 +118,49 @@ export {
   isInternational,
   isIdnEncoded,
 } from './utils/parse-utils.js';
+
+// --- Text: HTML infrastructure (wave 6a) ---
+export { HtmlEntityDecoder } from './text/html-entity-decoder.js';
+export { HtmlTokenKind } from './text/html-token-kind.js';
+export { HtmlTokenizerState } from './text/html-tokenizer-state.js';
+export { HtmlWriterState } from './text/html-writer-state.js';
+export { HtmlNamespace, toNamespaceUrl, toHtmlNamespace } from './text/html-namespace.js';
+export {
+  HtmlTagId,
+  toHtmlTagName,
+  toHtmlTagId,
+  isHtmlTagId,
+  isEmptyElement,
+  isFormattingElement,
+  htmlTagIdNameTable,
+} from './text/html-tag-id.js';
+export {
+  HtmlAttributeId,
+  toAttributeName,
+  toHtmlAttributeId,
+  isHtmlAttributeId,
+  htmlAttributeIdNameTable,
+} from './text/html-attribute-id.js';
+export { HtmlAttribute } from './text/html-attribute.js';
+export { HtmlAttributeCollection } from './text/html-attribute-collection.js';
+export {
+  HtmlToken,
+  HtmlCommentToken,
+  HtmlDataToken,
+  HtmlCDataToken,
+  HtmlScriptDataToken,
+  HtmlTagToken,
+  HtmlDocTypeToken,
+} from './text/html-token.js';
+export {
+  isValidAttributeName,
+  isValidTagName,
+  htmlAttributeEncode,
+  htmlEncode,
+  htmlDecode,
+} from './text/html-utils.js';
+export { type TextWriter, StringWriter, StreamTextWriter } from './text/text-io.js';
+export { HtmlWriter } from './text/html-writer.js';
+export { HtmlTokenizer, decodeHtml } from './text/html-tokenizer.js';
+export { HtmlTagContext } from './text/html-tag-context.js';
+export type { HtmlTagCallback } from './text/html-tag-callback.js';
