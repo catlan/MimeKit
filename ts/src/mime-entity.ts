@@ -1,4 +1,5 @@
 import { ContentDisposition } from './content-disposition.js';
+import type { MimeVisitor } from './mime-visitor.js';
 import { ContentType } from './content-type.js';
 import { FormatOptions } from './format-options.js';
 import { Header } from './header.js';
@@ -36,6 +37,11 @@ export abstract class MimeEntity {
   ensureNewLine = false;
   protected readonly lazyLoaded = new Set<LazyField>();
   private disposed = false;
+
+  /** C#: internal IsDisposed (exposed publicly; upstream tests read it via InternalsVisibleTo). */
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
   private dispositionValue: ContentDisposition | null = null;
   private contentIdValue: string | null = null;
   private contentLocationValue: string | null = null;
@@ -189,6 +195,13 @@ export abstract class MimeEntity {
     } else if (this.contentDisposition?.isAttachment) {
       this.contentDisposition.disposition = ContentDisposition.inline;
     }
+  }
+
+  accept(visitor: MimeVisitor): void {
+    if (visitor == null)
+      throw new TypeError('visitor cannot be null or undefined');
+    this.checkDisposed('MimeEntity');
+    visitor.visitMimeEntity(this);
   }
 
   abstract prepare(constraint: string, maxLineLength?: number): void;

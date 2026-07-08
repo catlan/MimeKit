@@ -1,4 +1,5 @@
 import type { ContentEncoding } from './content-encoding.js';
+import type { MimeVisitor } from './mime-visitor.js';
 import { ContentDisposition } from './content-disposition.js';
 import { ContentType } from './content-type.js';
 import { FormatOptions, MAXIMUM_LINE_LENGTH, MINIMUM_LINE_LENGTH } from './format-options.js';
@@ -202,6 +203,14 @@ export class MimePart extends MimeEntity {
     if (this.md5sumValue == null || this.md5sumValue.trim() === '' || this.content === null)
       return false;
     return this.md5sumValue === this.computeContentMd5();
+  }
+
+
+  override accept(visitor: MimeVisitor): void {
+    if (visitor == null)
+      throw new TypeError('visitor cannot be null or undefined');
+    this.checkDisposed('MimePart');
+    visitor.visitMimePart(this);
   }
 
   override prepare(constraint: EncodingConstraint, maxLineLength = DEFAULT_MAX_LINE_LENGTH): void {
