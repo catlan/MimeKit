@@ -188,7 +188,9 @@ int RunTranscode(string codec, string direction, string inputPath, string output
 			"base64" => new Base64Decoder(),
 			"qp" => new QuotedPrintableDecoder(),
 			"uu" => new UUDecoder(),
+			"uu-payload" => new UUDecoder(payloadOnly: true),
 			"yenc" => new YDecoder(),
+			"yenc-payload" => new YDecoder(payloadOnly: true),
 			"hex" => new HexDecoder(),
 			_ => throw new ArgumentException($"unknown codec {codec}"),
 		};
