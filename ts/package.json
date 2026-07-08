@@ -1,0 +1,32 @@
+{
+  "name": "mimekit-ts",
+  "version": "0.0.0",
+  "description": "TypeScript port of MimeKit (MimeKitLite scope): MIME parsing and creation with a non-throwing Result-based API",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
