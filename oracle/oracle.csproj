@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>MimeKitOracle</RootNamespace>
+    <AssemblyName>oracle</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference MimeKitLite so the oracle can only exercise in-scope APIs. -->
+    <ProjectReference Include="../MimeKit/MimeKitLite.csproj" SetTargetFramework="TargetFramework=net10.0" />
+  </ItemGroup>
+
+</Project>
