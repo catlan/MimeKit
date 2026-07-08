@@ -9,6 +9,7 @@
 import type { ContentEncoding } from '../content-encoding.js';
 import { err, ok, type Result } from '../result.js';
 import { isAtom, isDomain, isWhitespace } from './byte-extensions.js';
+import { punycodeDefault } from '../encodings/punycode.js';
 
 const base36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const whitespace = ' \t\r\n';
@@ -261,17 +262,11 @@ function isIdnEncoded(value: string): boolean {
 }
 
 function idnEncode(domain: string): string {
-  try {
-    return new URL(`http://${domain}`).hostname;
-  } catch {
-    return domain;
-  }
+  return punycodeDefault.encode(domain);
 }
 
 function idnDecode(domain: string): string {
-  // URL.hostname serializes as ASCII, so full ToUnicode parity is deferred to
-  // the shared IDN/address layer. ASCII domains and domain literals are exact.
-  return domain;
+  return punycodeDefault.decode(domain);
 }
 
 function tryParseMsgId(
