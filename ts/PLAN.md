@@ -176,6 +176,20 @@ publish (Q2).
   Workflow now has a dedicated commit stage (codex wrappers kept racing the
   commit step). Batch C (remaining filters + Create factories) in flight.
 
+- 2026-07-08 (later still): **Wave 2 complete — 1583 tests green + 7
+  attributed skips (51 files).** All header primitives ported and merged:
+  DateUtils, ParseUtils, MimeUtils, CharsetUtils (+streaming), Rfc2047,
+  Punycode (punycode dep + empirical IdnMapping wrapper), ContentType/
+  ContentDisposition/Parameter/ParameterList, the full address family,
+  CharsetFilter, options bags. Differential gates: codecs (corpus+fuzz),
+  361 dates, 394 rfc2047 (incl. adversarial unknown charsets), 440
+  ctype/cdisp, 419 addresses (deep tree + canonical), 27 IDN. Review
+  blockers caught & fixed: rfc2047 unknown-codepage probe, rfc2231
+  segment-straddle decoding, group-parse error swallowing, encode
+  line-folding, isDomain byte bound. Full 1:1 test parity restored for
+  the address suites (62+24+49 methods), which exposed two more runtime
+  fixes (DomainList route IDN encode, ctor validation).
+
 ## Attributed deferrals (living — each names its blocking feature)
 
 - `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
