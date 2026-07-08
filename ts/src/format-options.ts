@@ -10,6 +10,9 @@ export type NewLineFormat = 'unix' | 'dos';
 
 export type ParameterEncodingMethod = 'default' | 'rfc2231' | 'rfc2047';
 
+import { Dos2UnixFilter } from './io/filters/dos2unix-filter.js';
+import { Unix2DosFilter } from './io/filters/unix2dos-filter.js';
+
 export const MAXIMUM_LINE_LENGTH = 998;
 export const MINIMUM_LINE_LENGTH = 60;
 const DEFAULT_MAX_LINE_LENGTH = 78;
@@ -33,6 +36,16 @@ export class FormatOptions {
   /** C#: FormatOptions.NewLine ("\n" or "\r\n"). */
   get newLine(): string {
     return this.newLineFormat === 'unix' ? '\n' : '\r\n';
+  }
+
+  get newLineBytes(): Uint8Array {
+    return new TextEncoder().encode(this.newLine);
+  }
+
+  createNewLineFilter(ensureNewLine = this.ensureNewLine): Dos2UnixFilter | Unix2DosFilter {
+    return this.newLineFormat === 'dos'
+      ? new Unix2DosFilter(ensureNewLine)
+      : new Dos2UnixFilter(ensureNewLine);
   }
 
   clone(): FormatOptions {
