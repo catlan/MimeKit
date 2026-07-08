@@ -2,23 +2,11 @@ import { FormatOptions, MAXIMUM_LINE_LENGTH, MINIMUM_LINE_LENGTH } from './forma
 import type { EncodingConstraint } from './io/filters/best-encoding-filter.js';
 import { Stream } from './io/stream.js';
 import { MimeEntity, type MimeEntityConstructorArgs } from './mime-entity.js';
+import type { MimeMessage } from './mime-message.js';
 import type { MimeVisitor } from './mime-visitor.js';
 
-/**
- * Minimal structural placeholder until MimeMessage is ported in wave-3e.
- * The real MimeMessage type will replace this surface; keep only members
- * MessagePart needs for prepare/write/dispose and Multipart newline checks.
- */
-export interface MimeMessageLike {
-  body?: MimeEntity | null;
-  mboxMarker?: Uint8Array | null;
-  prepare?(constraint: EncodingConstraint, maxLineLength?: number): void;
-  writeTo(options: FormatOptions, stream: Stream): void;
-  dispose?(): void;
-}
-
 export class MessagePart extends MimeEntity {
-  message: MimeMessageLike | null = null;
+  message: MimeMessage | null = null;
 
   constructor();
   constructor(subtype: string, ...args: unknown[]);
@@ -33,7 +21,7 @@ export class MessagePart extends MimeEntity {
     for (const obj of args) {
       if (obj == null || this.tryInit(obj))
         continue;
-      if (isMimeMessageLike(obj)) {
+      if (isMimeMessage(obj)) {
         if (this.message != null) throw new TypeError('MimeMessage should not be specified more than once.');
         this.message = obj;
         continue;
@@ -42,8 +30,8 @@ export class MessagePart extends MimeEntity {
     }
   }
 
-  get Message(): MimeMessageLike | null { return this.message; }
-  set Message(value: MimeMessageLike | null) { this.message = value; }
+  get Message(): MimeMessage | null { return this.message; }
+  set Message(value: MimeMessage | null) { this.message = value; }
 
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
@@ -55,7 +43,7 @@ export class MessagePart extends MimeEntity {
     if (maxLineLength < MINIMUM_LINE_LENGTH || maxLineLength > MAXIMUM_LINE_LENGTH)
       throw new RangeError('maxLineLength out of range');
     this.checkDisposed('MessagePart');
-    this.message?.prepare?.(constraint, maxLineLength);
+    this.message?.prepare(constraint, maxLineLength);
   }
 
   override writeTo(a: FormatOptions | Stream, b?: Stream, contentOnly = false): void {
@@ -72,7 +60,7 @@ export class MessagePart extends MimeEntity {
   }
 
   override dispose(): void {
-    this.message?.dispose?.();
+    this.message?.dispose();
     super.dispose();
   }
 }
@@ -81,6 +69,9 @@ function isConstructorArgs(value: unknown): value is MimeEntityConstructorArgs {
   return typeof value === 'object' && value !== null && 'parserOptions' in value && 'contentType' in value && 'headers' in value;
 }
 
-function isMimeMessageLike(value: unknown): value is MimeMessageLike {
-  return typeof value === 'object' && value !== null && 'writeTo' in value;
+// Structural (not instanceof) to keep MessagePart's import of MimeMessage
+// type-only and the runtime graph cycle-free (MimeMessage -> Multipart ->
+// MessagePart). A MimeMessage is the only ctor arg exposing writeTo + body.
+function isMimeMessage(value: unknown): value is MimeMessage {
+  return typeof value === 'object' && value !== null && 'writeTo' in value && 'body' in value;
 }

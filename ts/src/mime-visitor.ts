@@ -2,6 +2,7 @@ import { MessageDeliveryStatus } from './message-delivery-status.js';
 import { MessageDispositionNotification } from './message-disposition-notification.js';
 import { MessagePartial } from './message-partial.js';
 import { MessagePart } from './message-part.js';
+import type { MimeMessage } from './mime-message.js';
 import { MimeEntity } from './mime-entity.js';
 import { MimePart } from './mime-part.js';
 import { MultipartAlternative } from './multipart-alternative.js';
@@ -43,12 +44,17 @@ export class MimeVisitor {
   visitMultipartRelated(entity: MultipartRelated): void { this.visitMultipart(entity); }
   visitMultipartReport(entity: MultipartReport): void { this.visitMultipart(entity); }
   visitMessage(entity: MessagePart): void {
-    if (entity.message?.body != null)
-      this.visit(entity.message.body);
+    entity.message?.accept(this);
   }
   visitMessagePart(entity: MessagePart): void {
     this.visitMimeEntity(entity);
     this.visitMessage(entity);
+  }
+  visitBody(message: MimeMessage): void {
+    message.body?.accept(this);
+  }
+  visitMimeMessage(message: MimeMessage): void {
+    this.visitBody(message);
   }
   visitMessagePartial(entity: MessagePartial): void { this.visitMimePart(entity); }
   visitMessageDeliveryStatus(entity: MessageDeliveryStatus): void { this.visitMimePart(entity); }

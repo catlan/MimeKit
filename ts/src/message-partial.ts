@@ -1,5 +1,5 @@
 import { Parameter } from './parameter.js';
-import { MessagePart, type MimeMessageLike } from './message-part.js';
+import type { MimeMessage } from './mime-message.js';
 import { MimePart } from './mime-part.js';
 import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
@@ -35,12 +35,12 @@ export class MessagePartial extends MimePart {
     visitor.visitMessagePartial(this);
   }
 
-  static split(_message: MimeMessageLike, _maxSize: number): MimeMessageLike[] {
+  static split(_message: MimeMessage, _maxSize: number): MimeMessage[] {
     // deferred(wave-3e/4): requires MimeMessage cloning/serialization and parser reassembly semantics.
     throw new Error('deferred(wave-3e/4): MessagePartial.split requires MimeMessage and parser support.');
   }
 
-  static join(_message: MimeMessageLike, _partials: Iterable<MessagePartial>): MimeMessageLike | null {
+  static join(_message: MimeMessage, _partials: Iterable<MessagePartial>): MimeMessage | null {
     // deferred(wave-3e/4): requires chained partial content parsing into MimeMessage.
     throw new Error('deferred(wave-3e/4): MessagePartial.join requires MimeMessage and parser support.');
   }
