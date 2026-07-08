@@ -185,6 +185,11 @@ publish (Q2).
 - `MimeKit/IO/Filters/AnonymizeFilter.cs` → wave 5 (MimeAnonymizer).
 - `MimeKit/Utils/OptimizedOrdinalComparer.cs` — NOT ported: excluded from
   MimeKitLite net8.0+/net10.0 builds upstream (compile-conditional legacy shim).
+- `idnDecode` in mime-utils is a no-op (C#: IdnMapping.Decode in msg-id
+  parsing) → Q7 punycode work; idnEncode's interim new URL() hack is
+  replaced by the same work.
+- mime-utils privately inlined most ParseUtils helpers (parallel-slice
+  necessity) → dedup against parse-utils.ts before wave 2 closes.
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
   (sync core; Web Streams adapters at edges, wave 9).
 
