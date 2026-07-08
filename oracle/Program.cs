@@ -35,6 +35,7 @@ return args switch {
 	["transcode", var codec, var direction, var input, var output] => RunTranscode(codec, direction, input, output),
 	["hdr", var kind, var inList, var outJson] => RunHeaderDump(kind, inList, outJson),
 	["idn", var inList, var outJson] => RunIdnDump(inList, outJson),
+	["sbtables", var outJson, .. var codepages] => RunSingleByteTables(outJson, codepages),
 	_ => Fail("usage: oracle parse|roundtrip|transcode|hdr|idn ..."),
 };
 
@@ -52,6 +53,24 @@ int RunIdnDump(string inListPath, string outJsonPath)
 		results.Add(new { input, ascii, unicode });
 	}
 	File.WriteAllText(outJsonPath, JsonSerializer.Serialize(results, jsonOptions) + "\n");
+	return 0;
+}
+
+int RunSingleByteTables(string outJsonPath, string[] codepages)
+{
+	// Decode every byte 0..255 through .NET (replacement fallback) so the TS
+	// port can use exact tables for single-byte charsets instead of trusting
+	// host TextDecoder implementations (Node/ICU deviates from WHATWG for
+	// windows-1252 C1 bytes, and possibly others).
+	var tables = new Dictionary<string, string>();
+	foreach (var cp in codepages) {
+		var encoding = Encoding.GetEncoding(int.Parse(cp), new EncoderReplacementFallback("?"), new DecoderReplacementFallback("�"));
+		var bytes = new byte[256];
+		for (int i = 0; i < 256; i++)
+			bytes[i] = (byte) i;
+		tables[cp] = encoding.GetString(bytes);
+	}
+	File.WriteAllText(outJsonPath, JsonSerializer.Serialize(tables, jsonOptions) + "\n");
 	return 0;
 }
 
