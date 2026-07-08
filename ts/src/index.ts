@@ -67,6 +67,7 @@ export { getMimeType } from './mime-types.js';
 export { AttachmentCollection } from './attachment-collection.js';
 export { BodyBuilder } from './body-builder.js';
 export { MimeMessage, createDateTimeOffset, dateTimeOffsetMinValue } from './mime-message.js';
+export { MimeReader, FormatError, type MimeFormat, type ReaderNewLineFormat } from './mime-reader.js';
 export { Header } from './header.js';
 export { HeaderList, type HeaderListChangedAction, type HeaderListChangedCallback } from './header-list.js';
 export { HeaderId, headerIdNameTable, toHeaderId, toHeaderName, type KnownHeaderId } from './header-id.js';
