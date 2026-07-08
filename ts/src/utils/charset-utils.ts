@@ -266,6 +266,19 @@ function createEncoding(codepage: number): CharsetEncoding | null {
   }
 }
 
+/**
+ * The WHATWG TextDecoder label backing an encoding, or null for the
+ * hand-rolled us-ascii/iso-8859-1 decoders (stateless — callers needing
+ * streaming semantics can decode those per-part safely). Used by rfc2231
+ * continuation decoding to thread one stateful decoder across segments.
+ */
+export function getTextDecoderLabel(encoding: CharsetEncoding): string | null {
+  if (encoding.codePage === 65001)
+    return 'utf-8';
+  const entry = CODEPAGE_LABELS[encoding.codePage];
+  return entry ? entry[1] : null;
+}
+
 /** C#: Encoding.GetEncoding(codepage), null instead of throwing. */
 export function getEncodingForCodePage(codepage: number): CharsetEncoding | null {
   let cached = encodingCache.get(codepage);
