@@ -201,6 +201,16 @@ publish (Q2).
   rubric. ~40 parser-dependent test cases deferred(wave-4) — they light up
   with MimeReader. Next: wave 4 parser (supervised).
 
+- 2026-07-09: **Wave 4 complete — the parser.** MimeReader (2893-line
+  tokenizer, buffer arithmetic byte-faithful) + MimeParser
+  (ExperimentalMimeParser per Q5) merged. Tree differential gate 38/38
+  (messages+mbox+partial corpora structurally identical to the oracle,
+  decoded-content sha256 included); 25 deferred tests un-skipped; parser
+  test suite 79 methods 1:1. Root-caused an oracle bug: it had used the
+  LEGACY MimeParser — switched to ExperimentalMimeParser (the port
+  target). Suite: 1922 passed + 16 skipped. Next: wave 5 serializer
+  byte-parity (roundtrip artifacts already generated).
+
 ## Attributed deferrals (living — each names its blocking feature)
 
 - `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
