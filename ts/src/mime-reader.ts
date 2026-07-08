@@ -161,7 +161,7 @@ export class MimeReader {
 
   private options!: ParserOptions;
   protected stream!: Stream;
-  private position = 0;
+  protected streamPosition = 0;
 
   constructor(stream: Stream, format?: MimeFormat);
   constructor(options: ParserOptions, stream: Stream, format?: MimeFormat);
@@ -218,9 +218,9 @@ export class MimeReader {
     this.lineNumber = 1;
     this.contentEnd = 0;
 
-    this.position = stream.canSeek ? stream.position : 0;
-    this.prevLineBeginOffset = this.position;
-    this.lineBeginOffset = this.position;
+    this.streamPosition = stream.canSeek ? stream.position : 0;
+    this.prevLineBeginOffset = this.streamPosition;
+    this.lineBeginOffset = this.streamPosition;
     this.toplevel = false;
     this.eos = false;
 
@@ -329,7 +329,7 @@ export class MimeReader {
 
     if (nread > 0) {
       this.inputEnd += nread;
-      this.position += nread;
+      this.streamPosition += nread;
     } else {
       this.eos = true;
     }
@@ -338,7 +338,7 @@ export class MimeReader {
   }
 
   private getOffset(index: number): number {
-    return this.position - (this.inputEnd - index);
+    return this.streamPosition - (this.inputEnd - index);
   }
 
   private getEndOffset(index: number): number {
