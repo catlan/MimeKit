@@ -34,8 +34,26 @@ return args switch {
 	["roundtrip", .. var rest] => RunTree(rest, roundtrip: true),
 	["transcode", var codec, var direction, var input, var output] => RunTranscode(codec, direction, input, output),
 	["hdr", var kind, var inList, var outJson] => RunHeaderDump(kind, inList, outJson),
-	_ => Fail("usage: oracle parse|roundtrip|transcode|hdr ..."),
+	["idn", var inList, var outJson] => RunIdnDump(inList, outJson),
+	_ => Fail("usage: oracle parse|roundtrip|transcode|hdr|idn ..."),
 };
+
+int RunIdnDump(string inListPath, string outJsonPath)
+{
+	var idn = new MimeKit.Encodings.Punycode();
+	var results = new List<object>();
+	foreach (var line in File.ReadAllLines(inListPath)) {
+		if (line.Length == 0)
+			continue;
+		var input = Encoding.UTF8.GetString(Convert.FromBase64String(line));
+		string? ascii = null, unicode = null;
+		try { ascii = idn.Encode(input); } catch { }
+		try { unicode = idn.Decode(input); } catch { }
+		results.Add(new { input, ascii, unicode });
+	}
+	File.WriteAllText(outJsonPath, JsonSerializer.Serialize(results, jsonOptions) + "\n");
+	return 0;
+}
 
 int Fail(string message)
 {
