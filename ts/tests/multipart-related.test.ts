@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { ContentDisposition, MimeContent, MimePart, MultipartRelated, TextPart, MemoryStream } from '../src/index.js';
+import { ContentDisposition, MimeContent, MimeEntity, MimePart, MultipartRelated, TextPart, MemoryStream } from '../src/index.js';
+import { testDataDir } from './gates/helpers.js';
 
 describe('MultipartRelated', () => {
   test('TestArgumentExceptions', () => {
@@ -43,7 +46,25 @@ describe('MultipartRelated', () => {
     expect(related.openWithInfo('cid:img@example.com').mimeType).toBe('image/gif');
   });
 
-  test.skip('TestDocumentRootByType', () => {
-    // deferred(wave-4): requires MimeEntity.Load/parser.
+  test('TestDocumentRootByType', () => {
+    const bytes = new Uint8Array(readFileSync(join(testDataDir, 'messages', 'multipart-related-mhtml.txt')));
+    const result = MimeEntity.load(bytes);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(result.value).toBeInstanceOf(MultipartRelated);
+    const related = result.value as MultipartRelated;
+
+    expect(related.count, 'Count').toBe(2);
+
+    const image = related.at(0);
+
+    expect(image.contentType.mimeType, 'related[0]').toBe('image/png');
+
+    const html = related.at(1);
+
+    expect(html.contentType.mimeType, 'related[1]').toBe('text/html');
+
+    expect(related.root, 'Root').toBe(html);
   });
 });

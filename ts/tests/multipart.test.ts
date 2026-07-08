@@ -4,16 +4,17 @@
  * Adaptations (noted inline): ArgumentNullException → TypeError via
  * `null as never`; WriteTo(string fileName) overloads are Node-only file
  * APIs not present in the isomorphic core; WriteToAsync overloads omitted
- * per plan (sync core); TestDispose constructs a real MimeMessage —
- * deferred(wave-3e). TestWriteToOrdering is extra (not in C#), kept for
+ * per plan (sync core). TestWriteToOrdering is extra (not in C#), kept for
  * write-path coverage until the wave-5 serializer gates land.
  */
 import { describe, expect, test } from 'vitest';
 import {
   FormatOptions,
   MemoryStream,
+  MessagePart,
   MimeContent,
   MimeEntity,
+  MimeMessage,
   MimePart,
   Multipart,
   setBoundaryGenerator,
@@ -128,9 +129,36 @@ describe('Multipart', () => {
     expect(generic.isDisposed, 'Expected generic part to be disposed after Clear(true)').toBe(true);
   });
 
-  test.skip('TestDispose', () => {
-    // deferred(wave-3e): constructs a real MimeMessage for the rfc822 part
-    // (dispose cascade through MessagePart.Message.Body).
+  test('TestDispose', () => {
+    const multipart = new Multipart();
+    multipart.boundary = '__Next_Part_123';
+
+    const generic = new MimePart('application', 'octet-stream');
+    generic.content = new MimeContent(new MemoryStream());
+    generic.isAttachment = true;
+
+    const innerMessage = new MimeMessage();
+    const innerBody = new TextPart('plain');
+    innerBody.text = 'This is the inner message body.';
+    innerMessage.body = innerBody;
+
+    const rfc822 = new MessagePart('rfc822');
+    rfc822.message = innerMessage;
+
+    const plain = new TextPart('plain');
+    plain.text = 'This is some plain text.';
+
+    multipart.add(plain);
+    multipart.add(generic);
+    multipart.add(rfc822);
+
+    multipart.dispose();
+
+    expect(multipart.isDisposed, 'Expected multipart to be disposed after Dispose()').toBe(true);
+    expect(plain.isDisposed, 'Expected plain part to be disposed after Dispose()').toBe(true);
+    expect(generic.isDisposed, 'Expected generic part to be disposed after Dispose()').toBe(true);
+    expect(rfc822.isDisposed, 'Expected rfc822 part to be disposed after Dispose()').toBe(true);
+    expect(rfc822.message!.body!.isDisposed, 'Expected rfc822 message body to be disposed after Dispose()').toBe(true);
   });
 
   test('TestMultiLinePreamble', () => {
