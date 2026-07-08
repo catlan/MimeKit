@@ -152,8 +152,36 @@ Unlike docxodus there is no product waiting on this, so no WASM-ship step; the
 oracle is a local dotnet CLI only. Rollback/soak concerns don't apply until
 publish (Q2).
 
+## Progress log (living)
+
+- 2026-07-08: Wave 0 complete. Fork catlan/MimeKit, `ts-port` branch, ts/
+  scaffold (pnpm/tsc-strict/vitest), Result core, Stream/MemoryStream
+  substrate shim, C# oracle CLI (validated: 26/26 messages parse, 22/26
+  round-trips byte-identical to input — 4 divergences are MimeKit
+  normalizations, documented in gates/README.md), gate runner + ratchet,
+  header extractor (1609 corpus inputs). Wave 1 running via port-wave
+  workflow (pilot slice: IO filters core).
+
+## Attributed deferrals (living — each names its blocking feature)
+
+- `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
+- `MimeKit/IO/Filters/CharsetFilter.cs` + CharsetUtils → wave 2 (charset
+  decoding layer).
+- `MimeKit/IO/Filters/AnonymizeFilter.cs` → wave 5 (MimeAnonymizer).
+- `MimeKit/Utils/OptimizedOrdinalComparer.cs` — NOT ported: excluded from
+  MimeKitLite net8.0+/net10.0 builds upstream (compile-conditional legacy shim).
+- Async API pairs, Stream timeout/cancellation members — omitted per plan
+  (sync core; Web Streams adapters at edges, wave 9).
+
 ## Follow-up questions (living section — answered entries move to Locked decisions)
 
+- **Q7: Punycode strategy.** `MimeKit/Encodings/Punycode.cs` just wraps
+  .NET's `IdnMapping` — there is no algorithm to port. TS needs a
+  from-scratch RFC 3492 encoder/decoder + minimal IDNA mapping (isomorphic,
+  so no Node-only `URL.domainToASCII`). Plan: supervised implementation in
+  wave 2 gated on PunycodeTests + oracle addr dumps; exotic-locale
+  case-folding divergences get ratcheted (playbook lists ICU-vs-.NET folding
+  as a known risk). Flag if you'd rather take a dependency instead.
 - **Q1: npm package name?** Placeholder `mimekit-ts`. `mimekit` appears
   plausibly free on npm — want me to claim it? Scoped `@catlan/mimekit`?
 - **Q2: publish to npm at the end, or local-only until you review?**
