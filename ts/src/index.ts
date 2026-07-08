@@ -32,3 +32,20 @@ export { HexEncoder } from './encodings/hex-encoder.js';
 export { HexDecoder } from './encodings/hex-decoder.js';
 export { PassThroughEncoder } from './encodings/pass-through-encoder.js';
 export { PassThroughDecoder } from './encodings/pass-through-decoder.js';
+export type { ParseCursor, ParseError } from './utils/parse-utils.js';
+export {
+  tryParseInt32,
+  skipWhiteSpace,
+  skipComment,
+  skipCommentsAndWhiteSpace,
+  skipQuoted,
+  skipAtom,
+  skipPhraseAtom,
+  skipToken,
+  skipWord,
+  isSentinel,
+  tryParseDomain,
+  tryParseMsgId,
+  isInternational,
+  isIdnEncoded,
+} from './utils/parse-utils.js';
