@@ -199,6 +199,12 @@ publish (Q2).
   (PunycodeTests inputs + corpus addr headers) and pick whichever matches;
   in-house RFC 3492 implementation stays the fallback if neither achieves
   parity where tests care. Divergences ratcheted either way.
+- **Q8: default NewLineFormat.** C# FormatOptions defaults from
+  Environment.NewLine (platform-dependent). The TS port fixes the default
+  to 'unix' (matches the oracle host, so gates stay meaningful). For the
+  published library, is a fixed 'unix' default OK, or should it be 'dos'
+  (canonical wire format)? Either is a one-line change; gates would pin
+  explicit options either way.
 - **Q1: npm package name?** Placeholder `mimekit-ts`. `mimekit` appears
   plausibly free on npm — want me to claim it? Scoped `@catlan/mimekit`?
 - **Q2: publish to npm at the end, or local-only until you review?**
