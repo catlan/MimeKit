@@ -107,6 +107,11 @@ const modes = {
     console.log(`mbox: ${files.length} files`);
   },
 
+  idn() {
+    oracle('idn', join(tsRoot, 'gates', 'idn-inputs.list'), join(outRoot, 'idn.json'));
+    console.log('idn: done');
+  },
+
   headers() {
     // Header-primitive dumps over inputs extracted from the corpus by
     // gates/extract-headers.mjs (wave 2 will add it). Until then this mode
