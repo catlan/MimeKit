@@ -43,6 +43,8 @@ export { Parameter } from './parameter.js';
 export { ParameterList } from './parameter-list.js';
 export { ContentType } from './content-type.js';
 export { ContentDisposition } from './content-disposition.js';
+export { Header } from './header.js';
+export { headerIdNameTable, toHeaderId, toHeaderName, type HeaderId, type KnownHeaderId } from './header-id.js';
 export { PassThroughEncoder } from './encodings/pass-through-encoder.js';
 export { PassThroughDecoder } from './encodings/pass-through-decoder.js';
 export { parseDate, formatDate, type DateTimeOffset } from './utils/date-utils.js';
