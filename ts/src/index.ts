@@ -33,6 +33,19 @@ export { HexDecoder } from './encodings/hex-decoder.js';
 export { PassThroughEncoder } from './encodings/pass-through-encoder.js';
 export { PassThroughDecoder } from './encodings/pass-through-decoder.js';
 export { parseDate, formatDate, type DateTimeOffset } from './utils/date-utils.js';
+export {
+  decodePhrase,
+  decodePhraseWithCodePage,
+  decodeText,
+  decodeTextWithCodePage,
+  encodeComment,
+  encodePhrase,
+  encodePhraseAsString,
+  encodeText,
+  foldUnstructuredHeader,
+  asciiString,
+  type DecodedHeaderValue,
+} from './utils/rfc2047.js';
 export type { ParseCursor, ParseError } from './utils/parse-utils.js';
 export {
   tryParseInt32,
