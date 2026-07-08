@@ -190,13 +190,15 @@ publish (Q2).
 
 ## Follow-up questions (living section — answered entries move to Locked decisions)
 
-- **Q7: Punycode strategy.** `MimeKit/Encodings/Punycode.cs` just wraps
-  .NET's `IdnMapping` — there is no algorithm to port. TS needs a
-  from-scratch RFC 3492 encoder/decoder + minimal IDNA mapping (isomorphic,
-  so no Node-only `URL.domainToASCII`). Plan: supervised implementation in
-  wave 2 gated on PunycodeTests + oracle addr dumps; exotic-locale
-  case-folding divergences get ratcheted (playbook lists ICU-vs-.NET folding
-  as a known risk). Flag if you'd rather take a dependency instead.
+- ~~Q7: Punycode strategy~~ **ANSWERED 2026-07-08**: a dependency is
+  allowed only if it adds no transitive deps beyond what's already in the
+  tree. Candidates (both MIT): `punycode@2.3.1` (zero deps — qualifies
+  outright; RFC 3492 only, no IDNA mapping) and `tr46@6` (full UTS#46;
+  its only dep is `punycode`, so acceptable *if* punycode is taken anyway).
+  Wave 2 will differential-test both against oracle `IdnMapping` dumps
+  (PunycodeTests inputs + corpus addr headers) and pick whichever matches;
+  in-house RFC 3492 implementation stays the fallback if neither achieves
+  parity where tests care. Divergences ratcheted either way.
 - **Q1: npm package name?** Placeholder `mimekit-ts`. `mimekit` appears
   plausibly free on npm — want me to claim it? Scoped `@catlan/mimekit`?
 - **Q2: publish to npm at the end, or local-only until you review?**
