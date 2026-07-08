@@ -102,7 +102,7 @@ export class ContentType {
     return ContentType.tryParse(options, text, cursor, text.length);
   }
 
-  static tryParse(options: ParserOptions, text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<ContentType> {
+  static tryParse(options: ParserOptions, text: Uint8Array, cursor: ParseCursor, endIndex: number, partial?: { contentType: ContentType | null }): Result<ContentType> {
     let skip = skipCommentsAndWhiteSpace(text, cursor, endIndex);
     if (!skip.ok) return skip;
 
@@ -127,6 +127,10 @@ export class ContentType {
     skip = skipCommentsAndWhiteSpace(text, cursor, endIndex);
     if (!skip.ok) return skip;
     const contentType = new ContentType(type, subtype);
+    // C#'s internal TryParse(ref index) leaves `contentType` non-null once the
+    // type/subtype have parsed, even when a later step fails; MimeReader relies
+    // on this partial value (see UpdateHeaderState). Expose it via `partial`.
+    if (partial) partial.contentType = contentType;
     if (cursor.index >= endIndex)
       return ok(contentType);
     if (text[cursor.index] !== 0x3b)
