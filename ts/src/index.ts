@@ -15,6 +15,7 @@ export { Dos2UnixFilter } from './io/filters/dos2unix-filter.js';
 export { Unix2DosFilter } from './io/filters/unix2dos-filter.js';
 export { EncoderFilter } from './io/filters/encoder-filter.js';
 export { DecoderFilter } from './io/filters/decoder-filter.js';
+export { CharsetFilter } from './io/filters/charset-filter.js';
 export { BestEncodingFilter } from './io/filters/best-encoding-filter.js';
 export { TrailingWhitespaceFilter } from './io/filters/trailing-whitespace-filter.js';
 export { MboxFromFilter } from './io/filters/mbox-from-filter.js';
