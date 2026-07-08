@@ -6,37 +6,10 @@ import { QuotedPrintableDecoder } from '../../encodings/quoted-printable-decoder
 import { UUDecoder } from '../../encodings/uu-decoder.js';
 import type { MimeDecoder } from '../../encodings/types.js';
 import type { ContentEncoding } from '../../content-encoding.js';
+import { tryParse as tryParseContentEncoding } from '../../utils/mime-utils.js';
 import { MimeFilterBase } from './mime-filter-base.js';
 import type { IMimeFilter, MimeFilterResult } from './mime-filter.js';
 import { PassThroughFilter } from './pass-through-filter.js';
-
-function parseContentEncoding(name: string): ContentEncoding {
-  let startIndex = 0;
-
-  while (startIndex < name.length && /\s/u.test(name[startIndex]!))
-    startIndex++;
-
-  let endIndex = startIndex;
-  while (endIndex < name.length && name[endIndex] !== ';' && !/\s/u.test(name[endIndex]!))
-    endIndex++;
-
-  const encoding = name.slice(startIndex, endIndex).toLowerCase();
-
-  // TODO(wave-2): replace with MimeUtils.tryParse once ported.
-  switch (encoding) {
-    case '7bit': return '7bit';
-    case '8bit': return '8bit';
-    case 'binary': return 'binary';
-    case 'base64': return 'base64';
-    case 'quoted-printable': return 'quoted-printable';
-    case 'x-uuencode':
-    case 'uuencode':
-    case 'x-uue':
-      return 'uuencode';
-    default:
-      return 'default';
-  }
-}
 
 export class DecoderFilter extends MimeFilterBase {
   readonly decoder: MimeDecoder;
@@ -60,10 +33,11 @@ export class DecoderFilter extends MimeFilterBase {
       throw new TypeError('name cannot be null or undefined');
 
     const encoding = typeof encodingOrName === 'string'
-      ? parseContentEncoding(encodingOrName)
-      : encodingOrName;
+      ? tryParseContentEncoding(encodingOrName)
+      : undefined;
+    const parsedEncoding = encoding === undefined ? encodingOrName : (encoding.ok ? encoding.value : 'default');
 
-    switch (encoding) {
+    switch (parsedEncoding) {
       case 'base64': return new DecoderFilter(new Base64Decoder());
       case 'quoted-printable': return new DecoderFilter(new QuotedPrintableDecoder());
       case 'uuencode': return new DecoderFilter(new UUDecoder());
