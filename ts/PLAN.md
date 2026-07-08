@@ -162,9 +162,24 @@ publish (Q2).
   header extractor (1609 corpus inputs). Wave 1 running via port-wave
   workflow (pilot slice: IO filters core).
 
+- 2026-07-08 (later): Wave 1 batches A+B merged — all Encodings codecs
+  (base64, QP, Q/rfc2047 encoders, UU, yEnc, hex, passthrough, Crc32), IO
+  streams (MemoryBlockStream, BoundStream, ChainedStream, MeasuringStream),
+  FilteredStream + core filters, byte utils. 254 tests green incl. byte-parity
+  differential gates vs oracle (corpus + fuzz). Review catches worth noting:
+  base64 clone() validation semantics (fixed), MemoryBlockStream re-ported
+  faithfully by hand after codex substituted an undocumented interning scheme.
+  Workflow now has a dedicated commit stage (codex wrappers kept racing the
+  commit step). Batch C (remaining filters + Create factories) in flight.
+
 ## Attributed deferrals (living — each names its blocking feature)
 
 - `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
+- `ChainedStreamTests.TestChainedHeadersAndContent` → wave 4 (needs
+  MimeEntity.Load).
+- `canTimeout` assertions in stream tests — omitted with the timeout surface.
+- `FilterTests.cs` cases exercising CharsetFilter → wave 2, AnonymizeFilter
+  → wave 5.
 - `MimeKit/IO/Filters/CharsetFilter.cs` + CharsetUtils → wave 2 (charset
   decoding layer).
 - `MimeKit/IO/Filters/AnonymizeFilter.cs` → wave 5 (MimeAnonymizer).
