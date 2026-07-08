@@ -1,4 +1,5 @@
 import { ContentType } from './content-type.js';
+import type { MimeVisitor } from './mime-visitor.js';
 import { FormatOptions } from './format-options.js';
 import { CharsetFilter } from './io/filters/charset-filter.js';
 import { FilteredStream } from './io/filtered-stream.js';
@@ -124,6 +125,13 @@ export class TextPart extends MimePart {
   get isRichText(): boolean {
     this.checkDisposed('TextPart');
     return this.contentType.isMimeType('text', 'rtf') || this.contentType.isMimeType('application', 'rtf');
+  }
+
+  override accept(visitor: MimeVisitor): void {
+    if (visitor == null)
+      throw new TypeError('visitor cannot be null or undefined');
+    this.checkDisposed('TextPart');
+    visitor.visitTextPart(this);
   }
 
   get text(): string {
