@@ -195,15 +195,13 @@ publish (Q2).
 
 ## Follow-up questions (living section — answered entries move to Locked decisions)
 
-- ~~Q7: Punycode strategy~~ **ANSWERED 2026-07-08**: a dependency is
-  allowed only if it adds no transitive deps beyond what's already in the
-  tree. Candidates (both MIT): `punycode@2.3.1` (zero deps — qualifies
-  outright; RFC 3492 only, no IDNA mapping) and `tr46@6` (full UTS#46;
-  its only dep is `punycode`, so acceptable *if* punycode is taken anyway).
-  Wave 2 will differential-test both against oracle `IdnMapping` dumps
-  (PunycodeTests inputs + corpus addr headers) and pick whichever matches;
-  in-house RFC 3492 implementation stays the fallback if neither achieves
-  parity where tests care. Divergences ratcheted either way.
+- ~~Q7: Punycode strategy~~ **RESOLVED 2026-07-08**: took `punycode@2.3.1`
+  (MIT, zero deps — first and only runtime dependency). tr46 was not needed:
+  the bake-off showed .NET IdnMapping semantics are reproducible with a thin
+  empirical wrapper (all-ASCII passthrough; per-label UTS46 separator map +
+  NFKC + casefold with ASCII-landing rule; input-unchanged failure
+  fallback) — validated 27/27 against oracle idn dumps and gated
+  (gates/idn-inputs.list). mime-utils idnEncode/idnDecode now use it.
 - **Q8: default NewLineFormat.** C# FormatOptions defaults from
   Environment.NewLine (platform-dependent). The TS port fixes the default
   to 'unix' (matches the oracle host, so gates stay meaningful). For the
