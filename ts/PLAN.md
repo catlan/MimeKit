@@ -208,6 +208,9 @@ publish (Q2).
   replaced by the same work.
 - mime-utils privately inlined most ParseUtils helpers (parallel-slice
   necessity) → dedup against parse-utils.ts before wave 2 closes.
+- `MimePart.writeTo` VerifyingSignature/Mixed pass-through branch +
+  `FormatOptions.VerifyingSignature` — deferred with signature crypto
+  (out of Lite scope; restore if S/MIME ever lands).
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
   (sync core; Web Streams adapters at edges, wave 9).
 
