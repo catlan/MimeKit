@@ -8,11 +8,20 @@
  */
 import type { ContentEncoding } from '../content-encoding.js';
 import { err, ok, type Result } from '../result.js';
-import { isAtom, isDomain, isWhitespace } from './byte-extensions.js';
 import { punycodeDefault } from '../encodings/punycode.js';
+import { isWhitespace } from './byte-extensions.js';
+import {
+  skipCommentsAndWhiteSpace,
+  skipQuoted,
+  skipWhiteSpace,
+  skipWord,
+  tryParseInt32,
+  tryParseDomain,
+  isIdnEncoded,
+  type ParseCursor,
+} from './parse-utils.js';
 
 const base36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const whitespace = ' \t\r\n';
 const unquoteChars = new Set(['\r', '\n', '\t', '\\', '"']);
 const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
@@ -43,224 +52,6 @@ class VersionValue implements MimeVersion {
   }
 }
 
-interface IndexRef {
-  value: number;
-}
-
-// Temporary duplication from MimeKit/Utils/ParseUtils.cs. Remove once
-// ts/src/utils/parse-utils.ts lands and can be shared by header parsers.
-function tryParseInt32(text: Uint8Array, index: IndexRef, endIndex: number): number | undefined {
-  const startIndex = index.value;
-  let value = 0;
-
-  while (index.value < endIndex && text[index.value]! >= 0x30 && text[index.value]! <= 0x39) {
-    const digit = text[index.value]! - 0x30;
-
-    if (value > Math.floor(0x7fffffff / 10))
-      return undefined;
-
-    if (value === Math.floor(0x7fffffff / 10) && digit > 0x7fffffff % 10)
-      return undefined;
-
-    value = (value * 10) + digit;
-    index.value++;
-  }
-
-  return index.value > startIndex ? value : undefined;
-}
-
-function skipWhiteSpace(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  const startIndex = index.value;
-
-  while (index.value < endIndex && isWhitespace(text[index.value]!))
-    index.value++;
-
-  return index.value > startIndex;
-}
-
-function skipComment(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  let escaped = false;
-  let depth = 1;
-
-  index.value++;
-
-  while (index.value < endIndex && depth > 0) {
-    if (text[index.value] === 0x5c) {
-      escaped = !escaped;
-    } else if (!escaped) {
-      if (text[index.value] === 0x28)
-        depth++;
-      else if (text[index.value] === 0x29)
-        depth--;
-    } else {
-      escaped = false;
-    }
-
-    index.value++;
-  }
-
-  return depth === 0;
-}
-
-function skipCommentsAndWhiteSpace(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  skipWhiteSpace(text, index, endIndex);
-
-  while (index.value < endIndex && text[index.value] === 0x28) {
-    if (!skipComment(text, index, endIndex))
-      return false;
-
-    skipWhiteSpace(text, index, endIndex);
-  }
-
-  return true;
-}
-
-function skipQuoted(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  let escaped = false;
-
-  index.value++;
-
-  while (index.value < endIndex) {
-    if (text[index.value] === 0x5c) {
-      escaped = !escaped;
-    } else if (!escaped) {
-      if (text[index.value] === 0x22)
-        break;
-    } else {
-      escaped = false;
-    }
-
-    index.value++;
-  }
-
-  if (index.value >= endIndex)
-    return false;
-
-  index.value++;
-
-  return true;
-}
-
-function skipAtom(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  const start = index.value;
-
-  while (index.value < endIndex && isAtom(text[index.value]!))
-    index.value++;
-
-  return index.value > start;
-}
-
-function skipWord(text: Uint8Array, index: IndexRef, endIndex: number): boolean {
-  if (text[index.value] === 0x22)
-    return skipQuoted(text, index, endIndex);
-
-  if (isAtom(text[index.value]!))
-    return skipAtom(text, index, endIndex);
-
-  return false;
-}
-
-function decodeUtf8(text: Uint8Array, start: number, length: number): string | undefined {
-  try {
-    return utf8Decoder.decode(text.subarray(start, start + length));
-  } catch {
-    return undefined;
-  }
-}
-
-function isSentinel(c: number, sentinels: string): boolean {
-  return sentinels.includes(String.fromCharCode(c));
-}
-
-function tryParseDotAtom(
-  text: Uint8Array,
-  index: IndexRef,
-  endIndex: number,
-  sentinels: string,
-): string | undefined {
-  const token: string[] = [];
-  let comment: number;
-
-  do {
-    if (!isAtom(text[index.value]!))
-      return undefined;
-
-    const start = index.value;
-    while (index.value < endIndex && isAtom(text[index.value]!))
-      index.value++;
-
-    const atom = decodeUtf8(text, start, index.value - start);
-    if (atom === undefined)
-      return undefined;
-    token.push(atom);
-
-    comment = index.value;
-    if (!skipCommentsAndWhiteSpace(text, index, endIndex))
-      return undefined;
-
-    if (index.value >= endIndex || text[index.value] !== 0x2e) {
-      index.value = comment;
-      break;
-    }
-
-    index.value++;
-
-    if (!skipCommentsAndWhiteSpace(text, index, endIndex))
-      return undefined;
-
-    if (index.value >= endIndex || isSentinel(text[index.value]!, sentinels))
-      break;
-
-    token.push('.');
-  } while (true);
-
-  return token.join('');
-}
-
-function tryParseDomainLiteral(text: Uint8Array, index: IndexRef, endIndex: number): string | undefined {
-  const token: string[] = [];
-
-  index.value++;
-
-  token.push('[');
-
-  skipWhiteSpace(text, index, endIndex);
-
-  do {
-    while (index.value < endIndex && isDomain(text[index.value]!)) {
-      token.push(String.fromCharCode(text[index.value]!));
-      index.value++;
-    }
-
-    skipWhiteSpace(text, index, endIndex);
-
-    if (index.value >= endIndex)
-      return undefined;
-
-    if (text[index.value] === 0x5d)
-      break;
-
-    if (!isDomain(text[index.value]!))
-      return undefined;
-  } while (true);
-
-  token.push(']');
-  index.value++;
-
-  return token.join('');
-}
-
-function tryParseDomain(text: Uint8Array, index: IndexRef, endIndex: number, sentinels: string): string | undefined {
-  if (text[index.value] === 0x5b)
-    return tryParseDomainLiteral(text, index, endIndex);
-
-  return tryParseDotAtom(text, index, endIndex, sentinels);
-}
-
-function isIdnEncoded(value: string): boolean {
-  return value.startsWith('xn--') || value.includes('.xn--');
-}
-
 function idnEncode(domain: string): string {
   return punycodeDefault.encode(domain);
 }
@@ -269,125 +60,141 @@ function idnDecode(domain: string): string {
   return punycodeDefault.decode(domain);
 }
 
-function tryParseMsgId(
+// Kept local because parse-utils.ts keeps decodeUtf8 private and returns
+// Result<string> using an end-index argument; this parser preserves the old
+// mime-utils.ts helper contract of string | undefined using start + length.
+function decodeUtf8(text: Uint8Array, start: number, length: number): string | undefined {
+  try {
+    return utf8Decoder.decode(text.subarray(start, start + length));
+  } catch {
+    return undefined;
+  }
+}
+
+const greaterThanOrAt = new Uint8Array([0x3e, 0x40]);
+
+// Kept local because parse-utils.tryParseMsgId decodes IDN domains with its
+// private punycode decoder, which can return decoded control/empty labels for
+// malformed xn-- input. MimeUtils has historically used punycodeDefault.decode,
+// which preserves the original domain when IdnMapping-style validation fails.
+function tryParseMimeMsgId(
   text: Uint8Array,
-  index: IndexRef,
+  index: ParseCursor,
   endIndex: number,
   requireAngleAddr: boolean,
 ): string | undefined {
   let squareBrackets = false;
   let angleAddr = false;
 
-  if (!skipCommentsAndWhiteSpace(text, index, endIndex))
+  if (!skipCommentsAndWhiteSpace(text, index, endIndex).ok)
     return undefined;
 
-  if (index.value >= endIndex || (requireAngleAddr && text[index.value] !== 0x3c))
+  if (index.index >= endIndex || (requireAngleAddr && text[index.index] !== 0x3c))
     return undefined;
 
-  if (text[index.value] === 0x3c) {
+  if (text[index.index] === 0x3c) {
     angleAddr = true;
-    index.value++;
+    index.index++;
   }
 
   skipWhiteSpace(text, index, endIndex);
 
-  if (index.value >= endIndex)
+  if (index.index >= endIndex)
     return undefined;
 
   const token: string[] = [];
 
-  if (text[index.value] === 0x5b)
+  if (text[index.index] === 0x5b)
     squareBrackets = true;
 
   do {
-    const start = index.value;
+    const start = index.index;
 
-    if (text[index.value] === 0x22) {
-      if (!skipQuoted(text, index, endIndex))
+    if (text[index.index] === 0x22) {
+      if (!skipQuoted(text, index, endIndex).ok)
         return undefined;
     } else {
       while (
-        index.value < endIndex &&
-        text[index.value] !== 0x2e &&
-        text[index.value] !== 0x40 &&
-        text[index.value] !== 0x3e &&
-        !isWhitespace(text[index.value]!)
+        index.index < endIndex &&
+        text[index.index] !== 0x2e &&
+        text[index.index] !== 0x40 &&
+        text[index.index] !== 0x3e &&
+        !isWhitespace(text[index.index]!)
       ) {
-        index.value++;
+        index.index++;
       }
     }
 
-    const part = decodeUtf8(text, start, index.value - start);
+    const part = decodeUtf8(text, start, index.index - start);
     if (part === undefined)
       return undefined;
     token.push(part);
 
     skipWhiteSpace(text, index, endIndex);
 
-    if (index.value >= endIndex) {
+    if (index.index >= endIndex) {
       if (angleAddr)
         return undefined;
 
       break;
     }
 
-    if (text[index.value] === 0x40 || text[index.value] === 0x3e)
+    if (text[index.index] === 0x40 || text[index.index] === 0x3e)
       break;
 
-    if (text[index.value] === 0x2e) {
+    if (text[index.index] === 0x2e) {
       token.push('.');
-      index.value++;
+      index.index++;
 
       skipWhiteSpace(text, index, endIndex);
     }
 
-    if (index.value >= endIndex)
+    if (index.index >= endIndex)
       return undefined;
   } while (true);
 
-  if (index.value < endIndex && text[index.value] === 0x40) {
+  if (index.index < endIndex && text[index.index] === 0x40) {
     token.push('@');
-    index.value++;
+    index.index++;
 
-    while (index.value < endIndex && text[index.value] === 0x40)
-      index.value++;
+    while (index.index < endIndex && text[index.index] === 0x40)
+      index.index++;
 
-    if (!skipCommentsAndWhiteSpace(text, index, endIndex))
+    if (!skipCommentsAndWhiteSpace(text, index, endIndex).ok)
       return undefined;
 
-    if (index.value < endIndex && text[index.value] !== 0x3e) {
+    if (index.index < endIndex && text[index.index] !== 0x3e) {
       do {
-        let domain = tryParseDomain(text, index, endIndex, '>@');
-        if (domain === undefined)
+        const parsedDomain = tryParseDomain(text, index, endIndex, greaterThanOrAt);
+        if (!parsedDomain.ok)
           return undefined;
 
-        if (isIdnEncoded(domain))
-          domain = idnDecode(domain);
+        const domain = isIdnEncoded(parsedDomain.value) ? idnDecode(parsedDomain.value) : parsedDomain.value;
 
         token.push(domain);
 
-        if (index.value >= endIndex || text[index.value] !== 0x40)
+        if (index.index >= endIndex || text[index.index] !== 0x40)
           break;
 
         token.push('@');
-        index.value++;
-      } while (index.value < endIndex);
+        index.index++;
+      } while (index.index < endIndex);
 
-      if (!skipCommentsAndWhiteSpace(text, index, endIndex))
+      if (!skipCommentsAndWhiteSpace(text, index, endIndex).ok)
         return undefined;
     }
   }
 
-  if (squareBrackets && index.value < endIndex && text[index.value] === 0x5d) {
+  if (squareBrackets && index.index < endIndex && text[index.index] === 0x5d) {
     token.push(']');
-    index.value++;
+    index.index++;
   }
 
-  if (angleAddr && (index.value >= endIndex || text[index.value] !== 0x3e))
+  if (angleAddr && (index.index >= endIndex || text[index.index] !== 0x3e))
     return undefined;
 
-  if (index.value < endIndex && text[index.value] === 0x3e)
-    index.value++;
+  if (index.index < endIndex && text[index.index] === 0x3e)
+    index.index++;
 
   return token.join('');
 }
@@ -419,33 +226,35 @@ export function tryParseVersion(
 
   const values: number[] = [];
   const endIndex = startIndex + count;
-  const index: IndexRef = { value: startIndex };
+  const index: ParseCursor = { index: startIndex };
 
   do {
-    if (!skipCommentsAndWhiteSpace(buffer, index, endIndex) || index.value >= endIndex)
-      return err('invalid-version', 'The version could not be parsed.', { offset: index.value });
+    const skipped = skipCommentsAndWhiteSpace(buffer, index, endIndex);
+    if (!skipped.ok || index.index >= endIndex)
+      return err('invalid-version', 'The version could not be parsed.', { offset: index.index });
 
     const value = tryParseInt32(buffer, index, endIndex);
-    if (value === undefined)
-      return err('invalid-version', 'The version could not be parsed.', { offset: index.value });
+    if (!value.ok)
+      return err('invalid-version', 'The version could not be parsed.', { offset: index.index });
 
-    values.push(value);
+    values.push(value.value);
 
-    if (!skipCommentsAndWhiteSpace(buffer, index, endIndex))
-      return err('invalid-version', 'The version could not be parsed.', { offset: index.value });
+    const skippedAfterValue = skipCommentsAndWhiteSpace(buffer, index, endIndex);
+    if (!skippedAfterValue.ok)
+      return err('invalid-version', 'The version could not be parsed.', { offset: index.index });
 
-    if (index.value >= endIndex)
+    if (index.index >= endIndex)
       break;
 
-    if (buffer[index.value++] !== 0x2e)
-      return err('invalid-version', 'The version could not be parsed.', { offset: index.value - 1 });
-  } while (index.value < endIndex);
+    if (buffer[index.index++] !== 0x2e)
+      return err('invalid-version', 'The version could not be parsed.', { offset: index.index - 1 });
+  } while (index.index < endIndex);
 
   switch (values.length) {
     case 4: return ok(new VersionValue(values[0]!, values[1]!, values[2]!, values[3]!));
     case 3: return ok(new VersionValue(values[0]!, values[1]!, values[2]!));
     case 2: return ok(new VersionValue(values[0]!, values[1]!));
-    default: return err('invalid-version', 'The version could not be parsed.', { offset: index.value });
+    default: return err('invalid-version', 'The version could not be parsed.', { offset: index.index });
   }
 }
 
@@ -638,8 +447,8 @@ export function tryParseMessageId(
   const count = length ?? buffer.length - startIndex;
   validateRange(buffer, startIndex, count);
 
-  const index: IndexRef = { value: startIndex };
-  const msgid = tryParseMsgId(buffer, index, startIndex + count, false);
+  const index: ParseCursor = { index: startIndex };
+  const msgid = tryParseMimeMsgId(buffer, index, startIndex + count, false);
 
   return ok(msgid ?? null);
 }
@@ -657,23 +466,26 @@ export function* enumerateReferences(
   validateRange(buffer, startIndex, count);
 
   const endIndex = startIndex + count;
-  const index: IndexRef = { value: startIndex };
+  const index: ParseCursor = { index: startIndex };
 
   do {
-    if (!skipCommentsAndWhiteSpace(buffer, index, endIndex))
+    const skipped = skipCommentsAndWhiteSpace(buffer, index, endIndex);
+    if (!skipped.ok)
       break;
 
-    if (index.value >= endIndex)
+    if (index.index >= endIndex)
       break;
 
-    if (buffer[index.value] === 0x3c) {
-      const msgid = tryParseMsgId(buffer, index, endIndex, true);
+    if (buffer[index.index] === 0x3c) {
+      const msgid = tryParseMimeMsgId(buffer, index, endIndex, true);
       if (msgid !== undefined)
         yield msgid;
-    } else if (!skipWord(buffer, index, endIndex)) {
-      index.value++;
+    } else {
+      const word = skipWord(buffer, index, endIndex);
+      if (!word.ok || !word.value)
+        index.index++;
     }
-  } while (index.value < endIndex);
+  } while (index.index < endIndex);
 }
 
 function appendBase36(value: bigint, output: string[]): void {
