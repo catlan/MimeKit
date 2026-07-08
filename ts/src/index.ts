@@ -32,3 +32,4 @@ export { HexEncoder } from './encodings/hex-encoder.js';
 export { HexDecoder } from './encodings/hex-decoder.js';
 export { PassThroughEncoder } from './encodings/pass-through-encoder.js';
 export { PassThroughDecoder } from './encodings/pass-through-decoder.js';
+export { parseDate, formatDate, type DateTimeOffset } from './utils/date-utils.js';
