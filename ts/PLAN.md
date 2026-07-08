@@ -211,6 +211,10 @@ publish (Q2).
 - `MimePart.writeTo` VerifyingSignature/Mixed pass-through branch +
   `FormatOptions.VerifyingSignature` — deferred with signature crypto
   (out of Lite scope; restore if S/MIME ever lands).
+- Multipart-family test debt (review-accepted minors): `multipart-related`
+  and `multipart-alternative` each combine 2 C# cases into 1;
+  `TestGenericArgsConstructor` unported for related; `MultipartTests.
+  TestDispose` deferred(wave-3e). Sweep in wave 9 or next codex window.
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
   (sync core; Web Streams adapters at edges, wave 9).
 
