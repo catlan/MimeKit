@@ -190,6 +190,17 @@ publish (Q2).
   the address suites (62+24+49 methods), which exposed two more runtime
   fixes (DomainList route IDN encode, ctor validation).
 
+- 2026-07-08/09: **Wave 3 complete — 1772 tests + 41 attributed skips
+  (66 files).** Full message model merged: Header/HeaderId (raw-byte
+  preservation), HeaderList, MimeEntity/MimePart/TextPart/MimeContent
+  (pure-JS MD5 for ContentMd5), the Multipart+MessagePart family (visitor
+  double-dispatch, preamble/epilogue raw fidelity), MimeMessage (10-list
+  address sync, BodyBuilder, AttachmentCollection + 552-entry MimeTypes
+  map, MessageIdList). Codex quota outage mid-wave: multipart fix round
+  done by fable, message slice implemented by opus-4.8 per the escalation
+  rubric. ~40 parser-dependent test cases deferred(wave-4) — they light up
+  with MimeReader. Next: wave 4 parser (supervised).
+
 ## Attributed deferrals (living — each names its blocking feature)
 
 - `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
