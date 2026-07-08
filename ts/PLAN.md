@@ -22,7 +22,11 @@ Working title: `mimekit-ts` (final npm name → follow-up Q1)
    type Result<T> = { ok: true; value: T } | { ok: false; error: MimeError }
    // MimeError: { kind: string; message: string; offset?: number; cause?: MimeError }
    ```
-   C#'s `Parse`/`TryParse` pairs collapse into one `parse(): Result<T>`.
+   C#'s `Parse`/`TryParse` pairs collapse into one `parse(): Result<T>`
+   with **TryParse (lenient) semantics** — on the rare inputs where C#'s
+   strict Parse throws but TryParse succeeds with a workaround (e.g. quoted
+   Content-Disposition values), the port follows TryParse; this matches the
+   oracle dumps, which use TryParse.
    C# tests asserting `Throws<FormatException>` are ported as `ok: false` +
    error-kind assertions. Programmer errors (wrong argument types, out-of-range
    indices — C#'s `ArgumentException` family) throw native `TypeError`/`RangeError`
