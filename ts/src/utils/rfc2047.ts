@@ -737,6 +737,12 @@ function appendEncodedWord(builder: StringBuilder, charset: CharsetEncoding, tex
   return builder.length - startLength;
 }
 
+export function appendEncodedWordAsString(charset: CharsetEncoding, text: string, startIndex: number, length: number, mode: QEncodeMode): string {
+  const builder = new StringBuilder();
+  appendEncodedWord(builder, charset, text, startIndex, length, mode);
+  return builder.toString();
+}
+
 function appendQuoted(str: StringBuilder, text: string, startIndex: number, length: number): void {
   const lastIndex = startIndex + length;
 
