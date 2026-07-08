@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   ContentDisposition,
@@ -7,10 +9,12 @@ import {
   HeaderId,
   MemoryStream,
   MimeContent,
+  MimeEntity,
   MimePart,
   TextPart,
   generateMessageId,
 } from '../src/index.js';
+import { testDataDir } from './gates/helpers.js';
 
 const enc = new TextEncoder();
 
@@ -20,6 +24,14 @@ function textBytes(text: string): Uint8Array {
 
 function readText(stream: MemoryStream): string {
   return new TextDecoder('latin1').decode(stream.toArray());
+}
+
+function reload(stream: MemoryStream): MimePart {
+  const result = MimeEntity.load(stream);
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.error.message);
+  expect(result.value).toBeInstanceOf(MimePart);
+  return result.value as MimePart;
 }
 
 describe('MimePart', () => {
@@ -238,8 +250,41 @@ describe('MimePart', () => {
     expect(part.contentTransferEncoding).toBe('base64');
   });
 
-  test.skip('TestTranscoding', () => {
-    // deferred(wave-4): C# reloads each transcoded entity via MimeEntity.Load/MimeParser before verifying content.
+  test('TestTranscoding', () => {
+    const path = join(testDataDir, 'images', 'girl.jpg');
+    const expected = new Uint8Array(readFileSync(path));
+
+    let part = new MimePart('image', 'jpeg');
+    part.content = new MimeContent(new MemoryStream(expected));
+    part.contentTransferEncoding = 'base64';
+    part.fileName = 'girl.jpg';
+
+    // encode in base64
+    {
+      const output = new MemoryStream();
+      part.writeTo(output);
+      output.position = 0;
+
+      part = reload(output);
+    }
+
+    // transcode to uuencode
+    part.contentTransferEncoding = 'uuencode';
+    {
+      const output = new MemoryStream();
+      part.writeTo(output);
+      output.position = 0;
+
+      part = reload(output);
+    }
+
+    // verify decoded content
+    const output = new MemoryStream();
+    part.content!.decodeTo(output);
+    const actual = output.toArray();
+
+    expect(actual.length).toBe(expected.length);
+    expect(Buffer.from(actual).equals(Buffer.from(expected)), 'Image content differs').toBe(true);
   });
 
   test.skip('TestTranscodingAsync', () => {
@@ -287,8 +332,21 @@ describe('MimePart', () => {
   test.skip('TestWriteToFileAsync_NewLine', () => {
     // deferred(sync-only + node-entry): async and file path overloads omitted per PLAN.
   });
-  test.skip('TestLoadHttpWebResponse', () => {
-    // deferred(wave-4): MimeEntity.Load(ContentType, Stream) needs MimeReader/MimeParser.
+  test('TestLoadHttpWebResponse', () => {
+    const text = 'This is some text and stuff.\n';
+    const contentType = new ContentType('text', 'plain');
+
+    const content = new MemoryStream(textBytes(text));
+    const result = MimeEntity.load(contentType, content);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.message);
+    const entity = result.value;
+
+    expect(entity).toBeInstanceOf(TextPart);
+
+    const part = entity as TextPart;
+
+    expect(part.text).toBe(text);
   });
   test.skip('TestLoadHttpWebResponseAsync', () => {
     // deferred(sync-only + wave-4): async API pairs omitted; parser not ported yet.

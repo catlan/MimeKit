@@ -156,21 +156,21 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
 
     if (type.isMimeType('message', 'rfc822')) {
       const position = stream.canSeek ? stream.position : 0;
-      try {
-        const message = MimeMessage.load(stream);
+      const result = MimeMessage.load(stream);
+      if (result.ok) {
         if (!copyStream) stream.dispose();
         const part = new MessagePart();
-        part.message = message;
+        part.message = result.value;
         attachment = part;
-      } catch (ex) {
-        // C#: only FormatException triggers the octet-stream fallback. Until the
-        // parser lands (wave-4), MimeMessage.load throws a plain Error; fall back
-        // when auto-detected + seekable, mirroring the C# recovery, else rethrow.
+      } else {
+        // C#: only a FormatException (here: a parse-error Result) triggers the
+        // octet-stream fallback, and only when the content type was auto-detected
+        // and the stream is seekable; otherwise the error propagates.
         if (autoDetected && stream.canSeek) {
           type = new ContentType('application', 'octet-stream');
           stream.position = position;
         } else {
-          throw ex;
+          throw new Error(result.error.message);
         }
       }
     }

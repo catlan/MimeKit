@@ -10,6 +10,7 @@ export type NewLineFormat = 'unix' | 'dos';
 
 export type ParameterEncodingMethod = 'default' | 'rfc2231' | 'rfc2047';
 
+import type { HeaderId } from './header-id.js';
 import { Dos2UnixFilter } from './io/filters/dos2unix-filter.js';
 import { Unix2DosFilter } from './io/filters/unix2dos-filter.js';
 
@@ -32,6 +33,13 @@ export class FormatOptions {
   allowMixedHeaderCharsets = false;
   parameterEncodingMethod: ParameterEncodingMethod = 'rfc2231';
   alwaysQuoteParameterValues = false;
+
+  /**
+   * C#: FormatOptions.HiddenHeaders. Header ids that are suppressed when a
+   * message is serialized (used by MessagePartial.Split to strip everything but
+   * the content headers). Empty by default.
+   */
+  readonly hiddenHeaders = new Set<HeaderId>();
 
   /** C#: FormatOptions.NewLine ("\n" or "\r\n"). */
   get newLine(): string {
@@ -57,6 +65,7 @@ export class FormatOptions {
     options.allowMixedHeaderCharsets = this.allowMixedHeaderCharsets;
     options.parameterEncodingMethod = this.parameterEncodingMethod;
     options.alwaysQuoteParameterValues = this.alwaysQuoteParameterValues;
+    for (const id of this.hiddenHeaders) options.hiddenHeaders.add(id);
     return options;
   }
 }

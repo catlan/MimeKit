@@ -4,8 +4,10 @@ import { HeaderId, toHeaderName } from './header-id.js';
 import { Dos2UnixFilter } from './io/filters/dos2unix-filter.js';
 import { Unix2DosFilter } from './io/filters/unix2dos-filter.js';
 import { FilteredStream } from './io/filtered-stream.js';
-import { Stream } from './io/stream.js';
+import { MemoryStream, Stream } from './io/stream.js';
+import { newMimeParser } from './parser-hook.js';
 import { ParserOptions } from './parser-options.js';
+import { type Result } from './result.js';
 import { type CharsetEncoding } from './utils/charset-utils.js';
 
 const ascii = new TextEncoder();
@@ -290,6 +292,18 @@ export class HeaderList implements Iterable<Header> {
 
   [Symbol.iterator](): Iterator<Header> {
     return this.headers[Symbol.iterator]();
+  }
+
+  /**
+   * C#: HeaderList.Load. Parses a list of headers from a stream (or byte buffer)
+   * using the MIME parser. Parse errors are returned as an Err (C#:
+   * FormatException) per the port's Result convention.
+   */
+  static load(source: Stream | Uint8Array, options: ParserOptions = ParserOptions.default): Result<HeaderList> {
+    if (source == null) throw new TypeError('stream cannot be null or undefined');
+    const stream = source instanceof Stream ? source : new MemoryStream(source);
+    const parser = newMimeParser(options, stream, 'entity');
+    return parser.parseHeaders();
   }
 
   private validateExistingIndex(index: number): void {

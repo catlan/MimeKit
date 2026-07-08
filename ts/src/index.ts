@@ -50,6 +50,7 @@ export { TextPart, TextFormat, type TextEncodingConfidence } from './text-part.j
 export { HeaderListCollection } from './header-list-collection.js';
 export { MessageDeliveryStatus } from './message-delivery-status.js';
 export { MessageDispositionNotification } from './message-disposition-notification.js';
+export { MessageFeedbackReport } from './message-feedback-report.js';
 export { MessagePart } from './message-part.js';
 export { MessagePartial } from './message-partial.js';
 export { MimeVisitor } from './mime-visitor.js';
@@ -68,6 +69,7 @@ export { AttachmentCollection } from './attachment-collection.js';
 export { BodyBuilder } from './body-builder.js';
 export { MimeMessage, createDateTimeOffset, dateTimeOffsetMinValue } from './mime-message.js';
 export { MimeReader, FormatError, type MimeFormat, type ReaderNewLineFormat } from './mime-reader.js';
+export { MimeParser } from './mime-parser.js';
 export { Header } from './header.js';
 export { HeaderList, type HeaderListChangedAction, type HeaderListChangedCallback } from './header-list.js';
 export { HeaderId, headerIdNameTable, toHeaderId, toHeaderName, type KnownHeaderId } from './header-id.js';

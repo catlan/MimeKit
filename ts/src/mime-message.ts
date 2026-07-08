@@ -29,6 +29,8 @@ import { MessagePriority } from './message-priority.js';
 import { XMessagePriority, isXMessagePriority, rawXPriorityValues, xPriorityByLevel } from './x-message-priority.js';
 import { MimeEntity } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
+import { newMimeParser } from './parser-hook.js';
+import { type Result } from './result.js';
 import { Multipart } from './multipart.js';
 import { MultipartAlternative } from './multipart-alternative.js';
 import { ParserOptions, type RfcComplianceMode } from './parser-options.js';
@@ -133,9 +135,20 @@ export class MimeMessage {
   constructor(headers: Iterable<Header>);
   constructor(from: Iterable<InternetAddress>, to: Iterable<InternetAddress>, subject: string, body: MimeEntity | null);
   constructor(...args: unknown[]);
+  /** C#: internal MimeMessage (ParserOptions options, IEnumerable<Header> headers, RfcComplianceMode mode). */
+  constructor(options: ParserOptions, headers: Iterable<Header>, mode: RfcComplianceMode);
+  constructor(...args: unknown[]);
   constructor(...args: unknown[]) {
-    this.headers = new HeaderList(ParserOptions.default.clone());
-    this.compliance = 'strict';
+    const internalFull =
+      args.length === 3 &&
+      args[0] instanceof ParserOptions &&
+      (args[2] === 'loose' || args[2] === 'looser' || args[2] === 'strict');
+    // C#: internal MimeMessage (ParserOptions options) — an empty message (no defaults).
+    const internalEmpty = args.length === 1 && args[0] instanceof ParserOptions;
+    const internal = internalFull || internalEmpty;
+
+    this.headers = new HeaderList(internal ? (args[0] as ParserOptions) : ParserOptions.default.clone());
+    this.compliance = internalFull ? (args[2] as RfcComplianceMode) : 'strict';
 
     for (const id of STANDARD_ADDRESS_HEADERS) {
       const list = new InternetAddressList();
@@ -150,6 +163,16 @@ export class MimeMessage {
 
     this.headersChangedCb = (header, action): void => this.headersChanged(action, header);
     this.headers.onChanged = this.headersChangedCb;
+
+    if (internal) {
+      // C#: add all message headers, skipping Content-* (those belong to the body entity).
+      if (internalFull) {
+        for (const header of args[1] as Iterable<Header>) {
+          if (!startsWithContent(header.field)) this.headers.add(header);
+        }
+      }
+      return;
+    }
 
     if (args.length === 0) {
       this.applyDefaults(true);
@@ -572,8 +595,7 @@ export class MimeMessage {
       filtered.add(options.createNewLineFilter());
 
       for (const header of MimeMessage.mergeHeaders(this.headers, this.body)) {
-        // deferred(hidden-headers): options.HiddenHeaders filtering lands with
-        // the serializer work (wave-5); the set is empty by default today.
+        if (options.hiddenHeaders.has(header.id)) continue;
         filtered.write(header.rawField, 0, header.rawField.length);
         if (!header.isInvalid) {
           const rawValue = header.getRawValue(options);
@@ -608,9 +630,39 @@ export class MimeMessage {
     return latin1.decode(memory.toArray());
   }
 
-  /** C#: Load/LoadAsync are parser-backed; deferred to wave-4. */
-  static load(..._args: unknown[]): MimeMessage {
-    throw new Error('MimeMessage.load is deferred to wave-4 (requires the MIME parser).');
+  /**
+   * C#: MimeMessage.Load. Parses a message from a stream (or byte buffer) using
+   * the MIME parser. Per the port's Result convention, parse errors are returned
+   * as an Err rather than thrown (C#: FormatException).
+   */
+  static load(stream: Stream, persistent?: boolean, options?: ParserOptions): Result<MimeMessage>;
+  static load(data: Uint8Array, options?: ParserOptions): Result<MimeMessage>;
+  static load(
+    source: Stream | Uint8Array,
+    b?: boolean | ParserOptions,
+    c?: ParserOptions,
+  ): Result<MimeMessage> {
+    if (source == null) throw new TypeError('stream cannot be null or undefined');
+
+    let stream: Stream;
+    let persistent = false;
+    let options: ParserOptions;
+
+    if (source instanceof Stream) {
+      stream = source;
+      if (typeof b === 'boolean') {
+        persistent = b;
+        options = c ?? ParserOptions.default;
+      } else {
+        options = b ?? ParserOptions.default;
+      }
+    } else {
+      stream = new MemoryStream(source);
+      options = (b as ParserOptions | undefined) ?? ParserOptions.default;
+    }
+
+    const parser = newMimeParser(options, stream, 'entity', persistent);
+    return parser.parseMessage();
   }
 
   dispose(): void {

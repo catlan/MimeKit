@@ -6,6 +6,7 @@ import {
   AttachmentCollection,
   ContentType,
   MemoryStream,
+  MessagePart,
   MimePart,
   TextPart,
 } from '../src/index.js';
@@ -251,16 +252,63 @@ describe('AttachmentCollection', () => {
     expect(copied[1]).toBe(plain);
   });
 
-  // message/rfc822 auto-detection + the FormatException octet-stream fallback
-  // need MimeMessage.Load (the parser): deferred(wave-4).
-  test.skip('TestAddEmailMessage', () => {
-    // deferred(wave-4): Add("message.eml", stream) loads message/rfc822 via MimeMessage.Load.
+  // message/rfc822 auto-detection + the FormatException octet-stream fallback (parser).
+  const bodyMessagePath = join(testData, 'messages', 'body.1.txt');
+
+  test('TestAddEmailMessage', () => {
+    const attachments = new AttachmentCollection();
+    const attachment = attachments.add('message.eml', streamOf(bodyMessagePath));
+
+    expect(attachment.contentType.mimeType).toBe('message/rfc822');
+    expect(attachment.contentType.name).toBe('message.eml');
+    expect(attachment.contentDisposition).not.toBeNull();
+    expect(attachment.contentDisposition!.disposition).toBe('attachment');
+    expect(attachment.contentDisposition!.fileName).toBe('message.eml');
+    expect(attachment).toBeInstanceOf(MessagePart);
+    expect(attachments.count).toBe(1);
+
+    expect(attachments.contains(attachment)).toBe(true);
+    expect(attachments.indexOf(attachment)).toBe(0);
+    expect(attachments.remove(attachment)).toBe(true);
+    expect(attachments.count).toBe(0);
+    attachments.clear(true);
   });
-  test.skip('TestAddEmailMessageFallback', () => {
-    // deferred(wave-4): relies on MimeMessage.Load throwing FormatException to fall back to octet-stream.
+
+  test('TestAddEmailMessageFallback', () => {
+    // girl.jpg is not a parseable message → falls back to application/octet-stream.
+    const attachments = new AttachmentCollection();
+    const attachment = attachments.add('message.eml', streamOf(girlPath));
+
+    expect(attachment.contentType.mimeType).toBe('application/octet-stream');
+    expect(attachment.contentType.name).toBe('message.eml');
+    expect(attachment.contentDisposition).not.toBeNull();
+    expect(attachment.contentDisposition!.disposition).toBe('attachment');
+    expect(attachment.contentDisposition!.fileName).toBe('message.eml');
+    expect(attachments.count).toBe(1);
+
+    expect(attachments.contains(attachment)).toBe(true);
+    expect(attachments.indexOf(attachment)).toBe(0);
+    expect(attachments.remove(attachment)).toBe(true);
+    expect(attachments.count).toBe(0);
+    attachments.clear(true);
   });
-  test.skip('TestAddInlineEmailMessage', () => {
-    // deferred(wave-4): Add("message.eml", stream) loads message/rfc822 via MimeMessage.Load.
+
+  test('TestAddInlineEmailMessage', () => {
+    const attachments = new AttachmentCollection(true);
+    const attachment = attachments.add('message.eml', streamOf(bodyMessagePath));
+
+    expect(attachment.contentType.mimeType).toBe('message/rfc822');
+    expect(attachment.contentType.name).toBe('message.eml');
+    expect(attachment.contentDisposition).not.toBeNull();
+    expect(attachment.contentDisposition!.disposition).toBe('inline');
+    expect(attachment.contentDisposition!.fileName).toBe('message.eml');
+    expect(attachments.count).toBe(1);
+
+    expect(attachments.contains(attachment)).toBe(true);
+    expect(attachments.indexOf(attachment)).toBe(0);
+    expect(attachments.remove(attachment)).toBe(true);
+    expect(attachments.count).toBe(0);
+    attachments.clear(true);
   });
   // omitted: *Async tests (async API not ported per plan Q4).
 });

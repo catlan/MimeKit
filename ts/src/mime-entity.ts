@@ -5,8 +5,11 @@ import { FormatOptions } from './format-options.js';
 import { Header } from './header.js';
 import { HeaderId } from './header-id.js';
 import { HeaderList, type HeaderListChangedAction } from './header-list.js';
+import { ChainedStream } from './io/chained-stream.js';
 import { Stream, MemoryStream } from './io/stream.js';
+import { newMimeParser } from './parser-hook.js';
 import { ParserOptions } from './parser-options.js';
+import { type Result } from './result.js';
 import { utf8 } from './utils/charset-utils.js';
 import { tryParseMsgId } from './utils/parse-utils.js';
 
@@ -328,6 +331,60 @@ export abstract class MimeEntity {
 
   private serializeContentType(): void {
     this.setRawHeader('Content-Type', utf8.encode(this.contentType.encode(FormatOptions.default, utf8)));
+  }
+
+  /**
+   * C#: MimeEntity.Load. Parses a MIME entity from a stream (or byte buffer),
+   * or — given an explicit Content-Type — from a bare content stream (the
+   * HttpWebResponse use-case, where headers are parsed separately). Parse errors
+   * are returned as an Err (C#: FormatException) per the port's Result convention.
+   */
+  static load(stream: Stream, persistent?: boolean, options?: ParserOptions): Result<MimeEntity>;
+  static load(data: Uint8Array, options?: ParserOptions): Result<MimeEntity>;
+  static load(contentType: ContentType, content: Stream, options?: ParserOptions): Result<MimeEntity>;
+  static load(
+    a: Stream | Uint8Array | ContentType,
+    b?: boolean | ParserOptions | Stream,
+    c?: ParserOptions,
+  ): Result<MimeEntity> {
+    if (a == null) throw new TypeError('stream cannot be null or undefined');
+
+    if (a instanceof ContentType) {
+      // Load (ContentType, Stream): prepend a Content-Type header line and chain
+      // it in front of the bare content stream, then parse the composite entity.
+      const content = b as Stream;
+      if (content == null) throw new TypeError('content cannot be null or undefined');
+      const options = c ?? ParserOptions.default;
+
+      const format = FormatOptions.default.clone();
+      format.newLineFormat = 'dos';
+      const encoded = a.encode(format, utf8);
+      const header = utf8.encode(`Content-Type:${encoded}\r\n`);
+
+      const chained = new ChainedStream();
+      chained.add(new MemoryStream(header));
+      chained.add(content, true);
+
+      const parser = newMimeParser(options, chained, 'entity');
+      return parser.parseEntity();
+    }
+
+    const stream = a instanceof Stream ? a : new MemoryStream(a);
+    let persistent = false;
+    let options: ParserOptions;
+    if (a instanceof Stream) {
+      if (typeof b === 'boolean') {
+        persistent = b;
+        options = c ?? ParserOptions.default;
+      } else {
+        options = (b as ParserOptions | undefined) ?? ParserOptions.default;
+      }
+    } else {
+      options = (b as ParserOptions | undefined) ?? ParserOptions.default;
+    }
+
+    const parser = newMimeParser(options, stream, 'entity', persistent);
+    return parser.parseEntity();
   }
 }
 

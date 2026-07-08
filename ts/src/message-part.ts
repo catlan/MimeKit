@@ -54,8 +54,13 @@ export class MessagePart extends MimeEntity {
       return;
     if (this.message.mboxMarker != null && this.message.mboxMarker.length > 0)
       stream!.write(this.message.mboxMarker, 0, this.message.mboxMarker.length);
-    const messageOptions = options.ensureNewLine ? options.clone() : options;
-    messageOptions.ensureNewLine = false;
+    // C#: only clone + clear EnsureNewLine when it is set; otherwise pass options
+    // through untouched (mutating unconditionally would throw on the frozen default).
+    let messageOptions = options;
+    if (options.ensureNewLine) {
+      messageOptions = options.clone();
+      messageOptions.ensureNewLine = false;
+    }
     this.message.writeTo(messageOptions, stream!);
   }
 

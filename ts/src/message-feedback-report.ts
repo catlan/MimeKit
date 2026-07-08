@@ -1,11 +1,12 @@
 import { HeaderList } from './header-list.js';
-import { MemoryStream } from './io/stream.js';
+import { MemoryBlockStream } from './io/memory-block-stream.js';
 import { MimeContent } from './mime-content.js';
 import { MimePart } from './mime-part.js';
 import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
 
-export class MessageDispositionNotification extends MimePart {
+/** Port of MimeKit/MessageFeedbackReport.cs. */
+export class MessageFeedbackReport extends MimePart {
   private fieldsValue: HeaderList | null = null;
 
   constructor();
@@ -15,15 +16,15 @@ export class MessageDispositionNotification extends MimePart {
       super(args);
       return;
     }
-    super('message', 'disposition-notification');
+    super('message', 'feedback-report');
   }
 
   get Fields(): HeaderList { return this.fields; }
   get fields(): HeaderList {
-    this.checkDisposed('MessageDispositionNotification');
+    this.checkDisposed('MessageFeedbackReport');
     if (this.fieldsValue == null) {
       if (this.content == null) {
-        this.content = new MimeContent(new MemoryStream());
+        this.content = new MimeContent(new MemoryBlockStream());
         this.fieldsValue = new HeaderList();
       } else {
         const stream = this.content.open();
@@ -38,12 +39,12 @@ export class MessageDispositionNotification extends MimePart {
 
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
-    this.checkDisposed('MessageDispositionNotification');
-    visitor.visitMessageDispositionNotification(this);
+    this.checkDisposed('MessageFeedbackReport');
+    visitor.visitMessageFeedbackReport(this);
   }
 
   private onFieldsChanged(): void {
-    const stream = new MemoryStream();
+    const stream = new MemoryBlockStream();
     this.fieldsValue!.writeTo(stream);
     stream.position = 0;
     this.content = new MimeContent(stream);

@@ -247,8 +247,29 @@ describe('HeaderList', () => {
     expect(changedActions[2]).toBe('added');
   });
 
-  test.skip('TestLoad', () => {
-    // deferred(wave-4): needs MimeReader/MimeParser stream parsing.
+  test('TestLoad', () => {
+    const headers = new HeaderList();
+    headers.add(new Header('From', 'Joe Schmoe <joe.schmoe@example.com>'));
+    headers.add(new Header('To', 'Jane Doe <jane@example.com>'));
+    headers.add(new Header('Subject', 'Hello, World!'));
+    headers.add(new Header('Date', 'Wed, 17 Jul 2019 16:00:00 -0400'));
+
+    // adapted(node-entry): C# writes to a temp file; the core port round-trips
+    // through an in-memory stream instead.
+    const stream = new MemoryStream();
+    headers.writeTo(stream);
+
+    const result = HeaderList.load(stream.toArray());
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.message);
+    const loaded = result.value;
+
+    expect(loaded.count, 'Loaded headers count does not match original headers count').toBe(headers.count);
+
+    for (let i = 0; i < headers.count; i++) {
+      expect(loaded.at(i).id, 'Loaded header id does not match original header id').toBe(headers.at(i).id);
+      expect(loaded.at(i).value, 'Loaded header value does not match original header value').toBe(headers.at(i).value);
+    }
   });
 
   test.skip('TestLoadAsync', () => {
