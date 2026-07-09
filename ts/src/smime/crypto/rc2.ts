@@ -87,6 +87,72 @@ function decryptBlock(k: number[], data: Uint8Array, offset: number): Uint8Array
   return out;
 }
 
+function encryptBlock(k: number[], data: Uint8Array, offset: number): Uint8Array {
+  let r0 = data[offset]! | (data[offset + 1]! << 8);
+  let r1 = data[offset + 2]! | (data[offset + 3]! << 8);
+  let r2 = data[offset + 4]! | (data[offset + 5]! << 8);
+  let r3 = data[offset + 6]! | (data[offset + 7]! << 8);
+
+  const lrot = (x: number, s: number): number => ((x << s) | (x >>> (16 - s))) & 0xffff;
+
+  let j = 0;
+  const mash = (): void => {
+    r0 = (r0 + k[r3 & 63]!) & 0xffff;
+    r1 = (r1 + k[r0 & 63]!) & 0xffff;
+    r2 = (r2 + k[r1 & 63]!) & 0xffff;
+    r3 = (r3 + k[r2 & 63]!) & 0xffff;
+  };
+  const mixRound = (): void => {
+    r0 = (r0 + k[j]! + (r3 & r2) + (~r3 & r1)) & 0xffff;
+    r0 = lrot(r0, 1);
+    j++;
+    r1 = (r1 + k[j]! + (r0 & r3) + (~r0 & r2)) & 0xffff;
+    r1 = lrot(r1, 2);
+    j++;
+    r2 = (r2 + k[j]! + (r1 & r0) + (~r1 & r3)) & 0xffff;
+    r2 = lrot(r2, 3);
+    j++;
+    r3 = (r3 + k[j]! + (r2 & r1) + (~r2 & r0)) & 0xffff;
+    r3 = lrot(r3, 5);
+    j++;
+  };
+
+  for (let i = 0; i < 5; i++) mixRound();
+  mash();
+  for (let i = 0; i < 6; i++) mixRound();
+  mash();
+  for (let i = 0; i < 5; i++) mixRound();
+
+  const out = new Uint8Array(8);
+  out[0] = r0 & 0xff; out[1] = (r0 >> 8) & 0xff;
+  out[2] = r1 & 0xff; out[3] = (r1 >> 8) & 0xff;
+  out[4] = r2 & 0xff; out[5] = (r2 >> 8) & 0xff;
+  out[6] = r3 & 0xff; out[7] = (r3 >> 8) & 0xff;
+  return out;
+}
+
+/**
+ * Encrypt data with RC2-CBC. Inverse of {@link rc2CbcDecrypt}. PKCS#7 padding is
+ * NOT added here (input must already be a multiple of 8 bytes). Used by the
+ * S/MIME EnvelopedData encrypt path.
+ */
+export function rc2CbcEncrypt(key: Uint8Array, effectiveBits: number, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (data.length % 8 !== 0) throw new Error('RC2 CBC input must be a multiple of 8 bytes.');
+  const k = expandKey(key, effectiveBits);
+  const out = new Uint8Array(data.length);
+  let prev: Uint8Array<ArrayBufferLike> = iv.slice(0, 8);
+  const xored = new Uint8Array(8);
+
+  for (let off = 0; off < data.length; off += 8) {
+    for (let i = 0; i < 8; i++) xored[i] = data[off + i]! ^ prev[i]!;
+    const block = encryptBlock(k, xored, 0);
+    out.set(block, off);
+    prev = block;
+  }
+
+  return out;
+}
+
 /**
  * Decrypt data with RC2-CBC. `effectiveBits` is the RC2 effective key-bits
  * parameter (e.g. 40 for pbeWithSHAAnd40BitRC2-CBC). PKCS#7 padding is NOT

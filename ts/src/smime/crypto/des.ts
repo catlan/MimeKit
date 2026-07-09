@@ -159,6 +159,36 @@ export class DesKey {
 }
 
 /**
+ * Encrypt data with Triple-DES (EDE, three independent 8-byte keys) in CBC mode.
+ * The key must be 24 bytes; the IV 8 bytes. PKCS#7 padding is NOT added here
+ * (the input must already be a multiple of 8 bytes). Inverse of
+ * {@link tripleDesCbcDecrypt}; used by the S/MIME EnvelopedData encrypt path.
+ */
+export function tripleDesCbcEncrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (key.length !== 24) throw new Error('Triple-DES requires a 24-byte key.');
+  if (data.length % 8 !== 0) throw new Error('Triple-DES CBC input must be a multiple of 8 bytes.');
+
+  const k1 = new DesKey(key, 0);
+  const k2 = new DesKey(key, 8);
+  const k3 = new DesKey(key, 16);
+  const out = new Uint8Array(data.length);
+  let prev: Uint8Array<ArrayBufferLike> = iv.slice(0, 8);
+  const xored = new Uint8Array(8);
+
+  for (let off = 0; off < data.length; off += 8) {
+    for (let i = 0; i < 8; i++) xored[i] = data[off + i]! ^ prev[i]!;
+    // EDE encrypt: E_k3(D_k2(E_k1(block))).
+    let block = k1.encryptBlock(xored, 0);
+    block = k2.decryptBlock(block, 0);
+    block = k3.encryptBlock(block, 0);
+    out.set(block, off);
+    prev = block;
+  }
+
+  return out;
+}
+
+/**
  * Decrypt data with Triple-DES (EDE, three independent 8-byte keys) in CBC mode.
  * The key must be 24 bytes; the IV 8 bytes. PKCS#7 padding is NOT removed here.
  */
