@@ -1,0 +1,9 @@
+From: p@example.com
+Subject: partial witness
+Message-Id: <whole@example.com>
+MIME-Version: 1.0
+Content-Type: message/partial; id="whole@example.com"; number=1; total=2
+
+From: inner@example.com
+Subject: reassembled
+Content-Type: text/plai

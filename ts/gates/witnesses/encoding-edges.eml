@@ -1,0 +1,20 @@
+From: e@example.com
+Subject: encoding edges
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="enc"
+
+--enc
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+
+QUJD REVG
+	R0hJ!!!Sktm
+=
+--enc
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+soft break at end=
+of line and trailing space =20and=09tab and bare = equals
+normal line=
+--enc--

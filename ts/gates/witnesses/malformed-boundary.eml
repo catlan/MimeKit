@@ -1,0 +1,15 @@
+From: m@example.com
+Subject: malformed boundary witness
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="bx"
+
+--bx
+Content-Type: text/plain
+
+first part
+--bxtrailing
+still first part content
+--bx  	 
+Content-Type: text/plain
+
+second (after whitespace-padded boundary)

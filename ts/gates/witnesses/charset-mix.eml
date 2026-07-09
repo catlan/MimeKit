@@ -1,0 +1,16 @@
+From: c@example.com
+Subject: =?iso-2022-jp?B?GyRCRnxLXDhsGyhC?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="cs"
+
+--cs
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 8bit
+
+smart “quotes” and euro € and oe œ
+--cs
+Content-Type: text/plain; charset=koi8-r
+Content-Transfer-Encoding: base64
+
+0NLJ18XUIM3J0g==
+--cs--

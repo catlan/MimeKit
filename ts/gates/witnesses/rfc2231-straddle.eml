@@ -1,0 +1,13 @@
+From: a@example.com
+To: b@example.com
+Subject: rfc2231 straddle witness
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename*0*=utf-8''%C3; filename*1*=%A9.bin
+Content-Transfer-Encoding: base64
+
+AAECAw==
+--b1--

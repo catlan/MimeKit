@@ -1,0 +1,8 @@
+From: =?x-unknown?q?=E9milie?= <e@example.com>
+To: =?gibberish?b?4WJj?= <g@example.com>
+Subject: =?x-nope?q?caf=C3=A9?= =?utf-8?q?_ok?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=x-strange-charset
+Content-Transfer-Encoding: 8bit
+
+hÃ©llo wörld mixed bytes

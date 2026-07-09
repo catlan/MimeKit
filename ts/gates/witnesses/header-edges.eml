@@ -1,0 +1,12 @@
+Received: from mail.example.com (mail.example.com [127.0.0.1])
+	by mx.example.com with ESMTP id abc123
+	for <user@example.com>; Wed, 9 Jul 2026 01:23:45 -0400
+Subject 	: obsolete folding
+ and trailing blanks witness
+X-Raw-Bytes: café 8bit header value
+References: <id0@example.com> <id1@example.com> <id2@example.com> <id3@example.com> <id4@example.com> <id5@example.com> <id6@example.com> <id7@example.com> <id8@example.com> <id9@example.com> <id10@example.com> <id11@example.com> <id12@example.com> <id13@example.com> <id14@example.com> <id15@example.com> <id16@example.com> <id17@example.com> <id18@example.com> <id19@example.com> <id20@example.com> <id21@example.com> <id22@example.com> <id23@example.com> <id24@example.com> <id25@example.com> <id26@example.com> <id27@example.com> <id28@example.com> <id29@example.com> <id30@example.com> <id31@example.com> <id32@example.com> <id33@example.com> <id34@example.com> <id35@example.com> <id36@example.com> <id37@example.com> <id38@example.com> <id39@example.com> <id40@example.com> <id41@example.com> <id42@example.com> <id43@example.com> <id44@example.com> <id45@example.com> <id46@example.com> <id47@example.com> <id48@example.com> <id49@example.com> <id50@example.com> <id51@example.com> <id52@example.com> <id53@example.com> <id54@example.com> <id55@example.com> <id56@example.com> <id57@example.com> <id58@example.com> <id59@example.com>
+From: h@example.com
+MIME-Version: 1.0
+Content-Type: text/plain
+
+body

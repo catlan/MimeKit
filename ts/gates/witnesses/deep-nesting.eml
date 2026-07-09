@@ -1,0 +1,43 @@
+From: n@example.com
+Subject: deep nesting witness
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="L0"
+
+preamble text
+--L0
+Content-Type: multipart/alternative; boundary="L1"
+
+--L1
+Content-Type: multipart/related; boundary="L2"
+
+--L2
+Content-Type: text/plain
+
+deep leaf
+--L2
+Content-Type: text/html
+
+<b>html</b>
+--L2--
+--L1
+Content-Type: text/plain
+
+alt text
+--L1--
+--L0
+Content-Type: message/rfc822
+
+From: inner@example.com
+Subject: nested message
+Content-Type: multipart/digest; boundary="L3"
+
+--L3
+
+From: digest@example.com
+Subject: digest item without explicit content-type
+
+digest body
+--L3--
+
+--L0--
+epilogue text
