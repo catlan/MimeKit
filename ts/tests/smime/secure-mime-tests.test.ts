@@ -286,7 +286,21 @@ describe('SecureMimeTestsBase port', () => {
     await assertDetached(rsaCertificate, await MultipartSigned.createDefault(makeSigner(rsaCertificate, DigestAlgorithm.Sha256, RsaSignaturePadding.Pss), body), body, ctx);
   });
 
-  test.skip('C#: TestSecureMimeMessageSigning — DEFER:c2c-message-integration', () => {});
+  test('C#: TestSecureMimeMessageSigning', async () => {
+    const ctx = contextFor(smimeCertificates);
+    for (const cert of supportedCertificates) {
+      const body = makeTextPart("This is some cleartext that we'll end up signing...");
+      const self = new MailboxAddress('MimeKit UnitTests', cert.emailAddress!);
+      const message = new MimeMessage();
+      message.subject = 'Test of signing with S/MIME';
+      message.from.add(self);
+      message.body = body;
+      expect(await ctx.certificateStore.getPrivateKey(self)).not.toBeNull();
+      await message.sign(ctx, DigestAlgorithm.Sha256);
+      expect(message.body).toBeInstanceOf(MultipartSigned);
+      await assertDetached(cert, message.body as MultipartSigned, body, ctx);
+    }
+  });
 
   test('C#: TestSecureMimeVerifyThunderbird', async () => {
     const thunderbirdFingerprint = '354ea4dcf98166639b58ec5df06a65de0cd8a95c';
@@ -313,7 +327,24 @@ describe('SecureMimeTestsBase port', () => {
     expect(await signature.verify(true)).toBe(true);
   });
 
-  test.skip('C#: TestSecureMimeMessageEncryption — DEFER:c2c-message-integration', () => {});
+  test('C#: TestSecureMimeMessageEncryption', async () => {
+    const ctx = contextFor(smimeCertificates);
+    for (const cert of rsaCertificates) {
+      const body = makeTextPart("This is some cleartext that we'll end up encrypting...");
+      const self = new MailboxAddress('MimeKit UnitTests', cert.emailAddress!);
+      const message = new MimeMessage();
+      message.subject = 'Test of encrypting with S/MIME';
+      message.from.add(self);
+      message.to.add(self);
+      message.body = body;
+      await message.encrypt(ctx);
+      expect(message.body).toBeInstanceOf(ApplicationPkcs7Mime);
+      const encrypted = message.body as ApplicationPkcs7Mime;
+      expect(encrypted.secureMimeType).toBe(SecureMimeType.EnvelopedData);
+      expect(textOf(await encrypted.decrypt(ctx))).toBe(normalize(body.text));
+    }
+    // DEFER:ecdh — the C# EC recipient arm requires ECDH key agreement.
+  });
 
   test.each([SubjectIdentifierType.IssuerAndSerialNumber, SubjectIdentifierType.SubjectKeyIdentifier])(
     'C#: TestSecureMimeEncryption (%s)',
@@ -399,10 +430,18 @@ describe('SecureMimeTestsBase port', () => {
   test.skip('C#: TestSecureMimeDecryptThunderbird — SKIP:missing-fixture', () => {});
 
   test('C#: TestSecureMimeSignAndEncrypt', async () => {
+    const ctx = contextFor(smimeCertificates);
     for (const cert of rsaCertificates) {
-      const ctx = contextFor(smimeCertificates);
       const body = makeTextPart("This is some cleartext that we'll end up signing and encrypting...");
-      const encrypted = await ApplicationPkcs7Mime.signAndEncrypt(ctx, makeSigner(cert), recipientsFor(cert), body);
+      const self = new SecureMailboxAddress('MimeKit UnitTests', cert.emailAddress!, cert.fingerprint);
+      const message = new MimeMessage();
+      message.subject = 'Test of signing and encrypting with S/MIME';
+      message.from.add(self);
+      message.to.add(self);
+      message.body = body;
+      await message.signAndEncrypt(ctx);
+      expect(message.body).toBeInstanceOf(ApplicationPkcs7Mime);
+      const encrypted = message.body as ApplicationPkcs7Mime;
       expect(encrypted.secureMimeType).toBe(SecureMimeType.EnvelopedData);
       const decrypted = await encrypted.decrypt(ctx);
       expect(decrypted).toBeInstanceOf(MultipartSigned);

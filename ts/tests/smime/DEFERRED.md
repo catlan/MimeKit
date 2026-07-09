@@ -105,8 +105,6 @@ un-deferred (TestSecureMimeVerifyThunderbird, TestSecureMimeVerifyMixedLineEndin
   then matches (signer fejj@gnome.org, full RC2/DES capability list, valid signature). This is a
   latent fixture bug that would also fail C# on any LF checkout.
 
-- TestSecureMimeMessageSigning — DEFER:c2c-message-integration (MimeMessage has no sign API yet)
-- TestSecureMimeMessageEncryption — DEFER:c2c-message-integration (MimeMessage has no encrypt API yet)
 - TestSecureMimeDecryptThunderbird — SKIP:missing-fixture (thunderbird-encrypted.txt / gnome.p12 absent; C# returns early)
 - TestSecureMimeDecryptVerifyThunderbird — SKIP:missing-fixture (thunderbird-signed-encrypted.txt / gnome.p12 absent; C# returns early)
 - TestSecureMimeImportExport — DEFER:certs-export (certs-only PKCS#7 export not implemented)
