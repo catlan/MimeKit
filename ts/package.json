@@ -1,7 +1,7 @@
 {
   "name": "mimekit-ts",
   "version": "0.0.0",
-  "description": "TypeScript port of MimeKit (MimeKitLite scope): MIME parsing and creation with a non-throwing Result-based API",
+  "description": "TypeScript port of MimeKit (Lite scope): non-throwing Result-based MIME parsing/creation, byte-parity verified against the C# implementation",
   "license": "MIT",
   "type": "module",
   "private": true,
@@ -31,5 +31,21 @@
   },
   "dependencies": {
     "punycode": "2.3.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/catlan/MimeKit.git",
+    "directory": "ts"
+  },
+  "keywords": [
+    "mime",
+    "email",
+    "parser",
+    "mimekit",
+    "rfc2822",
+    "rfc2045",
+    "rfc2047",
+    "tnef",
+    "mbox"
+  ]
 }
