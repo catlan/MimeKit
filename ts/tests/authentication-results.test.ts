@@ -37,10 +37,13 @@ describe('AuthenticationResults', () => {
     expect(() => new AuthenticationMethodProperty(null as never, 'property', 'value')).toThrow(TypeError);
     expect(() => new AuthenticationMethodProperty('ptype', null as never, 'value')).toThrow(TypeError);
     expect(() => new AuthenticationMethodProperty('ptype', 'property', null as never)).toThrow(TypeError);
-    expect(AuthenticationResults.parse(null as never).ok).toBe(false);
-    expect(AuthenticationResults.parse(buffer, -1, 0).ok).toBe(false);
-    expect(AuthenticationResults.parse(buffer, 0, -1).ok).toBe(false);
-    expect(AuthenticationResults.tryParse(null).ok).toBe(false);
+    // C# throws ArgumentNull/ArgumentOutOfRange for these (programmer
+    // errors) — plan rule 4 maps them to TypeError/RangeError (final-review #1)
+    expect(() => AuthenticationResults.parse(null as never)).toThrow(TypeError);
+    expect(() => AuthenticationResults.parse(buffer, -1, 0)).toThrow(RangeError);
+    expect(() => AuthenticationResults.parse(buffer, 0, -1)).toThrow(RangeError);
+    // C# TryParse uses TryValidate — soft-fails, no throw
+    expect(AuthenticationResults.tryParse(null as never).ok).toBe(false);
     expect(AuthenticationResults.tryParse(buffer, -1, 0).ok).toBe(false);
     expect(AuthenticationResults.tryParse(buffer, 0, -1).ok).toBe(false);
   });

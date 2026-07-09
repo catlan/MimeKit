@@ -98,8 +98,8 @@ export class AuthenticationResults {
   }
 
   static parse(buffer: Uint8Array, startIndex = 0, length = buffer?.length - startIndex): Result<AuthenticationResults> {
-    if (!(buffer instanceof Uint8Array)) return err('argument-null', 'buffer cannot be null or undefined');
-    if (!validRange(buffer, startIndex, length)) return err('argument-out-of-range', 'startIndex and length do not specify a valid range');
+    if (!(buffer instanceof Uint8Array)) throw new TypeError('buffer cannot be null or undefined');
+    if (!validRange(buffer, startIndex, length)) throw new RangeError('startIndex and length do not specify a valid range');
     const cursor = { index: startIndex };
     return parseAuthenticationResults(buffer, cursor, startIndex + length);
   }
