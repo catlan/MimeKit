@@ -17,6 +17,8 @@ import { EncryptionAlgorithm } from '../../src/smime/encryption-algorithm.js';
 import { MailboxAddress } from '../../src/mailbox-address.js';
 import { MimeMessage } from '../../src/mime-message.js';
 import { TextPart } from '../../src/text-part.js';
+import { MemoryStream } from '../../src/io/stream.js';
+import { unwrap } from '../../src/result.js';
 
 const openpgpDir = join(testDataDir, 'openpgp');
 const self = new MailboxAddress('MimeKit UnitTests', 'mimekit@example.com');
@@ -106,5 +108,47 @@ describe('PGP/MIME layer', () => {
     const { entity, signatures } = await (msg.body as MultipartEncrypted).decrypt(ctx);
     expect((entity as TextPart).text.replace(/\r\n/g, '\n')).toBe('Message to sign and encrypt.\n');
     expect(await signatures!.get(0).verify(true)).toBe(true);
+  });
+
+  // --- Regression tests for the C3 review findings ---
+
+  test('encrypt does NOT corrupt trailing whitespace or From-lines (blocker regression)', async () => {
+    const ctx = await ctxWithKeys();
+    // Trailing space (format=flowed soft break) + a line starting with "From ".
+    const original = 'A soft-wrapped line \r\nFrom the beginning of the line\r\n';
+    const body = textPart(original);
+    const encrypted = await MultipartEncrypted.encrypt(ctx, [self], body);
+    const { entity } = await encrypted.decrypt(ctx);
+    // The trailing space and the "From " line must survive intact — no ArmoredFrom /
+    // TrailingWhitespace rewriting (which previously stripped the space and mangled
+    // "From " to "=46rom"). Newlines normalize to LF via TextPart.text.
+    expect((entity as TextPart).text).toBe(original.replace(/\r\n/g, '\n'));
+    expect((entity as TextPart).text).toContain('line \n'); // trailing space preserved
+    expect((entity as TextPart).text).toContain('\nFrom the beginning'); // From-line intact
+  });
+
+  test('signed message survives serialize -> parse -> verify (registration regression)', async () => {
+    const ctx = await ctxWithKeys();
+    const msg = message(textPart('Round-tripped signed body.\r\n'));
+    await msg.sign(ctx, DigestAlgorithm.Sha256);
+    const memory = new MemoryStream();
+    msg.writeTo(memory);
+    const reparsed = unwrap(MimeMessage.load(memory.toArray()));
+    expect(reparsed.body).toBeInstanceOf(MultipartSigned);
+    const sigs = await (reparsed.body as MultipartSigned).verify(ctx);
+    expect(sigs.count).toBe(1);
+    expect(await sigs.get(0).verify(true)).toBe(true);
+  });
+
+  test('MimeMessage.sign with the default digest works and reports the effective hash (default-throws regression)', async () => {
+    const ctx = await ctxWithKeys();
+    const msg = message(textPart('Default-digest signed body.\r\n'));
+    // No digest argument → default SHA-1, which OpenPGP.js cannot sign; must upgrade to SHA-256.
+    await msg.sign(ctx);
+    const signed = msg.body as MultipartSigned;
+    expect(signed.contentType.parameters.get('micalg')).toBe('pgp-sha256');
+    const sigs = await signed.verify(ctx);
+    expect(await sigs.get(0).verify(true)).toBe(true);
+    expect(sigs.get(0).digestAlgorithm).toBe(DigestAlgorithm.Sha256);
   });
 });
