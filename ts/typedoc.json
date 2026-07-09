@@ -1,6 +1,12 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/index.ts"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/dkim/index.ts",
+    "src/smime/index.ts",
+    "src/openpgp/index.ts"
+  ],
+  "entryPointStrategy": "resolve",
   "tsconfig": "tsconfig.json",
   "out": "docs",
   "readme": "README.md",
