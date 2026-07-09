@@ -1,90 +1,163 @@
-# mimekit-ts
+# mimekit
 
-A TypeScript port of [MimeKit](https://github.com/jstedfast/MimeKit)
-(MimeKitLite scope): MIME parsing and creation with a **non-throwing,
-Result-based API**, verified **byte-for-byte against the C# implementation**.
+`mimekit` parses, creates, edits, and serializes MIME messages: the RFC 822/2045
+message model (`MimeMessage`, `MimePart`, `Multipart`), headers and addresses,
+rfc2047/rfc2231 encoding, every content transfer codec, text conversion
+(HTML ⇄ plain, format=flowed), TNEF (`winmail.dat`), and message anonymization. On
+top of that it ports MimeKit's cryptography — **DKIM/ARC, S/MIME, and OpenPGP** —
+as optional, opt-in entry points (see [Cryptography](#cryptography)).
 
-- **Isomorphic** — pure TypeScript on `Uint8Array`; zero Node dependencies in
-  the runtime (Node, browsers, Bun, Deno, edge). One runtime dependency
-  (`punycode`, zero transitive deps).
-- **Non-throwing** — C#'s `Parse`/`TryParse` pairs collapse into one
-  `parse(): Result<T>` with lenient (TryParse) semantics; data errors are
-  structured values (`{ kind, message, offset }`), never exceptions. Only
-  programmer errors (wrong argument types, out-of-range indices) throw.
-- **Byte-parity verified** — a C# oracle CLI (`../oracle`) drives
-  differential gates over MimeKit's own 22 MB test corpus: parse trees,
-  reserialized bytes, codecs, header values, charsets. The known-divergence
-  ratchet (`gates/known-divergent.json`) is **empty**.
+It is a TypeScript port of [MimeKit](https://github.com/jstedfast/MimeKit), verified
+**byte-for-byte against the original C# implementation**, with a **non-throwing,
+Result-based API**.
 
-## Scope
+It is **isomorphic**: pure TypeScript over `Uint8Array` with no Node built-ins in
+the core runtime, so the same code runs on Node, browsers, Bun, Deno, and edge
+runtimes. The core install has a single dependency (`punycode`, zero transitive
+deps); crypto libraries are optional peers you install only if you use them.
 
-The core (`mimekit-ts`) covers everything in MimeKitLite: the MIME parser
-(`MimeParser`/`MimeReader`), message model (`MimeMessage`, `MimePart`,
-`Multipart`, …), headers and addresses, rfc2047/rfc2231, all content codecs,
-text converters (HTML/flowed), TNEF (winmail.dat), `MimeAnonymizer`,
-Authentication-Results. Cryptography — **DKIM/ARC, S/MIME, and OpenPGP** — ships
-as **optional subpath entry points** (see below) so the core install stays
-MIT-clean and dependency-light. Excluded: legacy-charset *encoding* (decoding is
-fully supported; generation is UTF-8).
+## An AI port, standing on MimeKit's shoulders
+
+This port was written by AI (Claude). That was only possible because of the years
+of careful engineering by [Jeffrey Stedfast](https://github.com/jstedfast) and the
+many [contributors to MimeKit](https://github.com/jstedfast/MimeKit/graphs/contributors).
+Above all, it was possible because of **MimeKit's exhaustive test suite and 22 MB
+real-world corpus**: every wire-format decision, edge case, and RFC quirk in this
+port was checked against the C# original by running MimeKit's own tests and a
+differential oracle. The correctness here is theirs; the translation is the
+machine's. Enormous thanks to everyone who built and tested MimeKit.
+
+## Why this port
+
+- **Non-throwing** — MimeKit's `Parse`/`TryParse` pairs collapse into a single
+  `parse(): Result<T>` with lenient (TryParse) semantics. Malformed-data errors are
+  structured values (`{ kind, message, offset }`), never exceptions; only programmer
+  errors (wrong argument types, out-of-range indices) throw.
+- **Byte-parity verified** — a C# oracle CLI drives differential gates over MimeKit's
+  own test corpus: parse trees, reserialized bytes, codecs, header values, charsets.
+  The known-divergence ratchet is **empty**.
+- **Dependency-light & MIT** — the core is MIT with one zero-transitive-dep runtime
+  dependency; cryptography ships behind optional subpath entries.
+
+## Install
+
+```sh
+npm install mimekit
+```
+
+## Parse a message
 
 ```ts
-import { MimeParser, MemoryStream, FormatOptions } from 'mimekit-ts';
+import { MimeMessage } from 'mimekit';
 
-const parser = new MimeParser(new MemoryStream(bytes), 'entity');
-const result = parser.parseMessage();
+const result = MimeMessage.load(bytes); // bytes: Uint8Array of an RFC 822 message
 if (!result.ok) {
-  console.error(result.error.kind, result.error.message);
+  console.error(result.error.kind, result.error.message); // data errors are values
 } else {
   const message = result.value;
-  console.log(message.subject, message.textBody);
-  const out = new MemoryStream();
-  message.writeTo(FormatOptions.default, out); // byte-preserving round-trip
+  console.log(message.from.toString(), '—', message.subject);
+  console.log(message.textBody);          // decoded text/plain body (or htmlBody)
+  for (const attachment of message.attachments) {
+    console.log('attachment:', attachment.contentDisposition?.fileName);
+  }
 }
 ```
 
-## Cryptography (optional entry points)
+## Create a message
 
-Crypto lives behind three subpath imports so `import 'mimekit-ts'` never pulls in
-a crypto dependency. Each entry declares its libraries as **optional peer
+```ts
+import { MimeMessage, MailboxAddress, TextPart, MemoryStream } from 'mimekit';
+
+const message = new MimeMessage();
+message.from.add(new MailboxAddress('Alice', 'alice@example.com'));
+message.to.add(new MailboxAddress('Bob', 'bob@example.com'));
+message.subject = 'Hello from mimekit';
+
+const body = new TextPart('plain');
+body.text = 'This is the message body.\r\n';
+message.body = body;
+
+const out = new MemoryStream();
+message.writeTo(out);                     // serialize
+const bytes = out.toArray();              // Uint8Array, ready to send
+```
+
+## Cryptography
+
+Cryptography lives behind three subpath imports, so `import 'mimekit'` never
+pulls in a crypto dependency. Each entry declares its libraries as **optional peer
 dependencies** — install only what you use.
 
-| Entry | Feature | Install |
+| Entry | Feature | Peer install |
 |---|---|---|
-| `mimekit-ts/dkim` | DKIM & ARC sign/verify | `@noble/hashes @noble/curves` |
-| `mimekit-ts/smime` | S/MIME (CMS) sign/verify/encrypt/decrypt | `pkijs asn1js @noble/hashes @noble/curves` |
-| `mimekit-ts/openpgp` | OpenPGP (PGP/MIME, RFC 3156) | `openpgp` |
+| `mimekit/dkim` | DKIM & ARC signing / verification | `@noble/hashes @noble/curves` |
+| `mimekit/smime` | S/MIME (CMS) sign / verify / encrypt / decrypt | `pkijs asn1js @noble/hashes @noble/curves` |
+| `mimekit/openpgp` | OpenPGP (PGP/MIME, RFC 3156) | `openpgp` |
+
+Importing a crypto entry installs message-level methods on `MimeMessage`
+(`sign` / `encrypt` / `signAndEncrypt`) and registers the parser types for that
+protocol.
+
+### S/MIME
 
 ```ts
-import { PkijsSecureMimeContext } from 'mimekit-ts/smime';
-import 'mimekit-ts/smime'; // installs message-level MimeMessage.sign/encrypt
+import { MimeMessage } from 'mimekit';
+import 'mimekit/smime';                            // installs message crypto + types
+import { PkijsSecureMimeContext, loadPkcs12 } from 'mimekit/smime';
 
 const ctx = new PkijsSecureMimeContext();
-// … import certificates/keys, then:
-await message.sign(ctx);            // multipart/signed
-await message.encrypt(ctx);         // application/pkcs7-mime
+const { certificateChain, privateKey } = loadPkcs12(pfxBytes, 'password');
+ctx.certificateStore.addPrivateKey(certificateChain, privateKey);
+ctx.certificateStore.addTrustedAnchor(certificateChain.at(-1)!);
 
-import { OpenPgpContext } from 'mimekit-ts/openpgp';
-import 'mimekit-ts/openpgp';        // installs PGP dispatch + parser types
-const pgp = new OpenPgpContext({ getPassword: () => 'secret' });
-await pgp.import(armoredKeyring);
-await message.encrypt(pgp);         // multipart/encrypted (PGP/MIME)
+await message.sign(ctx);                              // body -> multipart/signed
+await message.encrypt(ctx);                           // body -> application/pkcs7-mime
+
+// Verifying a received signed message:
+const signatures = await (message.body as MultipartSigned).verify(ctx);
+for (const sig of signatures) {
+  const valid = await sig.verify(true);               // cryptographic validity — see caveats
+  console.log(sig.signerCertificate?.email, valid);
+}
 ```
 
-The `openpgp` package is **LGPL-3.0**; it is loaded via dynamic `import()` and is
-never bundled into `mimekit-ts`, keeping the core MIT-clean.
-
-### Browser: legacy S/MIME decryption
-
-Modern S/MIME (RSA-OAEP + AES) runs on WebCrypto in every runtime. Decrypting
-**legacy** mail (RSAES-PKCS#1 v1.5 key transport, 3DES/RC2) needs a pure-JS RSA
-path whose timing is not constant-time-audited, so it is **opt-in** in the
-browser (on Node the safe OpenSSL path is used automatically):
+### OpenPGP
 
 ```ts
-const ctx = new PkijsSecureMimeContext(undefined, { allowLegacyDecryption: true });
+import { MimeMessage } from 'mimekit';
+import 'mimekit/openpgp';
+import { OpenPgpContext } from 'mimekit/openpgp';
+
+const pgp = new OpenPgpContext({ getPassword: () => 'passphrase' });
+await pgp.import(armoredKeyring);                      // armored or binary public/secret keys
+
+await message.encrypt(pgp);                            // body -> multipart/encrypted (PGP/MIME)
+await message.sign(pgp);                               // body -> multipart/signed
 ```
 
-Leave it `false` (the default) unless you must open legacy archives.
+### Important encryption notes
+
+- **`verify()` means *cryptographically valid*, not *trusted*.** A `true` result
+  means the signature matches the content and the signer's key — it does **not**
+  assert that the certificate chains to a trusted anchor or that the OpenPGP key is
+  in your web of trust. Full X.509 chain/trust (CRL/OCSP) and OpenPGP web-of-trust
+  validation are not yet performed; enforce trust separately if you need it.
+- **Modern algorithms are the safe default.** S/MIME uses RSA-OAEP + AES on
+  WebCrypto in every runtime; encryption defaults to strong ciphers (RC2-40, DES,
+  Blowfish, Twofish are disabled by default). OpenPGP.js refuses legacy signing
+  hashes, so a SHA-1 request is transparently upgraded to SHA-256.
+- **Legacy S/MIME decryption is opt-in in the browser.** Decrypting old mail that
+  used RSAES-PKCS#1 v1.5 key transport with 3DES/RC2 needs a pure-JS RSA path whose
+  timing is not constant-time-audited, so it is gated behind an explicit flag. On
+  Node the safe, constant-time OpenSSL path is used automatically.
+
+  ```ts
+  const ctx = new PkijsSecureMimeContext(undefined, { allowLegacyDecryption: true });
+  ```
+
+  Leave it `false` (the default) unless you must open legacy archives.
+- **OpenPGP is LGPL.** The `openpgp` package (LGPL-3.0) is loaded via dynamic
+  `import()` and is never bundled into `mimekit`, keeping the core MIT-clean.
 
 ## Development
 
@@ -94,12 +167,12 @@ pnpm typecheck && pnpm vitest run   # full suite incl. differential gates
 node gates/oracle-gen.mjs           # (re)generate C# oracle outputs (needs dotnet)
 ```
 
-See `PLAN.md` for the porting method, conventions, and the attributed
-deferral list.
-
 ## License
 
-MIT — see [LICENSE](./LICENSE). `mimekit-ts` is a TypeScript port of
-[MimeKit](https://github.com/jstedfast/MimeKit) (© .NET Foundation and
-Contributors), distributed under the same MIT terms; MimeKit's copyright
-notice is retained as the license requires.
+MIT — see [LICENSE](./LICENSE). `mimekit` is a TypeScript port of
+[MimeKit](https://github.com/jstedfast/MimeKit) (© .NET Foundation and Contributors),
+distributed under the same MIT terms; MimeKit's copyright notice is retained as the
+license requires.
+
+The optional `openpgp` peer dependency is LGPL-3.0 and is never bundled into
+`mimekit`.
