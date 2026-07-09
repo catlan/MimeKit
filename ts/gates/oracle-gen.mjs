@@ -94,7 +94,7 @@ const modes = {
   },
 
   messages() {
-    const files = listFiles(join(testData, 'messages'), (n) => n.endsWith('.txt'));
+    const files = listFiles(join(testData, 'messages'), (n) => n.endsWith('.txt') || n.endsWith('.eml'));
     oracle('parse', '--base', testData, '--out', join(outRoot, 'tree'), ...files);
     oracle('roundtrip', '--base', testData, '--out', join(outRoot, 'tree'), ...files);
     console.log(`messages: ${files.length} files`);
