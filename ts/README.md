@@ -51,3 +51,10 @@ node gates/oracle-gen.mjs           # (re)generate C# oracle outputs (needs dotn
 
 See `PLAN.md` for the porting method, conventions, and the attributed
 deferral list.
+
+## License
+
+MIT — see [LICENSE](./LICENSE). `mimekit-ts` is a TypeScript port of
+[MimeKit](https://github.com/jstedfast/MimeKit) (© .NET Foundation and
+Contributors), distributed under the same MIT terms; MimeKit's copyright
+notice is retained as the license requires.
