@@ -177,6 +177,8 @@ export class InternetAddressList implements Iterable<InternetAddress> {
   }
 
   static parse(text: string | Uint8Array, options: ParserOptions = ParserOptions.default): Result<InternetAddressList> {
+    if (text == null)
+      throw new TypeError('text cannot be null or undefined');
     const buffer = typeof text === 'string' ? utf8Encoder.encode(text) : text;
     const cursor = { index: 0 };
     const parsed = tryParseAddressListInternal(AddressParserFlags.Parse, options, buffer, cursor, buffer.length, false, 0);

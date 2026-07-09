@@ -236,6 +236,9 @@ publish (Q2).
   and `multipart-alternative` each combine 2 C# cases into 1;
   `TestGenericArgsConstructor` unported for related; `MultipartTests.
   TestDispose` deferred(wave-3e). Sweep in wave 9 or next codex window.
+- Mutation of a `Multipart` during iteration is not fail-fast (C#'s
+  `List<T>` enumerator throws) — accepted deviation; JS array iteration
+  has no versioning and adding it buys nothing real.
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
   (sync core; Web Streams adapters at edges, wave 9).
 
