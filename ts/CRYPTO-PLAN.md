@@ -373,6 +373,19 @@ detection filter, protocol/algorithm model. Fixtures: mimekit.gpg.{pub,sec}.
 + auto-key-retrieve, GnuPG on-disk keyring enumeration, public-key export variants, and the
 BouncyCastle enum-mapping / .NET arg-exception-matrix tests (not meaningful in TS).
 
+**Progress (2026-07-09): C3 implementation COMPLETE (branch `port/cF/openpgp`).** Built:
+OpenPgpEngine/OpenPgpJsEngine, OpenPgpContext (in-memory keyring), OpenPgpDigital{Signature,
+Certificate}, MultipartEncrypted (RFC 3156), ApplicationPgp{Encrypted,Signature}, the shared
+`CryptographyContext` interface + generalized `MultipartSigned` (S/MIME unchanged), and
+message-level PGP via a registration hook (S/MIME layer never imports OpenPGP). 22 OpenPGP
+tests; full suite 3052 passed + 20 skipped, all gates green; `./openpgp` builds; crypto-free
+core + `./smime`↔`./openpgp` isolation preserved. Independent review (fable-5) verdict REWORK →
+fixed all findings: encrypt no longer canonicalizes plaintext (was corrupting trailing
+whitespace / `From ` lines); openpgp entry registers multipart/signed; legacy signing digests
+(incl. the SHA-1 default) upgrade to SHA-256 with truthful micalg + reported digest; robust
+import/decrypt. Regression tests added for each. Re-review pending before merge. Follow-ups:
+full 1:1 PgpMimeTests port, OpenPgpDetectionFilter, instanceof dispatch guards (see DEFERRED.md).
+
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
 - **EnvelopedData content decryption (CBC)**: padding removal MUST be
