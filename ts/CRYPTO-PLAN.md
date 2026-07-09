@@ -314,17 +314,19 @@ the whole crypto surface.
   ApplicationPkcs7Mime overloads. Independent review verdict SHIP-WITH-FIXES — all
   required fixes applied (encapsulated-signing no-ctx-mailbox path, TripleDes capability
   assertion, no-ctx encrypt/decryptTo coverage).
-  - **Two engine bugs found + filed (still skipped, see DEFERRED.md):** detached
-    `MultipartSigned.verify` re-serializes the signed part instead of hashing its
-    original on-wire bytes — (1) `Multipart.writeTo` emits raw parsed boundary bytes
-    verbatim instead of regenerating `--boundary`+newLine (breaks Thunderbird verify;
-    proven a ~4-byte boundary-ending diff — the CMS pipeline itself verifies correctly);
-    (2) no `VerifyingSignature` mixed-newline pass-through in `MimePart.writeTo`
-    (MimeKit issue #569) breaks mixed-line-endings verify. Both fixes are well-specified
-    but touch CORE serialization → byte-parity gate re-validation required; NOT yet done.
-  - Deferred onward to C2b-2b-followups / later waves: full PKIX chain/trust + CRL/OCSP,
-    DSA, ECDH recipients, certs-only Export, DES-CBC content encryption, the two
-    detached-verify bugs above.
+  - **Two verify failures investigated + RESOLVED (both tests now pass, 3028 total):**
+    (1) mixed-line-endings was a real port omission — ported C#'s
+    `FormatOptions.VerifyingSignature` + the `MimePart.writeTo` verbatim branch for
+    mixed-newline content (MimeKit #569). (2) Thunderbird was NOT a code bug: the repo's
+    `*.txt text` gitattributes rule normalized `thunderbird-signed.txt`'s CRLF→LF on
+    checkout, corrupting the exact bytes the signature covers (the nested multipart/mixed
+    boundaries); marked the fixture `-text` + restored CRLF. Confirmed C#'s Multipart
+    boundary writer also preserves raw boundaries, so the earlier "regenerate boundaries"
+    hypothesis would have DIVERGED from C# — the real fix was the fixture. Core-writer
+    change is verify-only (defaults off), byte-parity gates unaffected.
+  - Deferred onward to later waves: full PKIX chain/trust + CRL/OCSP, DSA, ECDH
+    recipients, certs-only Export, DES-CBC content encryption, C2c message-level
+    integration (MimeMessage.sign/encrypt).
 
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
