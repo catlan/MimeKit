@@ -21,6 +21,7 @@ import type { CmsSigner } from './cms-signer.js';
 import type { CmsRecipientCollection } from './cms-recipient-collection.js';
 import type { DigitalSignatureCollection } from './digital-signature-collection.js';
 import { SecureMimeContext, createSecureMimeContext } from './secure-mime-context.js';
+import { MultipartSigned } from './multipart-signed.js';
 
 function serialize(entity: MimeEntity): Uint8Array {
   const memory = new MemoryStream();
@@ -243,14 +244,35 @@ export class ApplicationPkcs7Mime extends MimePart {
     signer: MailboxAddress,
     digestAlgo: DigestAlgorithm,
     entity: MimeEntity,
+  ): Promise<ApplicationPkcs7Mime>;
+  /** Sign the entity using a signer mailbox and digest algorithm, resolved via the default context. */
+  static async signWithMailbox(
+    signer: MailboxAddress,
+    digestAlgo: DigestAlgorithm,
+    entity: MimeEntity,
+  ): Promise<ApplicationPkcs7Mime>;
+  static async signWithMailbox(
+    ctxOrSigner: SecureMimeContext | MailboxAddress,
+    signerOrDigest: MailboxAddress | DigestAlgorithm,
+    digestOrEntity: DigestAlgorithm | MimeEntity,
+    entity?: MimeEntity,
   ): Promise<ApplicationPkcs7Mime> {
-    if (ctx == null) throw new TypeError('ctx cannot be null or undefined');
+    if (ctxOrSigner instanceof SecureMimeContext) {
+      const signer = signerOrDigest as MailboxAddress;
+      const digestAlgo = digestOrEntity as DigestAlgorithm;
+      if (signer == null) throw new TypeError('signer cannot be null or undefined');
+      if (entity == null) throw new TypeError('entity cannot be null or undefined');
+      return ctxOrSigner.encapsulatedSignWithMailbox(signer, digestAlgo, serialize(entity));
+    }
+    const signer = ctxOrSigner;
+    const digestAlgo = signerOrDigest as DigestAlgorithm;
+    const target = digestOrEntity as MimeEntity;
     if (signer == null) throw new TypeError('signer cannot be null or undefined');
-    if (entity == null) throw new TypeError('entity cannot be null or undefined');
-    return ctx.encapsulatedSignWithMailbox(signer, digestAlgo, serialize(entity));
+    if (target == null) throw new TypeError('entity cannot be null or undefined');
+    return withDefaultContext((c) => c.encapsulatedSignWithMailbox(signer, digestAlgo, serialize(target)));
   }
 
-  /** Sign and then encrypt the entity using the specified context. */
+  /** Sign as multipart/signed and then encrypt the entity using the specified context. */
   static async signAndEncrypt(
     ctx: SecureMimeContext,
     signer: CmsSigner,
@@ -261,7 +283,48 @@ export class ApplicationPkcs7Mime extends MimePart {
     if (signer == null) throw new TypeError('signer cannot be null or undefined');
     if (recipients == null) throw new TypeError('recipients cannot be null or undefined');
     if (entity == null) throw new TypeError('entity cannot be null or undefined');
-    const signed = await ctx.encapsulatedSign(signer, serialize(entity));
+    const signed = await MultipartSigned.create(ctx, signer, entity);
     return ctx.encrypt(recipients, serialize(signed));
+  }
+
+  /** Sign as multipart/signed and then encrypt using a signer mailbox and recipient mailboxes. */
+  static async signAndEncryptToMailboxes(
+    ctx: SecureMimeContext,
+    signer: MailboxAddress,
+    digestAlgo: DigestAlgorithm,
+    recipients: Iterable<MailboxAddress>,
+    entity: MimeEntity,
+  ): Promise<ApplicationPkcs7Mime> {
+    if (ctx == null) throw new TypeError('ctx cannot be null or undefined');
+    if (signer == null) throw new TypeError('signer cannot be null or undefined');
+    if (recipients == null) throw new TypeError('recipients cannot be null or undefined');
+    if (entity == null) throw new TypeError('entity cannot be null or undefined');
+    const signed = await MultipartSigned.create(ctx, signer, digestAlgo, entity);
+    return ctx.encryptToMailboxes(recipients, serialize(signed));
+  }
+
+  /** Sign and encrypt using the default S/MIME context. */
+  static async signAndEncryptDefault(
+    signer: CmsSigner,
+    recipients: CmsRecipientCollection,
+    entity: MimeEntity,
+  ): Promise<ApplicationPkcs7Mime> {
+    if (signer == null) throw new TypeError('signer cannot be null or undefined');
+    if (recipients == null) throw new TypeError('recipients cannot be null or undefined');
+    if (entity == null) throw new TypeError('entity cannot be null or undefined');
+    return withDefaultContext((c) => ApplicationPkcs7Mime.signAndEncrypt(c, signer, recipients, entity));
+  }
+
+  /** Sign and encrypt to mailboxes using the default S/MIME context. */
+  static async signAndEncryptToMailboxesDefault(
+    signer: MailboxAddress,
+    digestAlgo: DigestAlgorithm,
+    recipients: Iterable<MailboxAddress>,
+    entity: MimeEntity,
+  ): Promise<ApplicationPkcs7Mime> {
+    if (signer == null) throw new TypeError('signer cannot be null or undefined');
+    if (recipients == null) throw new TypeError('recipients cannot be null or undefined');
+    if (entity == null) throw new TypeError('entity cannot be null or undefined');
+    return withDefaultContext((c) => ApplicationPkcs7Mime.signAndEncryptToMailboxes(c, signer, digestAlgo, recipients, entity));
   }
 }
