@@ -289,6 +289,20 @@ the whole crypto surface.
   fixed. Suite: 2877 passed + 17 skipped. Browser: signing offline, verify via
   injected locator (DoH default shipped).
 
+### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
+
+- **EnvelopedData content decryption (CBC)**: padding removal MUST be
+  uniform-error / constant-shape (Vaudenay padding-oracle). The C2b-1 ciphers
+  keep raw-CBC separate from padding — decrypt to raw, then unpad with a
+  single non-branching failure mode.
+- **RSA key transport**: modern = RSA-OAEP via WebCrypto (isomorphic). Legacy
+  PKCS#1 v1.5 (Bleichenbacher) — per direction B: Node default = `node:crypto`
+  privateDecrypt (OpenSSL implicit rejection, constant-time; the /smime subpath
+  MAY use node:crypto — unlike core/dkim which stay pure-isomorphic); browser =
+  opt-in pure-JS BigInt RSA with uniform errors + implicit rejection. Tests run
+  on Node → the safe path, no opt-in needed in tests.
+- OAEP `RsaesOaepParameters` needs `pSourceAlgorithm` for exact DER (C2b-1 nit).
+
 ## 6. Oracle & gate strategy for non-deterministic crypto
 
 Signatures/encryption randomize, so byte-parity gates don't apply. Instead:
