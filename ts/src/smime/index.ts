@@ -23,7 +23,7 @@ export { SubjectIdentifierType } from './subject-identifier-type.js';
 export { X509KeyUsageFlags, X509KeyUsageBits } from './x509-key-usage-flags.js';
 
 // Value types
-export { RsaEncryptionPadding } from './rsa-encryption-padding.js';
+export { RsaEncryptionPadding, AlgorithmIdentifier, RsaesOaepParameters } from './rsa-encryption-padding.js';
 export { RsaSignaturePadding } from './rsa-signature-padding.js';
 export { CmsSigner, canSign, type AttributeTable, type Pkcs12Loader } from './cms-signer.js';
 export { CmsRecipient } from './cms-recipient.js';
@@ -60,6 +60,33 @@ export {
 export { MultipartSigned } from './multipart-signed.js';
 export { ApplicationPkcs7Mime } from './application-pkcs7-mime.js';
 export { ApplicationPkcs7Signature } from './application-pkcs7-signature.js';
+
+// ---- Concrete crypto backend (wave C2b-1: X.509 + key import) ----------------
+//
+// These bind pkijs / asn1js / @noble and back the C2a structural seams. Importing
+// this subpath (`mimekit-ts/smime`) pulls the S/MIME crypto peers; the core
+// (`mimekit-ts`) entry never imports this module, so it stays crypto-free.
+export {
+  X509CertificateImpl,
+} from './x509-certificate-impl.js';
+export {
+  X509PrivateKey,
+  X509PublicKey,
+  importPrivateKeyFromPkcs8,
+  importPublicKeyFromSpki,
+  loadPrivateKeyFromPem,
+  loadPublicKeyFromPem,
+  publicKeyAlgorithmFromOid,
+  type X509AsymmetricKey,
+} from './asymmetric-key.js';
+export { DefaultPkcs12Loader, loadPkcs12 } from './pkcs12-loader.js';
+export { buildCertificateChain } from './chain-builder.js';
+export { InMemorySecureMimeStore, canEncrypt, parseCertificates } from './in-memory-store.js';
+
+// Register the concrete PKCS#12 loader so `CmsSigner.load(...)` works.
+import { CmsSigner } from './cms-signer.js';
+import { DefaultPkcs12Loader } from './pkcs12-loader.js';
+CmsSigner.pkcs12Loader = new DefaultPkcs12Loader();
 
 // Wire the S/MIME MIME types into the core parser's create-entity dispatch.
 registerEntityType('multipart', 'signed', (args) => new MultipartSigned(args));
