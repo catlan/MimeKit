@@ -336,6 +336,23 @@ the whole crypto surface.
   Browser legacy opt-in (`allowLegacyDecryption`) mechanism is implemented (defaults
   off); doc prose deferred to C4. Remaining S/MIME skips are genuine feature gaps
   (certs-export, missing decrypt fixtures) — see DEFERRED.md.
+- 2026-07-09: **Wave C4 (crypto close-out) — packaging, docs, dual security review.**
+  Packaging: verified the crypto-free-core install both statically (core `.` entry pulls
+  only `punycode` across 142 files) and at runtime (loads + parses with zero crypto modules
+  loaded); each subpath pulls only its optional peers; `openpgp` loads via dynamic import
+  only. Removed 5 declared-but-unused optional peers (@peculiar/*, micro-rsa-dsa-dh). Docs:
+  rewrote the stale README (no longer claims crypto is excluded) to document the three
+  subpath entries + peer deps + browser opt-in; TypeDoc now covers all 4 entries.
+  **Dual security review** (fable-5 broad + gpt-5.5 primitive-focused): overall SOUND —
+  both positively verified verify-soundness (no forged signature accepted), digest binding,
+  the browser implicit-rejection path, trust-boundary honesty, and the crypto-free boundary.
+  Fixes applied: **[HIGH]** the Node RSA v1.5 path returned OpenSSL's variable-length
+  RSA_PKCS1_PADDING output, letting the downstream key-length check distinguish valid/invalid
+  padding (Marvin timing oracle) — now does raw RSA (RSA_NO_PADDING, constant-time+blinded) +
+  the same fixed-length implicit-rejection decode as the browser; **[LOW]** exact CBC IV-length
+  validation; **[LOW]** CompressedData inflate size cap (decompression-bomb guard). Intentional
+  (matches BouncyCastle reference, not fixed): SHA-1/MD5 CMS signatures still verify if
+  presented — required to verify real legacy mail (e.g. the Thunderbird SHA-1 fixture).
 
 ## C3 execution plan (OpenPGP / PGP-MIME, RFC 3156)
 
