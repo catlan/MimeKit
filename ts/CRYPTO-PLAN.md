@@ -274,6 +274,21 @@ the whole crypto surface.
 
 ---
 
+## 5b. Progress
+
+- 2026-07-09: **Wave C1 (DKIM/ARC) COMPLETE + merged** — first crypto release.
+  19 src files (15 ported + primitive layer/locators/index), 5 test suites 1:1
+  (272 tests, 2 skips = the [Ignore]'d ARC cases), a full-MimeKit `oracle-dkim`
+  C# project, and gates: byte-parity vs oracle (deterministic signing), the
+  oracle-independent empty-body KAT constants, cross-verify, and the RFC 8463
+  Ed25519 vector. Primitive layer: sync @noble hashing + async WebCrypto
+  sign/verify (RSASSA + Ed25519-over-SHA256-digest), pure-JS DER key import (no
+  node:crypto). `mimekit-ts/dkim` subpath; `@noble` optional-peer so the core
+  install stays crypto-free. Independent opus review: SHIP, no blocking issues;
+  it also surfaced a pre-existing core bug (createNewLineFilter default) now
+  fixed. Suite: 2877 passed + 17 skipped. Browser: signing offline, verify via
+  injected locator (DoH default shipped).
+
 ## 6. Oracle & gate strategy for non-deterministic crypto
 
 Signatures/encryption randomize, so byte-parity gates don't apply. Instead:
