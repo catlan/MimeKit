@@ -44,13 +44,8 @@
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
     "@openpgp/web-stream-tools": "^0.3.1",
-    "@peculiar/asn1-cms": "^2.8.0",
-    "@peculiar/asn1-schema": "^2.8.0",
-    "@peculiar/asn1-x509": "^2.8.0",
-    "@peculiar/x509": "^2.0.0",
     "@types/node": "^24.0.0",
     "asn1js": "^3.0.10",
-    "micro-rsa-dsa-dh": "^0.3.0",
     "openpgp": "^6.3.1",
     "pkijs": "^3.4.0",
     "typedoc": "^0.28.20",
@@ -79,12 +74,7 @@
   "peerDependencies": {
     "@noble/curves": "^2",
     "@noble/hashes": "^2",
-    "@peculiar/asn1-cms": "*",
-    "@peculiar/asn1-schema": "*",
-    "@peculiar/asn1-x509": "*",
-    "@peculiar/x509": "*",
     "asn1js": "*",
-    "micro-rsa-dsa-dh": "*",
     "openpgp": "^6",
     "pkijs": "*"
   },
@@ -98,25 +88,10 @@
     "pkijs": {
       "optional": true
     },
-    "@peculiar/x509": {
-      "optional": true
-    },
-    "@peculiar/asn1-schema": {
-      "optional": true
-    },
-    "@peculiar/asn1-x509": {
-      "optional": true
-    },
-    "@peculiar/asn1-cms": {
-      "optional": true
-    },
     "asn1js": {
       "optional": true
     },
     "openpgp": {
-      "optional": true
-    },
-    "micro-rsa-dsa-dh": {
       "optional": true
     }
   }
