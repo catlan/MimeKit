@@ -19,12 +19,14 @@ import { SecureMimeType } from '../../src/smime/secure-mime-type.js';
 import { SubjectIdentifierType } from '../../src/smime/subject-identifier-type.js';
 import { MailboxAddress } from '../../src/mailbox-address.js';
 import { MimeEntity } from '../../src/mime-entity.js';
+import { MimeMessage } from '../../src/mime-message.js';
 import { unwrap } from '../../src/result.js';
 import { MimePart } from '../../src/mime-part.js';
 import { TextPart } from '../../src/text-part.js';
 import { MemoryStream } from '../../src/io/stream.js';
 import { ApplicationPkcs7Signature } from '../../src/smime/application-pkcs7-signature.js';
-import { rsaCertificate, smimeCertificates, type SMimeCertificate } from './helpers.js';
+import { rsaCertificate, smimeCertificates, smimePath, type SMimeCertificate } from './helpers.js';
+import { readFileSync } from 'node:fs';
 
 function contextFor(certs: SMimeCertificate[]): PkijsSecureMimeContext {
   const ctx = new PkijsSecureMimeContext(undefined, { allowLegacyDecryption: true });
@@ -286,7 +288,30 @@ describe('SecureMimeTestsBase port', () => {
 
   test.skip('C#: TestSecureMimeMessageSigning — DEFER:c2c-message-integration', () => {});
 
-  test.skip('C#: TestSecureMimeVerifyThunderbird — BUG:multipart-boundary-canonicalization (see DEFERRED.md)', () => {});
+  test('C#: TestSecureMimeVerifyThunderbird', async () => {
+    const thunderbirdFingerprint = '354ea4dcf98166639b58ec5df06a65de0cd8a95c';
+    const thunderbirdName = 'fejj@gnome.org';
+    const bytes = new Uint8Array(readFileSync(smimePath('thunderbird-signed.txt')));
+    const message = unwrap(MimeMessage.load(bytes));
+    const ctx = contextFor(smimeCertificates);
+    expect(message.body).toBeInstanceOf(MultipartSigned);
+    const multipart = message.body as MultipartSigned;
+    const protocol = multipart.contentType.parameters.get('protocol')?.trim();
+    expect(ctx.supports(protocol!)).toBe(true);
+    expect(multipart.at(1)).toBeInstanceOf(ApplicationPkcs7Signature);
+    const signatures = await multipart.verify(ctx);
+    expect(signatures.count).toBe(1);
+    const signature = signatures.get(0);
+    expect(signature.signerCertificate!.name).toBe(thunderbirdName);
+    expect(signature.signerCertificate!.fingerprint).toBe(thunderbirdFingerprint);
+    expect(signature.encryptionAlgorithms).toEqual([
+      EncryptionAlgorithm.Aes256, EncryptionAlgorithm.Aes128, EncryptionAlgorithm.TripleDes,
+      EncryptionAlgorithm.RC2128, EncryptionAlgorithm.RC264, EncryptionAlgorithm.Des, EncryptionAlgorithm.RC240,
+    ]);
+    // C# uses full signature.Verify(); this port defers PKIX chain/trust, so we assert
+    // cryptographic-signature validity (verify(true)) — the signer cert is expired and untrusted here.
+    expect(await signature.verify(true)).toBe(true);
+  });
 
   test.skip('C#: TestSecureMimeMessageEncryption — DEFER:c2c-message-integration', () => {});
 
@@ -389,5 +414,15 @@ describe('SecureMimeTestsBase port', () => {
   test.skip('C#: TestSecureMimeDecryptVerifyThunderbird — SKIP:missing-fixture', () => {});
   test.skip('C#: TestSecureMimeImportExport — DEFER:certs-export', () => {});
 
-  test.skip('C#: TestSecureMimeVerifyMixedLineEndings — BUG:verifying-signature-newline-passthrough (see DEFERRED.md)', () => {});
+  test('C#: TestSecureMimeVerifyMixedLineEndings', async () => {
+    const bytes = new Uint8Array(readFileSync(smimePath('octet-stream-with-mixed-line-endings.dat')));
+    const message = unwrap(MimeMessage.load(bytes));
+    expect(message.body).toBeInstanceOf(MultipartSigned);
+    const signed = message.body as MultipartSigned;
+    const ctx = contextFor(smimeCertificates);
+    const signatures = await signed.verify(ctx);
+    expect(signatures.count).toBeGreaterThan(0);
+    for (let i = 0; i < signatures.count; i++)
+      expect(await signatures.get(i).verify(true)).toBe(true);
+  });
 });

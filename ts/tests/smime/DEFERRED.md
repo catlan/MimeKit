@@ -93,25 +93,23 @@ are ported in C2b-2 alongside the suites that use them.
 
 ## C2b-2b deferred/skipped tests
 
+Both signature-verification "bugs" flagged during the initial C2b-2b port are now FIXED and
+un-deferred (TestSecureMimeVerifyThunderbird, TestSecureMimeVerifyMixedLineEndings):
+- Mixed-line-endings was a real port omission — C# MultipartSigned.Verify sets
+  FormatOptions.VerifyingSignature=true and MimePart.WriteTo writes content verbatim when
+  Content.NewLineFormat==Mixed (MimeKit issue #569). Ported the flag + pass-through branch.
+- Thunderbird was NOT a code bug: the verify pipeline is correct. Root cause was the
+  `thunderbird-signed.txt` fixture — the repo's `*.txt text` gitattributes rule normalized its
+  original CRLF to LF on checkout, corrupting the exact bytes the signature covers (the nested
+  multipart/mixed boundaries). Marked the fixture `-text` and restored its CRLF bytes; verify
+  then matches (signer fejj@gnome.org, full RC2/DES capability list, valid signature). This is a
+  latent fixture bug that would also fail C# on any LF checkout.
+
 - TestSecureMimeMessageSigning — DEFER:c2c-message-integration (MimeMessage has no sign API yet)
-- TestSecureMimeVerifyThunderbird — BUG:multipart-boundary-canonicalization. NOT a feature gap: the
-  signer cert, capabilities, and CMS pipeline all work (proven — feeding hand-canonicalized bytes to
-  ctx.verifyDetached verifies TRUE with signer fejj@gnome.org and the exact C# capability list). Root
-  cause: Multipart.writeTo emits the raw parsed boundary bytes (bare LF, from thunderbird-signed.txt)
-  verbatim instead of regenerating `--boundary` + options.newLine (CRLF) the way C# MultipartSigned.Verify
-  does, so the digest is computed over 4 wrong bytes. Fix: regenerate boundary line endings per
-  options.newLineFormat in Multipart.writeTo; likely un-defers this test outright.
 - TestSecureMimeMessageEncryption — DEFER:c2c-message-integration (MimeMessage has no encrypt API yet)
 - TestSecureMimeDecryptThunderbird — SKIP:missing-fixture (thunderbird-encrypted.txt / gnome.p12 absent; C# returns early)
 - TestSecureMimeDecryptVerifyThunderbird — SKIP:missing-fixture (thunderbird-signed-encrypted.txt / gnome.p12 absent; C# returns early)
 - TestSecureMimeImportExport — DEFER:certs-export (certs-only PKCS#7 export not implemented)
-- TestSecureMimeVerifyMixedLineEndings — BUG:verifying-signature-newline-passthrough. C#
-  MultipartSigned.Verify sets FormatOptions.VerifyingSignature=true, and MimePart.WriteTo has a branch
-  (MimeKit issue #569) that writes the original content bytes verbatim when Content.NewLineFormat==Mixed —
-  so a body signed with mixed LF/CRLF hashes to the same bytes. The TS writer unconditionally pipes content
-  through createNewLineFilter, so bare LF becomes CRLF and the digest mismatches. TS MimeContent already
-  tracks 'mixed'. Fix: add a verifyingSignature flag to FormatOptions, set it in MultipartSigned.verify,
-  and add the mixed-newline pass-through branch to MimePart.writeTo.
 - TestSecureMimeEncryptionWithAlgorithm DES arm — DEFER:des-cbc (plain DES-CBC content encryption not
   implemented; C# requires it to succeed on non-Windows. The engine has no DES content-encryption case,
   so a [Des] recipient capability is silently ignored and a default cipher is substituted — the DES arm
