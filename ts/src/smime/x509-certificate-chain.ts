@@ -64,9 +64,10 @@ export class X509CertificateChain implements Iterable<X509Certificate> {
 
   /** Sets the certificate at the specified index (C#: `this[index]` setter). */
   set(index: number, certificate: X509Certificate): void {
+    // C# checks the null value before indexing (which would throw a range error).
+    if (certificate == null) throw new TypeError('certificate cannot be null or undefined');
     if (!Number.isInteger(index) || index < 0 || index >= this.certificates.length)
       throw new RangeError(`index ${index} is out of range`);
-    if (certificate == null) throw new TypeError('certificate cannot be null or undefined');
     this.certificates[index] = certificate;
   }
 

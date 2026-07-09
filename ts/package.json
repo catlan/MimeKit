@@ -39,7 +39,13 @@
   "devDependencies": {
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
+    "@peculiar/asn1-cms": "^2.8.0",
+    "@peculiar/asn1-schema": "^2.8.0",
+    "@peculiar/asn1-x509": "^2.8.0",
+    "@peculiar/x509": "^2.0.0",
     "@types/node": "^24.0.0",
+    "asn1js": "^3.0.10",
+    "pkijs": "^3.4.0",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
@@ -64,14 +70,38 @@
     "mbox"
   ],
   "peerDependencies": {
+    "@noble/curves": "^2",
     "@noble/hashes": "^2",
-    "@noble/curves": "^2"
+    "pkijs": "*",
+    "@peculiar/x509": "*",
+    "@peculiar/asn1-schema": "*",
+    "@peculiar/asn1-x509": "*",
+    "@peculiar/asn1-cms": "*",
+    "asn1js": "*"
   },
   "peerDependenciesMeta": {
     "@noble/hashes": {
       "optional": true
     },
     "@noble/curves": {
+      "optional": true
+    },
+    "pkijs": {
+      "optional": true
+    },
+    "@peculiar/x509": {
+      "optional": true
+    },
+    "@peculiar/asn1-schema": {
+      "optional": true
+    },
+    "@peculiar/asn1-x509": {
+      "optional": true
+    },
+    "@peculiar/asn1-cms": {
+      "optional": true
+    },
+    "asn1js": {
       "optional": true
     }
   }

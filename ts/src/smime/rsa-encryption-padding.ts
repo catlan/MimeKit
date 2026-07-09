@@ -1,14 +1,52 @@
 // Port of MimeKit/Cryptography/RsaEncryptionPadding.cs.
 //
-// The ASN.1-producing members (`GetAlgorithmIdentifier`,
-// `GetRsaesOaepParameters`) are NOT ported here: they build BouncyCastle DER
-// `AlgorithmIdentifier` / `RsaesOaepParameters` objects and belong with the
-// concrete crypto backend (wave C2b). `RsaEncryptionPaddingTests
-// .TestGetAlgorithmIdentifier` is deferred with them.
+// The ASN.1-producing members (`getAlgorithmIdentifier`,
+// `getRsaesOaepParameters`) are implemented here in wave C2b-1. They build the
+// RFC 8017 RSAES-OAEP `AlgorithmIdentifier` / `RsaesOaepParameters` structure
+// that the CMS enveloped-data layer (wave C2b-2) will DER-encode. The structure
+// is kept as plain value objects carrying OID strings — no crypto library is
+// bound at this layer.
 
 import { DigestAlgorithm } from './digest-algorithm.js';
 import { RsaEncryptionPaddingScheme } from './rsa-encryption-padding-scheme.js';
 import { NotSupportedError } from './errors.js';
+
+// RFC 8017 / PKCS#1 OIDs.
+const OID_RSAES_OAEP = '1.2.840.113549.1.1.7';
+const OID_MGF1 = '1.2.840.113549.1.1.8';
+
+// Digest OIDs (mirror SecureMimeContext.getDigestOid; duplicated here to keep
+// this portable value type free of any dependency on the context layer).
+const DIGEST_OIDS: Partial<Record<DigestAlgorithm, string>> = {
+  [DigestAlgorithm.Sha1]: '1.3.14.3.2.26',
+  [DigestAlgorithm.Sha256]: '2.16.840.1.101.3.4.2.1',
+  [DigestAlgorithm.Sha384]: '2.16.840.1.101.3.4.2.2',
+  [DigestAlgorithm.Sha512]: '2.16.840.1.101.3.4.2.3',
+};
+
+/**
+ * A minimal X.509 `AlgorithmIdentifier` value object (OID + optional
+ * parameters). The CMS layer serializes this to DER in wave C2b-2.
+ */
+export class AlgorithmIdentifier {
+  constructor(
+    readonly algorithm: string,
+    readonly parameters: AlgorithmIdentifier | RsaesOaepParameters | null = null,
+  ) {}
+}
+
+/** The RSAES-OAEP parameters structure (RFC 8017 A.2.1). */
+export class RsaesOaepParameters {
+  /** The OAEP hash algorithm. */
+  readonly hashAlgorithm: AlgorithmIdentifier;
+  /** The mask-generation function (MGF1 with the same hash). */
+  readonly maskGenAlgorithm: AlgorithmIdentifier;
+
+  constructor(hashOid: string) {
+    this.hashAlgorithm = new AlgorithmIdentifier(hashOid);
+    this.maskGenAlgorithm = new AlgorithmIdentifier(OID_MGF1, new AlgorithmIdentifier(hashOid));
+  }
+}
 
 /**
  * The RSA encryption padding schemes and parameters used by S/MIME (rfc8017).
@@ -83,6 +121,29 @@ export class RsaEncryptionPadding {
   toString(): string {
     if (this.scheme === RsaEncryptionPaddingScheme.Pkcs1) return 'Pkcs1';
     return 'Oaep' + DigestAlgorithm[this.oaepHashAlgorithm];
+  }
+
+  /**
+   * Get the RSAES-OAEP parameters for this padding (RFC 8017 A.2.1).
+   *
+   * @throws {NotSupportedError} The OAEP hash algorithm is not supported.
+   */
+  getRsaesOaepParameters(): RsaesOaepParameters {
+    const oid = DIGEST_OIDS[this.oaepHashAlgorithm];
+    if (oid === undefined)
+      throw new NotSupportedError(
+        `The ${DigestAlgorithm[this.oaepHashAlgorithm] ?? this.oaepHashAlgorithm} hash algorithm is not supported.`,
+      );
+    return new RsaesOaepParameters(oid);
+  }
+
+  /**
+   * Get the {@link AlgorithmIdentifier} for this padding, or `null` for PKCS #1
+   * v1.5 (which has no explicit algorithm identifier).
+   */
+  getAlgorithmIdentifier(): AlgorithmIdentifier | null {
+    if (this.scheme === RsaEncryptionPaddingScheme.Pkcs1) return null;
+    return new AlgorithmIdentifier(OID_RSAES_OAEP, this.getRsaesOaepParameters());
   }
 
   /**
