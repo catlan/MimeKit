@@ -17,6 +17,10 @@
     "./dkim": {
       "types": "./dist/dkim/index.d.ts",
       "default": "./dist/dkim/index.js"
+    },
+    "./smime": {
+      "types": "./dist/smime/index.d.ts",
+      "default": "./dist/smime/index.js"
     }
   },
   "files": [

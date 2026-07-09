@@ -30,6 +30,31 @@ import { TextRfc822Headers } from './text-rfc822-headers.js';
 import { TnefPart } from './tnef/tnef-part.js';
 import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
 
+/**
+ * Registry of externally-provided entity factories (keyed by lowercased
+ * `mediaType/mediaSubtype`). This is the seam that lets the optional S/MIME
+ * subsystem teach the crypto-free core parser to produce `MultipartSigned`,
+ * `ApplicationPkcs7Mime`, and `ApplicationPkcs7Signature` — without the core
+ * statically importing any crypto code. `mimekit-ts/smime`'s entry point calls
+ * {@link registerEntityType}; a core-only install never registers anything and
+ * these content types fall through to the built-in dispatch.
+ */
+const entityTypeRegistry = new Map<string, (args: MimeEntityConstructorArgs) => MimeEntity>();
+
+/** Register a factory for a specific media type/subtype (see {@link entityTypeRegistry}). */
+export function registerEntityType(
+  mediaType: string,
+  mediaSubtype: string,
+  factory: (args: MimeEntityConstructorArgs) => MimeEntity,
+): void {
+  entityTypeRegistry.set(`${mediaType.toLowerCase()}/${mediaSubtype.toLowerCase()}`, factory);
+}
+
+function lookupEntityType(type: string, subtype: string, args: MimeEntityConstructorArgs): MimeEntity | null {
+  const factory = entityTypeRegistry.get(`${type.toLowerCase()}/${subtype.toLowerCase()}`);
+  return factory ? factory(args) : null;
+}
+
 function isEncodedEncoding(encoding: ContentEncoding): boolean {
   switch (encoding) {
     case '7bit':
@@ -104,8 +129,11 @@ export function createEntity(
     if (eqIgnoreCase(subtype, 'related')) return new MultipartRelated(args);
     if (eqIgnoreCase(subtype, 'report')) return new MultipartReport(args);
 
-    // multipart/signed, multipart/encrypted are crypto (out of Lite scope) —
-    // fall through to a plain Multipart.
+    // multipart/signed (multipart/encrypted later) are registered by the
+    // optional S/MIME / PGP subsystems; otherwise fall through to a plain
+    // Multipart.
+    const registered = lookupEntityType(type, subtype, args);
+    if (registered !== null) return registered;
 
     return new Multipart(args);
   } else if (eqIgnoreCase(type, 'message')) {
@@ -127,6 +155,11 @@ export function createEntity(
   } else if (eqIgnoreCase(type, 'application')) {
     if (eqIgnoreCase(subtype, 'ms-tnef', 'vnd.ms-tnef')) return new TnefPart(args);
     if (eqIgnoreCase(subtype, 'rtf')) return new TextPart(args);
+
+    // application/pkcs7-mime, application/pkcs7-signature (and pgp-*) are
+    // registered by the optional S/MIME / PGP subsystems.
+    const registered = lookupEntityType(type, subtype, args);
+    if (registered !== null) return registered;
   }
 
   return new MimePart(args);
