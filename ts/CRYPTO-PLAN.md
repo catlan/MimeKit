@@ -294,8 +294,20 @@ Ratchet + attributed-deferral discipline carries over unchanged.
 ## 7. Risks & open questions
 
 - **Browser legacy-decrypt timing** — the only unaudited primitive; mitigated
-  by opt-in gating + blinding + implicit rejection + low-frequency use. *Q: is
-  browser legacy S/MIME receive in scope at all, or Node-only + modern-browser?*
+  by opt-in gating + blinding + implicit rejection + low-frequency use.
+  **DECIDED 2026-07-09 — direction B (opt-in legacy):** Node gets full legacy
+  decryption on by default (safe via OpenSSL constant-time + implicit
+  rejection); the browser is modern-only (RSA-OAEP + AES) by default, with
+  legacy v1.5 key-transport + 3DES/RC2 decryption available **only behind an
+  explicit opt-in flag** (e.g. `allowLegacyDecryption`) that surfaces the
+  unaudited-timing caveat. Sign/verify/encrypt and modern (OAEP+AES) decrypt
+  are always clean WebCrypto in both runtimes — this gate is *only* on reading
+  legacy-encrypted mail client-side. Rationale: a general-purpose library must
+  never make an unaudited-crypto choice silently; this degrades honestly and
+  lets consumers who genuinely need browser-side legacy decryption enable it
+  with eyes open. Note v1.5 key transport is common in *current* real-world
+  S/MIME (Outlook/Apple Mail), not just archives, so the flag matters for broad
+  interop, not just old mail.
 - **OpenPGP LGPL** — handled by the optional-peer/separate-entry arrangement;
   *Q: acceptable, or should OpenPGP wait for rpgp-WASM to mature (permissive)?*
 - **Effort** — this is a large body of work (~30k C# LOC in scope, minus the
