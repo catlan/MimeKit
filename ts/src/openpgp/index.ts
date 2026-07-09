@@ -6,14 +6,17 @@
 
 import { registerEntityType } from '../create-entity.js';
 import { registerPgpMessageCrypto } from '../smime/mime-message-crypto.js';
+import { MultipartSigned } from '../smime/multipart-signed.js';
 import { MultipartEncrypted } from './multipart-encrypted.js';
 import { ApplicationPgpEncrypted } from './application-pgp-encrypted.js';
 import { ApplicationPgpSignature } from './application-pgp-signature.js';
 import type { OpenPgpContext } from './openpgp-context.js';
 
-// Wire the PGP/MIME types into the core parser's create-entity dispatch. (multipart/signed
-// with an application/pgp-signature protocol is handled by the S/MIME-registered
-// MultipartSigned, which is protocol-agnostic.)
+// Wire the PGP/MIME types into the core parser's create-entity dispatch. multipart/signed
+// is also registered here (a map overwrite; harmless if the S/MIME entry registered it too)
+// so that importing only `mimekit-ts/openpgp` still parses received PGP-signed mail as a
+// MultipartSigned (the class is protocol-agnostic).
+registerEntityType('multipart', 'signed', (args) => new MultipartSigned(args));
 registerEntityType('multipart', 'encrypted', (args) => new MultipartEncrypted(args));
 registerEntityType('application', 'pgp-encrypted', (args) => new ApplicationPgpEncrypted(args));
 registerEntityType('application', 'pgp-signature', (args) => new ApplicationPgpSignature(args));

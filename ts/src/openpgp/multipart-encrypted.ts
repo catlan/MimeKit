@@ -5,10 +5,7 @@
 // Deferred (see DEFERRED.md): the raw PgpPublicKey/PgpSecretKey overloads' key-object
 // exposure beyond what the round-trip tests need, and keyserver-backed flows.
 
-import { FilteredStream } from '../io/filtered-stream.js';
 import { MemoryStream } from '../io/stream.js';
-import { ArmoredFromFilter } from '../io/filters/armored-from-filter.js';
-import { TrailingWhitespaceFilter } from '../io/filters/trailing-whitespace-filter.js';
 import { FormatOptions } from '../format-options.js';
 import { MimeParser } from '../mime-parser.js';
 import { MimeContent } from '../mime-content.js';
@@ -62,14 +59,14 @@ export class MultipartEncrypted extends Multipart {
   }
 
   private static serialize(entity: MimeEntity): Uint8Array {
+    // C# MultipartEncrypted serializes the plaintext with CRLF newlines only — NO
+    // ArmoredFrom / TrailingWhitespace canonicalization (those belong to the
+    // multipart/signed path). The ciphertext protects the exact bytes, so any
+    // rewriting here would silently corrupt the recipient's content.
     const memory = new MemoryStream();
-    const filtered = new FilteredStream(memory);
-    filtered.add(new ArmoredFromFilter());
-    filtered.add(new TrailingWhitespaceFilter());
     const options = FormatOptions.default.clone();
     options.newLineFormat = 'dos';
-    entity.writeTo(options, filtered);
-    filtered.flush();
+    entity.writeTo(options, memory);
     return memory.toArray();
   }
 
