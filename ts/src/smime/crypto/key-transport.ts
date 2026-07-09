@@ -91,10 +91,15 @@ export async function rsaV15Decrypt(
   options: { allowLegacyDecryption?: boolean } = {},
 ): Promise<Uint8Array> {
   if (isNode) {
-    // OpenSSL >=3.2 performs constant-time implicit rejection internally.
+    // Do the raw RSA private op with OpenSSL (constant-time, blinded) and run our own
+    // fixed-length implicit-rejection decode — rather than RSA_PKCS1_PADDING, whose
+    // variable-length implicit-rejection output would let the downstream length check
+    // distinguish valid from invalid padding (a Bleichenbacher/Marvin timing oracle).
     const { createPrivateKey, privateDecrypt, constants } = await nodeCrypto();
     const key = createPrivateKey({ key: Buffer.from(pkcs8), format: 'der', type: 'pkcs8' });
-    return new Uint8Array(privateDecrypt({ key, padding: constants.RSA_PKCS1_PADDING }, Buffer.from(encryptedKey)));
+    const em = new Uint8Array(privateDecrypt({ key, padding: constants.RSA_NO_PADDING }, Buffer.from(encryptedKey)));
+    const { n, d } = parseRsaPrivatePkcs8(pkcs8);
+    return decodeEmImplicit(em, d, n, encryptedKey, expectedKeyLength);
   }
   if (!options.allowLegacyDecryption)
     throw new Error(
@@ -235,6 +240,24 @@ function emePkcs1DecryptImplicit(
 ): Uint8Array {
   const k = modulusByteLength(n);
   const em = bigIntToBytes(blindedModPow(bytesToBigInt(ciphertext), e, d, n), k);
+  return decodeEmImplicit(em, d, n, ciphertext, expectedLength);
+}
+
+/**
+ * The position-fixed, constant-select EME-PKCS1-v1.5 decode shared by the Node
+ * (raw OpenSSL RSA) and browser (BigInt) paths. `em` is the raw k-byte RSA
+ * decryption result. Returns exactly `expectedLength` bytes — the real message
+ * when padding is valid AND the message length matches, otherwise a deterministic
+ * synthetic key — with no return branch or secret-dependent index on the padding.
+ */
+function decodeEmImplicit(
+  em: Uint8Array,
+  d: bigint,
+  n: bigint,
+  ciphertext: Uint8Array,
+  expectedLength: number,
+): Uint8Array {
+  const k = em.length;
   const synthetic = syntheticKey(d, n, ciphertext, expectedLength);
 
   // The separator 0x00 must sit immediately before the trailing message.
