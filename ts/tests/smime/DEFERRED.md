@@ -1,54 +1,44 @@
-# S/MIME tests deferred to wave C2b
+# S/MIME tests deferred to wave C2b-2
 
-Wave **C2a** (this wave) ports the S/MIME *portable foundation* — enums, value
-types, exceptions, the abstract `SecureMimeContext` (+ its crypto/store seam),
-and the MIME wrappers. It binds **no crypto library**. The concrete pkijs /
-WebCrypto-backed `SecureMimeContext` and the X.509 certificate/private-key
-parsing + store arrive in **wave C2b** and implement the abstractions defined
-here.
+Wave **C2a** ported the S/MIME *portable foundation* (enums, value types,
+exceptions, the abstract `SecureMimeContext` + its crypto/store seam, and the
+MIME wrappers) with **no crypto library** bound.
 
-A test can only run in C2a if it needs neither a concrete crypto context nor a
-parsed X.509 certificate / private key. Everything below is blocked on C2b and
-carries the marker:
+Wave **C2b-1** (this wave) adds the **X.509 + key-import** crypto backend that
+implements those seams: the concrete `X509CertificateImpl`, RSA/ECDSA/DSA public
+keys + PKCS#8/PEM/PKCS#12 private-key import, the `Pkcs12Loader`, a name-based
+`X509CertificateChain` builder, and an in-memory `ISecureMimeStore`. This
+unblocks every test that only needs a *parsed certificate / private key*.
+
+Wave **C2b-2** (next) adds the concrete pkijs/WebCrypto `SecureMimeContext`
+(CMS `SignedData` sign/verify + `EnvelopedData` encrypt/decrypt + compress),
+which unblocks the remaining suites below. They carry the marker:
 
 ```
-// deferred(C2b): needs concrete SecureMimeContext
+// deferred(C2b-2): needs concrete SecureMimeContext (CMS sign/verify/encrypt/decrypt)
 ```
 
-## Ported now (C2a) — for reference
+## Ported now (C2a + C2b-1) — for reference
 
-| C# test file | TS file | Cases |
-|---|---|---|
-| `RsaSignaturePaddingTests` | `rsa-signature-padding.test.ts` | 3/3 |
-| `RsaEncryptionPaddingTests` | `rsa-encryption-padding.test.ts` | 4/5 (see below) |
-| `DigitalSignatureVerifyExceptionTests` | `digital-signature-verify-exception.test.ts` | 1/1 |
-| `PrivateKeyNotFoundExceptionTests` | `private-key-not-found-exception.test.ts` | 4/4 |
+| C# test file | TS file | Wave | Cases |
+|---|---|---|---|
+| `RsaSignaturePaddingTests` | `rsa-signature-padding.test.ts` | C2a | 3/3 |
+| `RsaEncryptionPaddingTests` | `rsa-encryption-padding.test.ts` | C2a + C2b-1 | 5/5 |
+| `DigitalSignatureVerifyExceptionTests` | `digital-signature-verify-exception.test.ts` | C2a | 1/1 |
+| `PrivateKeyNotFoundExceptionTests` | `private-key-not-found-exception.test.ts` | C2a | 4/4 |
+| `CmsSignerTests` | `cms-signer.test.ts` | C2b-1 | 5/5 (Windows X509Certificate2 overloads N/A) |
+| `CmsRecipientTests` | `cms-recipient.test.ts` | C2b-1 | 4/4 |
+| `SecureMimeDigitalCertificateTests` | `secure-mime-digital-certificate.test.ts` | C2b-1 | 2/2 (Windows* variants N/A) |
+| `X509CertificateChainTests` | `x509-certificate-chain.test.ts` | C2b-1 | 3/3 |
 
-## Deferred to C2b
+`RsaEncryptionPaddingTests.TestGetAlgorithmIdentifier` (the RSAES-OAEP ASN.1
+producer, `getAlgorithmIdentifier` / `getRsaesOaepParameters`) is now
+implemented and ported.
 
-### Partially deferred (rest of the file is ported)
+Non-1:1 backend smoke coverage (`backend-smoke.test.ts`) guards the chain
+builder + in-memory store, which replace MimeKit's excluded SQL cert-store.
 
-- `RsaEncryptionPaddingTests.TestGetAlgorithmIdentifier` — asserts on a
-  BouncyCastle DER `AlgorithmIdentifier` / `RsaesOaepParameters`. The
-  ASN.1-producing members (`GetAlgorithmIdentifier`, `GetRsaesOaepParameters`)
-  live with the crypto backend, so this one method is deferred while the other
-  four cases in the file run now.
-
-### Fully deferred — need a parsed X.509 certificate / private key
-
-These are value-type tests, but every case loads a real certificate (PEM/DER) or
-a PKCS#12 key store, which requires C2b's X.509 parser:
-
-- `CmsSignerTests` — loads `.pfx`/PEM signer certs + keys; checks key-usage /
-  `CanSign`.
-- `CmsRecipientTests` — loads `StartComCertificationAuthority.crt`; reads S/MIME
-  encryption capabilities.
-- `SecureMimeDigitalCertificateTests` — loads DSA/RSA/EC PEM certs; asserts
-  `PublicKeyAlgorithm` detection.
-- `X509CertificateChainTests` — loads real cert chains
-  (`SecureMimeTestsBase.RsaCertificate.Chain`, `LoadCertificate`).
-
-### Fully deferred — need a concrete `SecureMimeContext` (sign/verify/encrypt/decrypt)
+## Deferred to C2b-2 — need a concrete `SecureMimeContext` (sign/verify/encrypt/decrypt)
 
 - `SecureMimeTests` (+ the algorithm-specific `SecureMime*Tests` fixtures) —
   full sign/verify/encrypt/decrypt round-trips.
@@ -57,15 +47,21 @@ a PKCS#12 key store, which requires C2b's X.509 parser:
 - `CryptographyContextTests` — context registration + `Create(protocol)`.
 - `TemporarySecureMimeContextTests` — the in-memory concrete context.
 - `BouncyCastleSecureMimeContextTests` — the BouncyCastle concrete context.
+
+## Deferred / excluded — SQL backends & platform glue (not ported 1:1)
+
 - `DefaultSecureMimeContextTests`, `SqliteCertificateDatabaseTests`,
   `X509CertificateStoreTests`, `X509CertificateRecordTests` — the SQL/SQLite
-  cert-database backends (an *excluded* backend per CRYPTO-PLAN §2; will be
-  replaced by an injectable store, not ported 1:1).
+  cert-database backends (an *excluded* backend per CRYPTO-PLAN §2; replaced by
+  the injectable `ISecureMimeStore`, not ported 1:1).
 - `AsymmetricAlgorithmExtensionTests`, `CertificateExtensionTests` — BouncyCastle
-  key/cert conversion helpers (crypto backend).
+  ⇄ .NET key/cert conversion helpers (no TS analogue).
 - `LdapUriTests` — LDAP certificate retrieval (out of scope / separate adapter).
 
-### Test helpers (ported alongside the tests that use them, in C2b)
+## Test helpers
 
-`X509CertificateGenerator`, `X509CrlGenerator`, `UnknownCryptographyContext`,
-`SecureMimeTestsBase` — fixtures/oracles for the deferred suites above.
+`helpers.ts` (C2b-1) ports the parts of `SecureMimeTestsBase` / `SMimeCertificate`
+that the X.509/key suites need (loading the real `.pfx` / `.crt` fixtures). The
+signing/CRL generators (`X509CertificateGenerator`, `X509CrlGenerator`,
+`UnknownCryptographyContext`, the CMS-round-trip parts of `SecureMimeTestsBase`)
+are ported in C2b-2 alongside the suites that use them.

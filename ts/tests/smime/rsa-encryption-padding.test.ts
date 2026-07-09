@@ -1,15 +1,25 @@
 // Port of UnitTests/Cryptography/RsaEncryptionPaddingTests.cs.
 //
-// `TestGetAlgorithmIdentifier` is DEFERRED to wave C2b (it asserts on
-// BouncyCastle DER AlgorithmIdentifier / RsaesOaepParameters objects — ASN.1
-// that belongs with the concrete crypto backend). See tests/smime/DEFERRED.md.
-// The other four cases are value-only and run now.
+// `TestGetAlgorithmIdentifier` (the RSAES-OAEP ASN.1 producer) is implemented in
+// wave C2b-1 and ported here alongside the four value-only cases.
 
 import { describe, expect, test } from 'vitest';
-import { RsaEncryptionPadding } from '../../src/smime/rsa-encryption-padding.js';
+import {
+  RsaEncryptionPadding,
+  RsaesOaepParameters,
+  type AlgorithmIdentifier,
+} from '../../src/smime/rsa-encryption-padding.js';
 import { RsaEncryptionPaddingScheme } from '../../src/smime/rsa-encryption-padding-scheme.js';
 import { DigestAlgorithm, digestAlgorithmValues } from '../../src/smime/digest-algorithm.js';
 import { NotSupportedError } from '../../src/smime/errors.js';
+
+// OIDs asserted by the C# test (Pkcs/Oiw/Nist object identifiers).
+const OID_RSAES_OAEP = '1.2.840.113549.1.1.7';
+const OID_MGF1 = '1.2.840.113549.1.1.8';
+const OID_SHA1 = '1.3.14.3.2.26';
+const OID_SHA256 = '2.16.840.1.101.3.4.2.1';
+const OID_SHA384 = '2.16.840.1.101.3.4.2.2';
+const OID_SHA512 = '2.16.840.1.101.3.4.2.3';
 
 describe('RsaEncryptionPaddingTests', () => {
   test('TestEquality', () => {
@@ -63,5 +73,26 @@ describe('RsaEncryptionPaddingTests', () => {
     expect(RsaEncryptionPadding.OaepSha256.toString()).toBe('OaepSha256');
     expect(RsaEncryptionPadding.OaepSha384.toString()).toBe('OaepSha384');
     expect(RsaEncryptionPadding.OaepSha512.toString()).toBe('OaepSha512');
+  });
+
+  function assertOaepAlgorithmIdentifier(padding: RsaEncryptionPadding, hashOid: string): void {
+    const algorithm = padding.getAlgorithmIdentifier();
+    expect(algorithm).not.toBeNull();
+    expect(algorithm!.algorithm).toBe(OID_RSAES_OAEP);
+    const parameters = algorithm!.parameters as RsaesOaepParameters;
+    expect(parameters).toBeInstanceOf(RsaesOaepParameters);
+    expect(parameters.hashAlgorithm.algorithm).toBe(hashOid);
+    expect(parameters.maskGenAlgorithm.algorithm).toBe(OID_MGF1);
+    const mgf1hash = parameters.maskGenAlgorithm.parameters as AlgorithmIdentifier;
+    expect(mgf1hash.algorithm).toBe(hashOid);
+  }
+
+  test('TestGetAlgorithmIdentifier', () => {
+    expect(RsaEncryptionPadding.Pkcs1.getAlgorithmIdentifier()).toBeNull();
+
+    assertOaepAlgorithmIdentifier(RsaEncryptionPadding.OaepSha1, OID_SHA1);
+    assertOaepAlgorithmIdentifier(RsaEncryptionPadding.OaepSha256, OID_SHA256);
+    assertOaepAlgorithmIdentifier(RsaEncryptionPadding.OaepSha384, OID_SHA384);
+    assertOaepAlgorithmIdentifier(RsaEncryptionPadding.OaepSha512, OID_SHA512);
   });
 });
