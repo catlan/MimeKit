@@ -12,6 +12,23 @@
 export type NewLineFormat = 'unix' | 'dos';
 
 /**
+ * The runtime's native new-line format, mirroring C#'s `Environment.NewLine`:
+ * CRLF (`dos`) on Windows, LF (`unix`) on other operating systems. Runtimes with
+ * no host OS (browsers, edge, Workers) have no platform new-line, so they default
+ * to `dos` — the canonical MIME/SMTP wire format, since a MIME library's output is
+ * usually destined for transmission.
+ *
+ * @returns The platform-native new-line format.
+ */
+export function platformNewLineFormat(): NewLineFormat {
+  const proc = (globalThis as { process?: { platform?: string } }).process;
+  if (typeof proc?.platform === 'string') return proc.platform === 'win32' ? 'dos' : 'unix';
+  const deno = (globalThis as { Deno?: { build?: { os?: string } } }).Deno;
+  if (typeof deno?.build?.os === 'string') return deno.build.os === 'windows' ? 'dos' : 'unix';
+  return 'dos';
+}
+
+/**
  * Method used for encoding Content-Type and Content-Disposition parameter
  * values when a parameter's own encoding method is `default`.
  */
@@ -47,11 +64,13 @@ export class FormatOptions {
    */
   maxLineLength = DEFAULT_MAX_LINE_LENGTH;
   /**
-   * C# derives the default from Environment.NewLine (unix on macOS/Linux,
-   * dos on Windows). An isomorphic library has no host newline; the port
-   * fixes the default to 'unix', matching the oracle host (plan Q8).
+   * New-line sequence used when writing. Mirrors C#'s `Environment.NewLine`:
+   * LF on Unix/macOS, CRLF on Windows (via {@link platformNewLineFormat}); browsers
+   * and other OS-less runtimes default to CRLF (wire-canonical). On the Unix hosts
+   * this port is verified against, this resolves to LF — matching the byte-parity
+   * oracle. Callers who need deterministic output should set this explicitly.
    */
-  newLineFormat: NewLineFormat = 'unix';
+  newLineFormat: NewLineFormat = platformNewLineFormat();
   /**
    * Whether formatted messages should always end with a new-line sequence.
    */

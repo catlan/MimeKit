@@ -279,12 +279,14 @@ publish (Q2).
   NFKC + casefold with ASCII-landing rule; input-unchanged failure
   fallback) — validated 27/27 against oracle idn dumps and gated
   (gates/idn-inputs.list). mime-utils idnEncode/idnDecode now use it.
-- **Q8: default NewLineFormat.** C# FormatOptions defaults from
-  Environment.NewLine (platform-dependent). The TS port fixes the default
-  to 'unix' (matches the oracle host, so gates stay meaningful). For the
-  published library, is a fixed 'unix' default OK, or should it be 'dos'
-  (canonical wire format)? Either is a one-line change; gates would pin
-  explicit options either way.
+- ~~Q8: default NewLineFormat~~ **RESOLVED 2026-07-09**: replicate C#'s
+  `Environment.NewLine` faithfully via runtime detection
+  (`platformNewLineFormat()` in format-options.ts): LF on Unix/macOS, CRLF on
+  Windows (Node/Bun `process.platform`, Deno `Deno.build.os`); OS-less runtimes
+  (browser/edge) default to CRLF (wire-canonical). On the Unix hosts the port is
+  verified against, this resolves to LF — so the whole suite + byte-parity gates
+  pass unchanged, Windows users get native CRLF like C#, and no fixed-default
+  compromise was needed.
 - **Q1: npm package name?** Placeholder `mimekit-ts`. `mimekit` appears
   plausibly free on npm — want me to claim it? Scoped `@catlan/mimekit`?
 - **Q2: publish to npm at the end, or local-only until you review?**
