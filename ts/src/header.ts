@@ -2,6 +2,7 @@ import { ContentDisposition } from './content-disposition.js';
 import { ContentType } from './content-type.js';
 import { FormatOptions } from './format-options.js';
 import { HeaderId, toHeaderId, toHeaderName } from './header-id.js';
+import { encodeAuthenticationResultsValue } from './authentication-results.js';
 import { InternetAddressList } from './internet-address-list.js';
 import { ParserOptions } from './parser-options.js';
 import { err, ok, type Result } from './result.js';
@@ -9,7 +10,7 @@ import { isBlank, isFieldText, WHITESPACE } from './utils/byte-extensions.js';
 import { utf8, tryGetEncoding, type CharsetEncoding } from './utils/charset-utils.js';
 import { enumerateReferences } from './utils/mime-utils.js';
 import { skipComment, skipCommentsAndWhiteSpace, skipWhiteSpace } from './utils/parse-utils.js';
-import { decodeText, encodeComment, encodeText, foldUnstructuredHeader } from './utils/rfc2047.js';
+import { decodeText, encodeComment, encodeUnstructuredHeader, foldUnstructuredHeader } from './utils/rfc2047.js';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -239,8 +240,7 @@ export class Header {
       return encodeDispositionNotificationOptions(format, charset, this.field, value);
     case 'ArcAuthenticationResults':
     case 'AuthenticationResults':
-      // deferred(wave-8): AuthenticationResults parser/formatter is not in this TS tree yet.
-      return encodeUnstructuredHeader(this.options, format, charset, this.field, value);
+      return encodeAuthenticationResultsValue(format, this.field, value);
     case 'ArcMessageSignature':
     case 'ArcSeal':
     case 'DkimSignature':
@@ -361,11 +361,6 @@ function encodeAddressHeader(options: ParserOptions, format: FormatOptions, char
   if (!parsed.ok) return encodeUnstructuredHeader(options, format, charset, field, value);
   const state = { lineLength: field.length + 2 };
   return (format.international ? utf8 : ascii).encode(` ${parsed.value.encode(format, true, state)}${format.newLine}`);
-}
-
-function encodeUnstructuredHeader(_options: ParserOptions, format: FormatOptions, charset: CharsetEncoding, field: string, value: string): Uint8Array {
-  if (format.international) return utf8.encode(Header.fold(format, field, value));
-  return foldUnstructuredHeader(format, field, encodeText(format, charset, value));
 }
 
 function encodeContentDisposition(options: ParserOptions, format: FormatOptions, charset: CharsetEncoding, value: string): Uint8Array {
