@@ -114,6 +114,14 @@ const modes = {
     console.log(`mbox: ${files.length} files`);
   },
 
+  witnesses() {
+    const dir = join(tsRoot, 'gates', 'witnesses');
+    const files = listFiles(dir, (n) => n.endsWith('.eml'));
+    oracle('parse', '--base', dir, '--out', join(outRoot, 'tree', 'witnesses'), ...files);
+    oracle('roundtrip', '--base', dir, '--out', join(outRoot, 'tree', 'witnesses'), ...files);
+    console.log(`witnesses: ${files.length} files`);
+  },
+
   idn() {
     oracle('idn', join(tsRoot, 'gates', 'idn-inputs.list'), join(outRoot, 'idn.json'));
     console.log('idn: done');

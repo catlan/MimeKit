@@ -155,7 +155,9 @@ function gateGroup(subdir: string, format: MimeFormat): void {
     test.each(files)('%s', (jsonFile) => {
       const oracle = JSON.parse(readFileSync(join(dir, jsonFile), 'utf8')) as OracleDoc;
       const corpusRel = `${subdir}/${jsonFile.replace(/\.parse\.json$/, '')}`;
-      const bytes = corpusFile(corpusRel);
+      const bytes = corpusRel.startsWith('witnesses/')
+        ? new Uint8Array(readFileSync(join(treeDir, '..', '..', '..', 'witnesses', corpusRel.slice('witnesses/'.length))))
+        : corpusFile(corpusRel);
       const actual = parseAll(bytes, format);
       expect(actual).toEqual(oracle.messages);
     });
@@ -164,4 +166,5 @@ function gateGroup(subdir: string, format: MimeFormat): void {
 
 gateGroup('messages', 'entity');
 gateGroup('partial', 'entity');
+gateGroup('witnesses', 'entity');
 gateGroup('mbox', 'mbox');

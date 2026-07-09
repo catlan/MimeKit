@@ -42,7 +42,10 @@ function gateGroup(subdir: string, format: MimeFormat): void {
     test.each(files)('%s', (rtFile) => {
       const expected = new Uint8Array(readFileSync(join(dir, rtFile)));
       const corpusRel = `${subdir}/${rtFile.replace(/\.roundtrip$/, '')}`;
-      const actual = roundtrip(corpusFile(corpusRel), format);
+      const source = corpusRel.startsWith('witnesses/')
+        ? new Uint8Array(readFileSync(join(treeDir, '..', '..', '..', 'witnesses', corpusRel.slice('witnesses/'.length))))
+        : corpusFile(corpusRel);
+      const actual = roundtrip(source, format);
       expectParity('roundtrip', corpusRel, actual, expected);
     });
   });
@@ -50,4 +53,5 @@ function gateGroup(subdir: string, format: MimeFormat): void {
 
 gateGroup('messages', 'entity');
 gateGroup('partial', 'entity');
+gateGroup('witnesses', 'entity');
 gateGroup('mbox', 'mbox');
