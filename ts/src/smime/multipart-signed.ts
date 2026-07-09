@@ -126,7 +126,11 @@ export class MultipartSigned extends Multipart {
     if (maybeEntity !== undefined) {
       // (ctx, mailbox, digestAlgo, entity)
       const mailbox = signer as MailboxAddress;
-      const digestAlgo = entityOrDigest as DigestAlgorithm;
+      const requested = entityOrDigest as DigestAlgorithm;
+      // The backend may upgrade a digest it cannot sign with (e.g. OpenPGP.js and SHA-1);
+      // use the effective digest for both the signature and the micalg so they agree.
+      const resolve = (ctx as CryptographyContext).resolveSigningDigest;
+      const digestAlgo = resolve ? resolve.call(ctx, requested) : requested;
       const entity = maybeEntity;
       if (entity == null) throw new TypeError('entity cannot be null or undefined');
 

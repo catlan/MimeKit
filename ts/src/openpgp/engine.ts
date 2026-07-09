@@ -22,6 +22,8 @@ export interface OpenPgpVerification {
   readonly verified: boolean;
   /** The signature creation time, when available. */
   readonly created: Date | null;
+  /** The digest algorithm the signature was made with, when known. */
+  readonly digestAlgorithm: DigestAlgorithm;
 }
 
 /** The result of decrypting (and optionally verifying) an OpenPGP message. */
@@ -51,7 +53,7 @@ export interface OpenPgpEngine {
   encrypt(
     data: Uint8Array,
     encryptionKeys: OpenPgpPublicKey[],
-    options?: { cipher?: EncryptionAlgorithm; signingKeys?: OpenPgpPrivateKey[] },
+    options?: { cipher?: EncryptionAlgorithm; signingKeys?: OpenPgpPrivateKey[]; digestAlgo?: DigestAlgorithm },
   ): Promise<Uint8Array>;
   /** Decrypt an ASCII-armored message and, if verification keys are supplied, verify its signatures. */
   decrypt(
@@ -100,6 +102,20 @@ function cipherName(cipher: EncryptionAlgorithm): 'tripledes' | 'cast5' | 'aes12
     case EncryptionAlgorithm.Aes256: return 'aes256';
     default:
       throw new RangeError(`encryption algorithm ${EncryptionAlgorithm[cipher] ?? cipher} is not supported by OpenPGP`);
+  }
+}
+
+/** Map an OpenPGP.js numeric hash id back to a {@link DigestAlgorithm}. */
+function digestFromHashId(hashId: number | null | undefined): DigestAlgorithm {
+  switch (hashId) {
+    case 1: return DigestAlgorithm.MD5;
+    case 2: return DigestAlgorithm.Sha1;
+    case 3: return DigestAlgorithm.RipeMD160;
+    case 8: return DigestAlgorithm.Sha256;
+    case 9: return DigestAlgorithm.Sha384;
+    case 10: return DigestAlgorithm.Sha512;
+    case 11: return DigestAlgorithm.Sha224;
+    default: return DigestAlgorithm.None;
   }
 }
 
@@ -161,29 +177,36 @@ export class OpenPgpJsEngine implements OpenPgpEngine {
     const signature = await openpgp.readSignature({ armoredSignature: new TextDecoder().decode(armoredSignature) });
     const result = await openpgp.verify({ message, signature, verificationKeys });
     return Promise.all(
-      result.signatures.map(async (s) => ({
-        keyId: s.keyID.toHex(),
-        verified: await resolveVerified(s.verified),
-        created: (await s.signature).packets[0]?.created ?? null,
-      })),
+      result.signatures.map(async (s) => {
+        const packet = (await s.signature).packets[0];
+        return {
+          keyId: s.keyID.toHex(),
+          verified: await resolveVerified(s.verified),
+          created: packet?.created ?? null,
+          digestAlgorithm: digestFromHashId(packet?.hashAlgorithm),
+        };
+      }),
     );
   }
 
   async encrypt(
     data: Uint8Array,
     encryptionKeys: OpenPgpPublicKey[],
-    options: { cipher?: EncryptionAlgorithm; signingKeys?: OpenPgpPrivateKey[] } = {},
+    options: { cipher?: EncryptionAlgorithm; signingKeys?: OpenPgpPrivateKey[]; digestAlgo?: DigestAlgorithm } = {},
   ): Promise<Uint8Array> {
     const openpgp = await loadOpenPgp();
     const message = await openpgp.createMessage({ binary: data });
+    const config: Record<string, number> = {};
+    if (options.cipher != null)
+      config['preferredSymmetricAlgorithm'] = (openpgp.enums.symmetric as unknown as Record<string, number>)[cipherName(options.cipher)]!;
+    if (options.digestAlgo != null && options.signingKeys && options.signingKeys.length > 0)
+      config['preferredHashAlgorithm'] = (openpgp.enums.hash as unknown as Record<string, number>)[hashName(options.digestAlgo)]!;
     const armored = await openpgp.encrypt({
       message,
       encryptionKeys,
       ...(options.signingKeys && options.signingKeys.length > 0 ? { signingKeys: options.signingKeys } : {}),
       format: 'armored',
-      ...(options.cipher != null
-        ? { config: { preferredSymmetricAlgorithm: (openpgp.enums.symmetric as unknown as Record<string, number>)[cipherName(options.cipher)] } }
-        : {}),
+      ...(Object.keys(config).length > 0 ? { config } : {}),
     });
     return new TextEncoder().encode(armored);
   }
@@ -203,11 +226,15 @@ export class OpenPgpJsEngine implements OpenPgpEngine {
     });
     const signatures = verificationKeys
       ? await Promise.all(
-          result.signatures.map(async (s) => ({
-            keyId: s.keyID.toHex(),
-            verified: await resolveVerified(s.verified),
-            created: (await s.signature).packets[0]?.created ?? null,
-          })),
+          result.signatures.map(async (s) => {
+            const packet = (await s.signature).packets[0];
+            return {
+              keyId: s.keyID.toHex(),
+              verified: await resolveVerified(s.verified),
+              created: packet?.created ?? null,
+              digestAlgorithm: digestFromHashId(packet?.hashAlgorithm),
+            };
+          }),
         )
       : [];
     return { data: result.data as Uint8Array, signatures };

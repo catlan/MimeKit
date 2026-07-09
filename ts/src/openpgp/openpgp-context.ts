@@ -19,6 +19,7 @@ import {
   type OpenPgpEngine,
   type OpenPgpPublicKey,
   type OpenPgpPrivateKey,
+  type OpenPgpVerification,
 } from './engine.js';
 import { OpenPgpDigitalCertificate, parseUserId } from './openpgp-digital-certificate.js';
 import { OpenPgpDigitalSignature } from './openpgp-digital-signature.js';
@@ -91,6 +92,22 @@ export class OpenPgpContext {
   }
 
   /**
+   * Resolve the digest actually used for signing. OpenPGP.js (v6) refuses to sign with
+   * legacy digests (MD5/SHA-1/RIPEMD-160), so those are upgraded to SHA-256 — including
+   * the SHA-1 default inherited from the message-level API.
+   */
+  resolveSigningDigest(digestAlgo: DigestAlgorithm): DigestAlgorithm {
+    switch (digestAlgo) {
+      case DigestAlgorithm.MD5:
+      case DigestAlgorithm.Sha1:
+      case DigestAlgorithm.RipeMD160:
+        return DigestAlgorithm.Sha256;
+      default:
+        return digestAlgo;
+    }
+  }
+
+  /**
    * Whether this context supports the given MIME protocol.
    *
    * @param protocol The protocol content-type (e.g. `application/pgp-signature`).
@@ -112,21 +129,25 @@ export class OpenPgpContext {
   async import(input: string | Uint8Array): Promise<void> {
     if (input == null) throw new TypeError('input cannot be null or undefined');
     const text = typeof input === 'string' ? input : null;
+    let imported = 0;
+    let lastError: unknown;
     // Try secret keys first (a secret keyring also yields the public halves).
     if (text == null || text.includes('PRIVATE KEY')) {
       try {
-        for (const key of await this.engine.readPrivateKeys(input)) this.addSecretKey(key);
-      } catch {
-        /* not a private keyring */
+        for (const key of await this.engine.readPrivateKeys(input)) { this.addSecretKey(key); imported++; }
+      } catch (e) {
+        lastError = e;
       }
     }
     if (text == null || text.includes('PUBLIC KEY')) {
       try {
-        for (const key of await this.engine.readPublicKeys(input)) this.addPublicKey(key);
-      } catch {
-        /* not a public keyring */
+        for (const key of await this.engine.readPublicKeys(input)) { this.addPublicKey(key); imported++; }
+      } catch (e) {
+        lastError = e;
       }
     }
+    if (imported === 0)
+      throw new Error('No OpenPGP keys could be imported from the supplied data.', lastError != null ? { cause: lastError } : undefined);
   }
 
   /** Add a public key to the keyring. */
@@ -186,7 +207,7 @@ export class OpenPgpContext {
     content: Uint8Array,
   ): Promise<Uint8Array> {
     const key = await this.resolveSigner(signer);
-    return this.engine.signDetached(content, [key], digestAlgo);
+    return this.engine.signDetached(content, [key], this.resolveSigningDigest(digestAlgo));
   }
 
   /**
@@ -216,12 +237,10 @@ export class OpenPgpContext {
     return new DigitalSignatureCollection(await this.verify(content, signatureData));
   }
 
-  private async toDigitalSignature(
-    verification: { keyId: string; verified: boolean; created: Date | null },
-  ): Promise<OpenPgpDigitalSignature> {
+  private async toDigitalSignature(verification: OpenPgpVerification): Promise<OpenPgpDigitalSignature> {
     const key = this.publicKeys.find((k) => k.getKeyID().toHex() === verification.keyId);
     const cert = key != null ? await OpenPgpDigitalCertificate.create(key) : null;
-    return new OpenPgpDigitalSignature(verification, cert);
+    return new OpenPgpDigitalSignature(verification, cert, verification.digestAlgorithm);
   }
 
   /** Produce an ASCII-armored encrypted message to the given recipients. */
@@ -242,17 +261,23 @@ export class OpenPgpContext {
     content: Uint8Array,
     cipher?: EncryptionAlgorithm,
   ): Promise<Uint8Array> {
-    void digestAlgo;
     const signingKey = await this.resolveSigner(signer);
     const keys = await this.resolveRecipients(recipients);
-    return this.engine.encrypt(content, keys, { signingKeys: [signingKey], ...(cipher != null ? { cipher } : {}) });
+    return this.engine.encrypt(content, keys, {
+      signingKeys: [signingKey],
+      digestAlgo: this.resolveSigningDigest(digestAlgo),
+      ...(cipher != null ? { cipher } : {}),
+    });
   }
 
   /** Decrypt an ASCII-armored message, verifying any embedded signatures. */
   async decrypt(
     encryptedData: Uint8Array,
   ): Promise<{ data: Uint8Array; signatures: OpenPgpDigitalSignature[] }> {
-    const unlocked = await Promise.all(this.secretKeys.map((k) => this.unlock(k)));
+    // Best-effort unlock: a wrong/absent passphrase for one unrelated key must not fail the
+    // whole decrypt as long as the key that actually matches the session key is usable.
+    const settled = await Promise.allSettled(this.secretKeys.map((k) => this.unlock(k)));
+    const unlocked = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
     const result = await this.engine.decrypt(encryptedData, unlocked, this.publicKeys);
     const signatures = await Promise.all(result.signatures.map((v) => this.toDigitalSignature(v)));
     return { data: result.data, signatures };

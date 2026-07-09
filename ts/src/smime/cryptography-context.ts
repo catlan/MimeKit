@@ -21,6 +21,12 @@ export interface CryptographyContext {
   supports(protocol: string): boolean;
   /** The `micalg` parameter name for the digest algorithm. */
   getDigestAlgorithmName(micalg: DigestAlgorithm): string;
+  /**
+   * Resolve the digest algorithm actually used for signing. A backend may upgrade a
+   * requested digest it cannot use (e.g. OpenPGP.js refuses legacy SHA-1). Defaults to
+   * the requested digest when not implemented.
+   */
+  resolveSigningDigest?(digestAlgo: DigestAlgorithm): DigestAlgorithm;
   /** Sign `content` with the signer mailbox, returning the detached signature MIME part. */
   signWithMailbox(signer: MailboxAddress, digestAlgo: DigestAlgorithm, content: Uint8Array): Promise<MimePart>;
   /** Verify a detached signature over `content`. */
