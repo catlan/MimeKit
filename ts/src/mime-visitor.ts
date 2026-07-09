@@ -12,6 +12,7 @@ import { MultipartReport } from './multipart-report.js';
 import { Multipart } from './multipart.js';
 import { TextPart } from './text-part.js';
 import { TextRfc822Headers } from './text-rfc822-headers.js';
+import { TnefPart } from './tnef/tnef-part.js';
 
 export class MimeVisitor {
   visit(entity: MimeEntity): void {
@@ -26,6 +27,7 @@ export class MimeVisitor {
     if (entity instanceof MultipartRelated) return this.visitMultipartRelated(entity);
     if (entity instanceof MultipartReport) return this.visitMultipartReport(entity);
     if (entity instanceof Multipart) return this.visitMultipart(entity);
+    if (entity instanceof TnefPart) return this.visitTnefPart(entity);
     if (entity instanceof TextPart) return this.visitTextPart(entity);
     if (entity instanceof MimePart) return this.visitMimePart(entity);
     this.visitMimeEntity(entity);
@@ -34,6 +36,7 @@ export class MimeVisitor {
   visitMimeEntity(_entity: MimeEntity): void {}
   visitMimePart(entity: MimePart): void { this.visitMimeEntity(entity); }
   visitTextPart(entity: TextPart): void { this.visitMimePart(entity); }
+  visitTnefPart(entity: TnefPart): void { this.visitMimePart(entity); }
   visitChildren(multipart: Multipart): void {
     for (const child of multipart)
       this.visit(child);
