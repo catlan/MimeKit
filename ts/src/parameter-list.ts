@@ -29,6 +29,11 @@ export class ParameterList implements Iterable<Parameter> {
     return this.parameters.length;
   }
 
+  /** C#: IList.IsReadOnly (always false). */
+  get isReadOnly(): boolean {
+    return false;
+  }
+
   get length(): number {
     return this.parameters.length;
   }
@@ -445,7 +450,9 @@ function decodeRfc2231(currentEncoding: CharsetEncoding | null, hex: HexDecoder,
       encoding = tryGetEncoding(charset.value.charset) ?? getEncodingForCodePage(28591)!;
       declaredEncoding = encoding;
     } else {
+      // C# ParameterList.cs:954-958: missing charset'' prefix declares latin1
       encoding = getEncodingForCodePage(28591)!;
+      declaredEncoding = encoding;
     }
   }
 
@@ -483,7 +490,9 @@ function decodeRfc2231Continuation(options: ParserOptions, hex: HexDecoder, part
           encoding = tryGetEncoding(charset.value.charset) ?? getEncodingForCodePage(28591)!;
           declaredEncoding = encoding;
         } else {
+          // C# ParameterList.cs:954-958: missing charset'' prefix declares latin1
           encoding = getEncodingForCodePage(28591)!;
+          declaredEncoding = encoding;
         }
       }
 
