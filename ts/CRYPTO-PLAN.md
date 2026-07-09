@@ -160,6 +160,42 @@ so callable cross-origin from any page). Never hard-wire DoH into the verifier.
 
 ---
 
+## 3b. Packaging — "Lite" vs "full" (the MimeKit / MimeKitLite equivalent)
+
+C# ships two DLLs from one source tree (`MimeKitLite.csproj` does
+`<Compile Remove="Cryptography\**"/>`) because .NET can't tree-shake IL and
+BouncyCastle would otherwise be a forced transitive dep. JS needs neither
+trick: **the completed core IS the Lite build** (MIT, `punycode`-only), and
+subpath exports + tree-shaking keep it that way as crypto is added.
+
+**Model: one package, subpath exports, crypto deps as optional peers.**
+
+```jsonc
+"exports": {
+  ".":         "./dist/index.js",          // core = Lite: punycode only, zero crypto
+  "./dkim":    "./dist/dkim/index.js",      // → @noble (optional peer)
+  "./smime":   "./dist/smime/index.js",     // → pkijs, @noble (optional peers)
+  "./openpgp": "./dist/openpgp/index.js"     // → openpgp (optional peer, LGPL)
+},
+"peerDependenciesMeta": { "pkijs": {"optional":true}, "openpgp": {"optional":true}, ... }
+```
+
+- Only the crypto subpaths reach a crypto dep, and they `import()` it
+  dynamically. `npm i mimekit-ts` installs core + punycode only — **zero crypto
+  at install AND bundle time**, the truest MimeKitLite parity. Consumers opt in
+  per feature (`npm i pkijs` for `/smime`), with a clear runtime error if a peer
+  is absent.
+- Better than the two-DLL split: one package, one version, automatic
+  tree-shaking; a core-only consumer ships no crypto even if the deps are
+  installed. This is the same mechanism §3's OpenPGP-LGPL isolation needs,
+  generalized to all three subsystems.
+- **Optional literal two-name parity:** if a discoverable `-lite`/`-full`
+  naming is wanted, keep `mimekit-ts` = core/Lite and add a thin
+  `mimekit-ts-crypto` meta-package (hard-deps core + pkijs + @noble, re-exports,
+  `openpgp` optional) for batteries-included DX. Same source tree; costs one
+  extra publish. Recommend shipping the single-package model first; add the
+  meta-package only if naming matters.
+
 ## 4. Architecture — the injectable seam
 
 ```
