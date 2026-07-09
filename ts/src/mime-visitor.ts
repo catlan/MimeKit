@@ -93,4 +93,17 @@ export class MimeVisitor {
   visitMessageFeedbackReport(entity: MessageFeedbackReport): void { this.visitMimePart(entity); }
   /** Visits a `text/rfc822-headers` MIME entity. */
   visitTextRfc822Headers(entity: TextRfc822Headers): void { this.visitMessagePart(entity); }
+
+  /**
+   * Visits an `application/pkcs7-mime` MIME entity.
+   *
+   * The concrete `ApplicationPkcs7Mime` type lives in the optional S/MIME
+   * subsystem (crypto-free core), so this dispatch is typed structurally and
+   * degrades to {@link visitMimePart}.
+   */
+  visitApplicationPkcs7Mime(entity: MimePart): void { this.visitMimePart(entity); }
+  /** Visits an `application/pkcs7-signature` MIME entity. */
+  visitApplicationPkcs7Signature(entity: MimePart): void { this.visitMimePart(entity); }
+  /** Visits a `multipart/signed` MIME entity. */
+  visitMultipartSigned(entity: Multipart): void { this.visitMultipart(entity); }
 }
