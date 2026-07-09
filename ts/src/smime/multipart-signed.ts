@@ -20,6 +20,7 @@ import type { MimeVisitor } from '../mime-visitor.js';
 import type { DigestAlgorithm } from './digest-algorithm.js';
 import type { CmsSigner } from './cms-signer.js';
 import type { DigitalSignatureCollection } from './digital-signature-collection.js';
+import type { CryptographyContext } from './cryptography-context.js';
 import { SecureMimeContext, createSecureMimeContext } from './secure-mime-context.js';
 import { FormatException, NotSupportedError } from './errors.js';
 
@@ -49,7 +50,7 @@ export class MultipartSigned extends Multipart {
     visitor.visitMultipartSigned(this);
   }
 
-  private static prepare(ctx: SecureMimeContext, entity: MimeEntity, memory: MemoryStream): MimeEntity {
+  private static prepare(ctx: CryptographyContext, entity: MimeEntity, memory: MemoryStream): MimeEntity {
     if (ctx.prepareBeforeSigning)
       entity.prepare('7bit', 78);
 
@@ -77,7 +78,7 @@ export class MultipartSigned extends Multipart {
   }
 
   private static build(
-    ctx: SecureMimeContext,
+    ctx: CryptographyContext,
     digestAlgo: DigestAlgorithm,
     entity: MimeEntity,
     signature: MimeEntity,
@@ -108,13 +109,13 @@ export class MultipartSigned extends Multipart {
    * certificate store).
    */
   static async create(
-    ctx: SecureMimeContext,
+    ctx: CryptographyContext,
     signer: MailboxAddress,
     digestAlgo: DigestAlgorithm,
     entity: MimeEntity,
   ): Promise<MultipartSigned>;
   static async create(
-    ctx: SecureMimeContext,
+    ctx: SecureMimeContext | CryptographyContext,
     signer: CmsSigner | MailboxAddress,
     entityOrDigest: MimeEntity | DigestAlgorithm,
     maybeEntity?: MimeEntity,
@@ -136,16 +137,17 @@ export class MultipartSigned extends Multipart {
       return MultipartSigned.build(ctx, digestAlgo, prepared, signature);
     }
 
-    // (ctx, cmsSigner, entity)
+    // (ctx, cmsSigner, entity) — the CmsSigner path is S/MIME-specific.
     const cmsSigner = signer as CmsSigner;
     const entity = entityOrDigest as MimeEntity;
     if (entity == null) throw new TypeError('entity cannot be null or undefined');
+    const smimeCtx = ctx as SecureMimeContext;
 
     const memory = new MemoryStream();
-    const prepared = MultipartSigned.prepare(ctx, entity, memory);
+    const prepared = MultipartSigned.prepare(smimeCtx, entity, memory);
     memory.position = 0;
-    const signature = await ctx.sign(cmsSigner, memory.toArray());
-    return MultipartSigned.build(ctx, cmsSigner.digestAlgorithm, prepared, signature);
+    const signature = await smimeCtx.sign(cmsSigner, memory.toArray());
+    return MultipartSigned.build(smimeCtx, cmsSigner.digestAlgorithm, prepared, signature);
   }
 
   /**
@@ -175,10 +177,10 @@ export class MultipartSigned extends Multipart {
    * @throws {FormatException} The multipart is malformed.
    * @throws {NotSupportedError} The context does not support the protocol.
    */
-  async verify(ctx: SecureMimeContext): Promise<DigitalSignatureCollection>;
+  async verify(ctx: CryptographyContext): Promise<DigitalSignatureCollection>;
   /** Verify using the default S/MIME context (requires a registered backend). */
   async verify(): Promise<DigitalSignatureCollection>;
-  async verify(ctx?: SecureMimeContext): Promise<DigitalSignatureCollection> {
+  async verify(ctx?: CryptographyContext): Promise<DigitalSignatureCollection> {
     this.checkDisposed('MultipartSigned');
 
     if (ctx === undefined) {
