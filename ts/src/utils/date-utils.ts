@@ -207,7 +207,8 @@ function tryGetYear(token: DateToken, text: Uint8Array): number | null {
   let year = tryParseInt32(text, state, token.start + token.length);
   if (year === null) return null;
   if (year < 100) year += year < 70 ? 2000 : 1900;
-  return year >= 1969 ? year : null;
+  // C# rejects years DateTimeOffset can't represent (> 9999) — final-review #3
+  return year >= 1969 && year <= 9999 ? year : null;
 }
 
 function tryGetTimeOfDay(token: DateToken, text: Uint8Array): [number, number, number] | null {
