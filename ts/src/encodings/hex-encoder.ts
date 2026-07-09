@@ -16,17 +16,45 @@ function isAttr(c: number): boolean {
   return c > 32 && c < 127 && !tokenSpecials.has(c) && !attrSpecials.has(c);
 }
 
+/**
+ * Incrementally encodes content using URI-style hex encoding.
+ *
+ * This is mostly meant for encoding parameter values using the rules specified
+ * by RFC 2184 and RFC 2231.
+ */
 export class HexEncoder implements MimeEncoder {
+  /** The encoding that this encoder supports. */
   readonly encoding: ContentEncoding = 'default';
 
+  /**
+   * Creates a new hex encoder with exactly the same state as this encoder.
+   *
+   * @returns A new encoder with identical state.
+   */
   clone(): MimeEncoder {
     return new HexEncoder();
   }
 
+  /**
+   * Estimates the number of bytes needed to encode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     return inputLength * 3;
   }
 
+  /**
+   * Encodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   encode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -46,10 +74,20 @@ export class HexEncoder implements MimeEncoder {
     return out;
   }
 
+  /**
+   * Encodes the specified input into the output buffer and flushes internal state.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   */
   flush(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     return this.encode(input, startIndex, length, output);
   }
 
+  /** Resets the state of the encoder. */
   reset(): void {
   }
 }

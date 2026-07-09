@@ -26,15 +26,28 @@ const base64Rank = new Uint8Array([
   255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 ]);
 
+/**
+ * Incrementally decodes content encoded with the base64 encoding.
+ *
+ * Base64 is often used in MIME to encode binary content such as images and
+ * other multimedia so that data remains intact over 7-bit transports such as
+ * SMTP.
+ */
 export class Base64Decoder implements MimeDecoder {
   private previous = 0;
   private saved = 0;
   private bytes = 0;
 
+  /** The encoding that this decoder supports. */
   get encoding(): ContentEncoding {
     return 'base64';
   }
 
+  /**
+   * Creates a new base64 decoder with exactly the same state as this decoder.
+   *
+   * @returns A new decoder with identical state.
+   */
   clone(): MimeDecoder {
     const clone = new Base64Decoder();
     clone.previous = this.previous;
@@ -43,15 +56,35 @@ export class Base64Decoder implements MimeDecoder {
     return clone;
   }
 
+  /**
+   * Estimates the number of bytes needed to decode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     return (Math.trunc(inputLength / 4) * 3) + 3;
   }
 
+  /**
+   * Decodes the specified input into the output buffer.
+   *
+   * The output buffer should be large enough to hold all decoded input. Use
+   * {@link estimateOutputLength} to estimate the required size.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   decode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
     return this.decodeInternal(input, startIndex, startIndex + length, output);
   }
 
+  /** Resets the state of the decoder. */
   reset(): void {
     this.previous = 0;
     this.saved = 0;

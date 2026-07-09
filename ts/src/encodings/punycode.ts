@@ -19,8 +19,27 @@
  */
 import punycode from 'punycode/punycode.js';
 
+/** Encodes and decodes international domain names. */
 export interface IPunycode {
+  /**
+   * Encodes a Unicode domain name, converting it to an ASCII-safe representation.
+   *
+   * @param unicode - The Unicode domain name.
+   * @param index - The zero-based offset at which to start conversion.
+   * @param count - The number of characters to convert.
+   * @returns The ASCII-encoded domain name.
+   * @throws {RangeError} `index` or `count` is outside the valid range.
+   */
   encode(unicode: string, index?: number, count?: number): string;
+  /**
+   * Decodes a domain name, converting it to Unicode.
+   *
+   * @param ascii - The ASCII-encoded domain name.
+   * @param index - The zero-based offset at which to start conversion.
+   * @param count - The number of characters to convert.
+   * @returns The Unicode domain name.
+   * @throws {RangeError} `index` or `count` is outside the valid range.
+   */
   decode(ascii: string, index?: number, count?: number): string;
 }
 
@@ -62,7 +81,17 @@ function toUnicodeStrict(ascii: string): string {
   return decoded;
 }
 
+/** Encodes and decodes international domain names. */
 export class Punycode implements IPunycode {
+  /**
+   * Encodes a Unicode domain name, converting it to an ASCII-safe representation.
+   *
+   * @param unicode - The Unicode domain name.
+   * @param index - The zero-based offset at which to start conversion.
+   * @param count - The number of characters to convert.
+   * @returns The ASCII-encoded domain name.
+   * @throws {RangeError} `index` or `count` is outside the valid range.
+   */
   encode(unicode: string, index = 0, count = unicode.length - index): string {
     if (!Number.isInteger(index) || index < 0 || index > unicode.length)
       throw new RangeError(`index ${index} out of range [0, ${unicode.length}]`);
@@ -81,6 +110,15 @@ export class Punycode implements IPunycode {
     }
   }
 
+  /**
+   * Decodes a domain name, converting it to Unicode.
+   *
+   * @param ascii - The ASCII-encoded domain name.
+   * @param index - The zero-based offset at which to start conversion.
+   * @param count - The number of characters to convert.
+   * @returns The Unicode domain name.
+   * @throws {RangeError} `index` or `count` is outside the valid range.
+   */
   decode(ascii: string, index = 0, count = ascii.length - index): string {
     if (!Number.isInteger(index) || index < 0 || index > ascii.length)
       throw new RangeError(`index ${index} out of range [0, ${ascii.length}]`);

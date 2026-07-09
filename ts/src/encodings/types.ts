@@ -12,52 +12,109 @@
  */
 import type { ContentEncoding } from '../content-encoding.js';
 
+/** An interface for incrementally encoding content. */
 export interface MimeEncoder {
   /** The encoding that the encoder supports. */
   readonly encoding: ContentEncoding;
 
-  /** Create a new encoder with exactly the same state as this one. */
+  /**
+   * Creates a new encoder with exactly the same state as this encoder.
+   *
+   * @returns A new encoder with identical state.
+   */
   clone(): MimeEncoder;
 
-  /** Estimate the output byte count for `inputLength` input bytes. */
+  /**
+   * Estimates the number of bytes needed to encode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number;
 
   /**
-   * Encode `length` bytes of `input` starting at `startIndex` into `output`.
-   * Returns the number of bytes written. `output` must be at least
-   * `estimateOutputLength(length)` bytes.
+   * Encodes the specified input into the output buffer.
+   *
+   * The output buffer should be large enough to hold all encoded input. Use
+   * {@link estimateOutputLength} to estimate the required size.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
    */
   encode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number;
 
-  /** Like `encode`, but also flushes any internal buffer state. */
+  /**
+   * Encodes the specified input into the output buffer and flushes internal state.
+   *
+   * The output buffer should be large enough to hold all encoded input. Use
+   * {@link estimateOutputLength} to estimate the required size.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   flush(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number;
 
-  /** Reset the encoder to its initial state. */
+  /** Resets the state of the encoder. */
   reset(): void;
 }
 
+/** An interface for incrementally decoding content. */
 export interface MimeDecoder {
   /** The encoding that the decoder supports. */
   readonly encoding: ContentEncoding;
 
-  /** Create a new decoder with exactly the same state as this one. */
+  /**
+   * Creates a new decoder with exactly the same state as this decoder.
+   *
+   * @returns A new decoder with identical state.
+   */
   clone(): MimeDecoder;
 
-  /** Estimate the output byte count for `inputLength` input bytes. */
+  /**
+   * Estimates the number of bytes needed to decode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number;
 
   /**
-   * Decode `length` bytes of `input` starting at `startIndex` into `output`.
-   * Returns the number of bytes written. `output` must be at least
-   * `estimateOutputLength(length)` bytes.
+   * Decodes the specified input into the output buffer.
+   *
+   * The output buffer should be large enough to hold all decoded input. Use
+   * {@link estimateOutputLength} to estimate the required size.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
    */
   decode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number;
 
-  /** Reset the decoder to its initial state. */
+  /** Resets the state of the decoder. */
   reset(): void;
 }
 
-/** Shared argument validation for codec implementations (C#: ValidateArguments). */
+/**
+ * Validates the shared buffer and range contract for codec implementations.
+ *
+ * @param input - The input buffer.
+ * @param startIndex - The starting index of the input buffer.
+ * @param length - The length of the input range.
+ * @param output - The output buffer.
+ * @param estimatedOutputLength - The required output buffer length.
+ * @throws {RangeError} The input range is invalid or the output buffer is too small.
+ */
 export function validateCodecArguments(
   input: Uint8Array,
   startIndex: number,

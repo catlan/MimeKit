@@ -28,7 +28,14 @@ const enum YDecoderState {
   Ended,
 }
 
+/**
+ * Incrementally decodes content encoded with yEnc.
+ *
+ * yEnc is most commonly used with Usenet and is a binary encoding that includes
+ * a 32-bit cyclic redundancy check. For more information, see www.yenc.org.
+ */
 export class YDecoder implements MimeDecoder {
+  /** The encoding that this decoder supports. */
   readonly encoding: ContentEncoding = 'default';
   private state: YDecoderState;
   private escaped = false;
@@ -37,6 +44,11 @@ export class YDecoder implements MimeDecoder {
   private crc: Crc32;
   private readonly initial: YDecoderState;
 
+  /**
+   * Creates a new yEnc decoder.
+   *
+   * @param payloadOnly - If true, decoding begins immediately rather than after finding a `=ybegin` line.
+   */
   constructor(payloadOnly = false) {
     this.initial = payloadOnly ? YDecoderState.Payload : YDecoderState.ExpectYBegin;
     this.state = this.initial;
@@ -44,10 +56,16 @@ export class YDecoder implements MimeDecoder {
     this.reset();
   }
 
+  /** The current checksum. */
   get checksum(): number {
     return this.crc.checksum;
   }
 
+  /**
+   * Creates a new yEnc decoder with exactly the same state as this decoder.
+   *
+   * @returns A new decoder with identical state.
+   */
   clone(): MimeDecoder {
     const decoder = new YDecoder(this.initial === YDecoderState.Payload);
     decoder.crc = this.crc.clone();
@@ -58,6 +76,12 @@ export class YDecoder implements MimeDecoder {
     return decoder;
   }
 
+  /**
+   * Estimates the number of bytes needed to decode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     return inputLength;
   }
@@ -281,6 +305,16 @@ export class YDecoder implements MimeDecoder {
     return inptr;
   }
 
+  /**
+   * Decodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   decode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -335,6 +369,7 @@ export class YDecoder implements MimeDecoder {
     return out;
   }
 
+  /** Resets the state of the decoder. */
   reset(): void {
     this.octet = 0x0a;
     this.state = this.initial;

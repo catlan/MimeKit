@@ -13,13 +13,28 @@ function isQpSafe(c: number): boolean {
   return c === 0x09 || (c >= 0x20 && c < 0x7f && c !== 0x3d);
 }
 
+/**
+ * Incrementally encodes content using the quoted-printable encoding.
+ *
+ * Quoted-printable is often used in MIME to encode textual content outside the
+ * ASCII range so that text remains intact over 7-bit transports such as SMTP.
+ */
 export class QuotedPrintableEncoder implements MimeEncoder {
+  /** The encoding that this encoder supports. */
   readonly encoding: ContentEncoding = 'quoted-printable';
   private readonly tripletsPerLine: number;
   private readonly maxLineLength: number;
   private currentLineLength = 0;
   private saved = -1;
 
+  /**
+   * Creates a new quoted-printable encoder.
+   *
+   * Values over 76 octets are capped at 76.
+   *
+   * @param maxLineLength - The maximum number of octets per line, not counting the line break.
+   * @throws {RangeError} `maxLineLength` is outside the supported range.
+   */
   constructor(maxLineLength = 76) {
     if (!Number.isInteger(maxLineLength) || maxLineLength < minimumLineLength || maxLineLength > maximumLineLength)
       throw new RangeError('maxLineLength must be between 60 and 998');
@@ -30,6 +45,11 @@ export class QuotedPrintableEncoder implements MimeEncoder {
     this.reset();
   }
 
+  /**
+   * Creates a new quoted-printable encoder with exactly the same state as this encoder.
+   *
+   * @returns A new encoder with identical state.
+   */
   clone(): QuotedPrintableEncoder {
     const clone = new QuotedPrintableEncoder(this.maxLineLength);
     clone.currentLineLength = this.currentLineLength;
@@ -37,6 +57,12 @@ export class QuotedPrintableEncoder implements MimeEncoder {
     return clone;
   }
 
+  /**
+   * Estimates the number of bytes needed to encode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     if (this.saved !== -1)
       inputLength++;
@@ -116,11 +142,31 @@ export class QuotedPrintableEncoder implements MimeEncoder {
     return out;
   }
 
+  /**
+   * Encodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   encode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     this.validateArguments(input, startIndex, length, output);
     return this.encodeInternal(input, startIndex, length, output);
   }
 
+  /**
+   * Encodes the specified input into the output buffer and flushes internal state.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   flush(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     this.validateArguments(input, startIndex, length, output);
 
@@ -144,6 +190,7 @@ export class QuotedPrintableEncoder implements MimeEncoder {
     return out;
   }
 
+  /** Resets the state of the encoder. */
   reset(): void {
     this.currentLineLength = 0;
     this.saved = -1;
