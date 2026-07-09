@@ -308,8 +308,10 @@ Ratchet + attributed-deferral discipline carries over unchanged.
   with eyes open. Note v1.5 key transport is common in *current* real-world
   S/MIME (Outlook/Apple Mail), not just archives, so the flag matters for broad
   interop, not just old mail.
-- **OpenPGP LGPL** — handled by the optional-peer/separate-entry arrangement;
-  *Q: acceptable, or should OpenPGP wait for rpgp-WASM to mature (permissive)?*
+- **OpenPGP LGPL** — **DECIDED 2026-07-09: OpenPGP.js as an optional
+  peerDependency + separate entry point (`mimekit-ts/openpgp`) + dynamic
+  import**. Core stays MIT-clean; the LGPL dep is never in the required graph.
+  `OpenPgpEngine` interface preserved so rpgp-WASM can replace it later.
 - **Effort** — this is a large body of work (~30k C# LOC in scope, minus the
   ~7.4k excluded, plus new adapter/primitive code). Rough order: C0+C1 the
   smallest and highest-value; C2 the largest; C3 medium. Suggest shipping
