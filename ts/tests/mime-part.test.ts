@@ -47,10 +47,8 @@ describe('MimePart', () => {
     expect(() => part.writeTo(null as unknown as FormatOptions, new MemoryStream())).toThrow(TypeError);
     expect(() => part.writeTo(FormatOptions.default, null as unknown as MemoryStream)).toThrow(TypeError);
     expect(() => { part.contentId = '<image.jpg'; }).toThrow(TypeError);
-    // deferred(wave-4): MimeEntity.Load overloads need MimeReader/MimeParser.
-    // deferred(sync-only): WriteToAsync/LoadAsync overloads are omitted per PLAN.
-    // deferred(node-entry): file path WriteTo overloads belong in the future node facade, not core.
-    // deferred(wave-3): Accept needs MimeVisitor.
+    // deferred(node-entry): file path Load/WriteTo overloads belong in the future node facade, not core.
+    // deferred(sync-only): LoadAsync/WriteToAsync overloads are omitted per PLAN Q4.
   });
 
   test('TestParameterizedCtor', () => {
@@ -288,7 +286,7 @@ describe('MimePart', () => {
   });
 
   test.skip('TestTranscodingAsync', () => {
-    // deferred(sync-only + wave-4): async API pairs omitted; parser not ported yet.
+    // deferred(sync-only): async API pairs are omitted per PLAN Q4.
   });
 
   test.each([
@@ -306,10 +304,10 @@ describe('MimePart', () => {
   });
 
   test.skip('TestWriteToAsync_NoNewLine', () => {
-    // deferred(sync-only): async API pairs omitted per PLAN.
+    // deferred(sync-only): async API pairs are omitted per PLAN Q4.
   });
   test.skip('TestWriteToAsync_NewLine', () => {
-    // deferred(sync-only): async API pairs omitted per PLAN.
+    // deferred(sync-only): async API pairs are omitted per PLAN Q4.
   });
 
   test.each([
@@ -327,10 +325,10 @@ describe('MimePart', () => {
   });
 
   test.skip('TestWriteToFileAsync_NoNewLine', () => {
-    // deferred(sync-only + node-entry): async and file path overloads omitted per PLAN.
+    // deferred(sync-only + node-entry): async and file path overloads are omitted per PLAN Q4/node facade split.
   });
   test.skip('TestWriteToFileAsync_NewLine', () => {
-    // deferred(sync-only + node-entry): async and file path overloads omitted per PLAN.
+    // deferred(sync-only + node-entry): async and file path overloads are omitted per PLAN Q4/node facade split.
   });
   test('TestLoadHttpWebResponse', () => {
     const text = 'This is some text and stuff.\n';
@@ -349,7 +347,7 @@ describe('MimePart', () => {
     expect(part.text).toBe(text);
   });
   test.skip('TestLoadHttpWebResponseAsync', () => {
-    // deferred(sync-only + wave-4): async API pairs omitted; parser not ported yet.
+    // deferred(sync-only): async API pairs are omitted per PLAN Q4.
   });
 
   test('TestToString', () => {

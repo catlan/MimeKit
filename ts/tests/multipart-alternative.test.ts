@@ -4,6 +4,7 @@ import { Header, HeaderId, MimePart, Multipart, MultipartAlternative, MultipartR
 describe('MultipartAlternative', () => {
   test('TestArgumentExceptions', () => {
     const alternative = new MultipartAlternative();
+    expect(() => new MultipartAlternative(null as never)).toThrow(TypeError);
     expect(() => alternative.accept(null as never)).toThrow(TypeError);
   });
 
@@ -39,26 +40,69 @@ describe('MultipartAlternative', () => {
     expect(alternative.getTextBody(TextFormat.Enriched)).toBeNull();
   });
 
-  test('TestGetTextBodyNestedAlternativesAndRelated', () => {
+  test('TestGetTextBodyNestedAlternatives', () => {
     const alternative = new MultipartAlternative();
     const plain = new TextPart('plain'); plain.text = 'plain\n';
+    const flowed = new TextPart(TextFormat.Flowed); flowed.text = 'flowed\n';
+    const richtext = new TextPart('rtf'); richtext.text = 'rtf\n';
     const html = new TextPart('html'); html.text = 'html\n';
     alternative.add(plain);
+    alternative.add(richtext);
+    alternative.add(html);
+    const outer = new MultipartAlternative(alternative);
+    expect(outer.textBody).toBe('plain\n');
+    expect(outer.htmlBody).toBe('html\n');
+
+    alternative.insert(1, flowed);
+
+    expect(outer.getTextBody(TextFormat.Plain)).toBe('flowed\n');
+    expect(outer.getTextBody(TextFormat.Flowed)).toBe('flowed\n');
+    expect(outer.getTextBody(TextFormat.RichText)).toBe('rtf\n');
+    expect(outer.getTextBody(TextFormat.Html)).toBe('html\n');
+    expect(outer.getTextBody(TextFormat.Enriched)).toBeNull();
+  });
+
+  test('TestGetTextBodyAlternativeInsideRelated', () => {
+    const alternative = new MultipartAlternative();
+    const plain = new TextPart('plain'); plain.text = 'plain\n';
+    const flowed = new TextPart(TextFormat.Flowed); flowed.text = 'flowed\n';
+    const richtext = new TextPart('rtf'); richtext.text = 'rtf\n';
+    const html = new TextPart('html'); html.text = 'html\n';
+    alternative.add(plain);
+    alternative.add(richtext);
     alternative.add(html);
     const related = new MultipartRelated(alternative);
     const outer = new MultipartAlternative(related);
     expect(outer.textBody).toBe('plain\n');
     expect(outer.htmlBody).toBe('html\n');
+
+    alternative.insert(1, flowed);
+
+    expect(outer.getTextBody(TextFormat.Plain)).toBe('flowed\n');
+    expect(outer.getTextBody(TextFormat.Flowed)).toBe('flowed\n');
+    expect(outer.getTextBody(TextFormat.RichText)).toBe('rtf\n');
+    expect(outer.getTextBody(TextFormat.Html)).toBe('html\n');
+    expect(outer.getTextBody(TextFormat.Enriched)).toBeNull();
   });
 
   test('TestGetTextBodyMixedInsideAlternative', () => {
     const mixed = new Multipart('mixed');
     const plain = new TextPart('plain'); plain.text = 'plain\n';
+    const flowed = new TextPart(TextFormat.Flowed); flowed.text = 'flowed\n';
+    const richtext = new TextPart('rtf'); richtext.text = 'rtf\n';
     const html = new TextPart('html'); html.text = 'html\n';
     mixed.add(plain);
+    mixed.add(richtext);
     mixed.add(html);
     const alternative = new MultipartAlternative(mixed);
+    expect(alternative.textBody).toBe('plain\n');
+
+    mixed.insert(1, flowed);
+
     expect(alternative.getTextBody(TextFormat.Plain)).toBe('plain\n');
+    expect(alternative.getTextBody(TextFormat.Flowed)).toBeNull();
+    expect(alternative.getTextBody(TextFormat.RichText)).toBeNull();
     expect(alternative.getTextBody(TextFormat.Html)).toBeNull();
+    expect(alternative.getTextBody(TextFormat.Enriched)).toBeNull();
   });
 });

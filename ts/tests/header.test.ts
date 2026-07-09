@@ -416,6 +416,6 @@ describe('Header', () => {
   });
 
   test.skip('TestSetValueCharset', () => {
-    // deferred(wave-8): CharsetUtils currently lacks outbound GB18030 encoding.
+    // deferred(GB18030): CharsetUtils currently lacks outbound GB18030 encoding (PLAN Q3).
   });
 });

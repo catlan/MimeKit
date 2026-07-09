@@ -231,7 +231,7 @@ describe('InternetAddressList', () => {
   });
 
   test('TestInternalTryParseRecoveryForBadSyntax', () => {
-    // deferred(wave-3/4): C# exercises internal recovery flags that are not public TS API.
+    // deferred(internal-api): C# exercises internal recovery flags that are not public TS API.
   });
   test('TestParseMailboxWithExcessiveAngleBrackets', () => assertParse('<<<user2@example.org>>>', 'user2@example.org'));
   test('TestParseMailboxWithMissingGreaterThan', () => assertParse('<another@example.net', 'another@example.net'));

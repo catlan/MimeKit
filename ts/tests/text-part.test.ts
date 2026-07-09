@@ -58,7 +58,7 @@ describe('TextPart', () => {
     expect(() => text.getText(null as unknown as string)).toThrow(TypeError);
     expect(() => text.setText(null as unknown as string, 'text')).toThrow(TypeError);
     expect(() => text.setText('iso-8859-1', null as unknown as string)).toThrow(TypeError);
-    // deferred(wave-3): Accept needs MimeVisitor.
+    // adapted(TS): string charsets cover Encoding overloads; Accept(null) is covered by MimePart-derived visitor tests.
   });
 
   test('TestFormat', () => {

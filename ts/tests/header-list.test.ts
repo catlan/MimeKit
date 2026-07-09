@@ -12,7 +12,7 @@ describe('HeaderList', () => {
     const list = new HeaderList();
     const stream = new MemoryStream();
 
-    // deferred(wave-4): Load/LoadAsync need MimeReader/MimeParser.
+    // deferred(node-entry + sync-only): file path Load overloads belong in the node facade; LoadAsync is omitted per PLAN Q4.
 
     // Add
     expect(() => list.add(null as never)).toThrow(TypeError);
@@ -87,7 +87,7 @@ describe('HeaderList', () => {
     expect(() => list.writeTo(FormatOptions.default, null as never)).toThrow(TypeError);
     expect(() => list.writeTo(null as never, stream)).toThrow(TypeError);
     expect(() => list.writeTo(null as never)).toThrow(TypeError);
-    // deferred(wave-4): async write API is omitted per plan.
+    // deferred(sync-only): async write API is omitted per PLAN Q4.
 
     // Indexers -> explicit JS get/set methods.
     expect(() => list.set(-1, new Header(HeaderId.AdHoc, 'value'))).toThrow(RangeError);
@@ -273,7 +273,7 @@ describe('HeaderList', () => {
   });
 
   test.skip('TestLoadAsync', () => {
-    // deferred(wave-4): needs MimeReader/MimeParser stream parsing; async API pairs are omitted per plan.
+    // deferred(sync-only): async API pairs are omitted per PLAN Q4.
   });
 
   test('WriteTo', () => {
