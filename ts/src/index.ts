@@ -72,6 +72,13 @@ export { MimeMessage, createDateTimeOffset, dateTimeOffsetMinValue } from './mim
 export { MimeAnonymizer, PreserveHeaderSet } from './mime-anonymizer.js';
 export { MimeReader, FormatError, type MimeFormat, type ReaderNewLineFormat } from './mime-reader.js';
 export { MimeParser } from './mime-parser.js';
+export { MimeIterator } from './mime-iterator.js';
+export { Received, ReceivedClause, ReceivedClauseId } from './received.js';
+export {
+  AuthenticationResults,
+  AuthenticationMethodResult,
+  AuthenticationMethodProperty,
+} from './authentication-results.js';
 export { Header } from './header.js';
 export { HeaderList, type HeaderListChangedAction, type HeaderListChangedCallback } from './header-list.js';
 export { HeaderId, headerIdNameTable, toHeaderId, toHeaderName, type KnownHeaderId } from './header-id.js';
