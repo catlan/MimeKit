@@ -36,6 +36,9 @@ importers:
       asn1js:
         specifier: ^3.0.10
         version: 3.0.10
+      micro-rsa-dsa-dh:
+        specifier: ^0.3.0
+        version: 0.3.0
       pkijs:
         specifier: ^3.4.0
         version: 3.4.0
@@ -564,6 +567,9 @@ packages:
 
   mdurl@2.0.0:
     resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==}
+
+  micro-rsa-dsa-dh@0.3.0:
+    resolution: {integrity: sha512-s2i37WORwgolfeddVk8U1GUUBx0GLR/J9Vakc1njBL4HPJVMXHfnf51BmnxzUqh+nwnxzYn8n5WCXrMbPD6zWQ==}
 
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
@@ -1221,6 +1227,10 @@ snapshots:
       uc.micro: 2.1.0
 
   mdurl@2.0.0: {}
+
+  micro-rsa-dsa-dh@0.3.0:
+    dependencies:
+      '@noble/hashes': 2.2.0
 
   minimatch@10.2.5:
     dependencies:

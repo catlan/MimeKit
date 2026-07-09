@@ -45,6 +45,7 @@
     "@peculiar/x509": "^2.0.0",
     "@types/node": "^24.0.0",
     "asn1js": "^3.0.10",
+    "micro-rsa-dsa-dh": "^0.3.0",
     "pkijs": "^3.4.0",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.0",
@@ -72,12 +73,13 @@
   "peerDependencies": {
     "@noble/curves": "^2",
     "@noble/hashes": "^2",
-    "pkijs": "*",
-    "@peculiar/x509": "*",
+    "@peculiar/asn1-cms": "*",
     "@peculiar/asn1-schema": "*",
     "@peculiar/asn1-x509": "*",
-    "@peculiar/asn1-cms": "*",
-    "asn1js": "*"
+    "@peculiar/x509": "*",
+    "asn1js": "*",
+    "pkijs": "*",
+    "micro-rsa-dsa-dh": "*"
   },
   "peerDependenciesMeta": {
     "@noble/hashes": {
@@ -102,6 +104,9 @@
       "optional": true
     },
     "asn1js": {
+      "optional": true
+    },
+    "micro-rsa-dsa-dh": {
       "optional": true
     }
   }
