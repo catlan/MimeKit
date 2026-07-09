@@ -288,6 +288,22 @@ the whole crypto surface.
   it also surfaced a pre-existing core bug (createNewLineFilter default) now
   fixed. Suite: 2877 passed + 17 skipped. Browser: signing offline, verify via
   injected locator (DoH default shipped).
+- 2026-07-09: **Wave C2 S/MIME through C2b-2a (CMS engine) COMPLETE + merged.**
+  - C2a foundation: enums, value types, exceptions, abstract `SecureMimeContext`,
+    MIME wrappers, X.509 structural seams, `ISecureMimeStore`.
+  - C2b-1 X.509/crypto substrate: cert impl, asymmetric keys, PKCS#12/PFX loader,
+    chain builder, in-memory store, hand-rolled DES/3DES/RC2/PKCS12-KDF validated
+    against 29 published KATs (FIPS DES, RFC 2268 RC2, RFC 7292 KDF).
+  - C2b-2a engine: `PkijsSecureMimeContext` (sign/verify/encrypt/decrypt), CMS
+    SignedData/EnvelopedData/CompressedData builders, RSA key transport with
+    implicit rejection (Node privateDecrypt; browser pure-JS never throws on bad
+    padding — synthetic key + constant-time mask, RSA-blinded modExp).
+  - Gates: 23 bidirectional cross-verify cases vs `oracle-smime`, 12 forgery-
+    tamper rejections (RSA + ECDSA-fallback), 9 encrypt KATs (3DES/RC2). Suite:
+    2990 passed + 17 skipped, stable across runs. Independent security review:
+    SHIP (all 12 tampers rejected; message-digest attr binds content).
+  - Deferred to C2b-2b: full PKIX chain/trust + CRL/OCSP, DSA signing, certs-only
+    Export, ECDH recipients (see `tests/smime/DEFERRED.md`).
 
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
