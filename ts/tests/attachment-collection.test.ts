@@ -49,8 +49,8 @@ describe('AttachmentCollection', () => {
     expect(() => attachments.add('', stream, contentType)).toThrow(TypeError);
     expect(() => attachments.add(null as never, stream, contentType)).toThrow(TypeError);
 
-    // deferred/omitted: Add(fileName) and Add(fileName, contentType) are the
-    // pure-filesystem overloads (Node-only) and are omitted from the core.
+    // deferred(node-entry): Add(fileName) and Add(fileName, contentType) are
+    // pure-filesystem overloads and are omitted from the isomorphic core.
 
     // data/stream null.
     expect(() => attachments.add('file.dat', null as never)).toThrow(TypeError);

@@ -1,17 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { ContentDisposition, MimeContent, MimeEntity, MimePart, MultipartRelated, TextPart, MemoryStream } from '../src/index.js';
+import { BodyBuilder, ContentDisposition, ContentType, Header, HeaderId, MimeEntity, MimePart, MultipartRelated, TextPart } from '../src/index.js';
 import { testDataDir } from './gates/helpers.js';
 
 describe('MultipartRelated', () => {
   test('TestArgumentExceptions', () => {
     const related = new MultipartRelated();
+    expect(() => new MultipartRelated(null as never)).toThrow(TypeError);
     expect(() => related.open(null as never)).toThrow(TypeError);
     expect(() => related.indexOfUri(null as never)).toThrow(TypeError);
     expect(() => related.accept(null as never)).toThrow(TypeError);
     expect(() => { related.root = null; }).toThrow(TypeError);
     expect(() => related.open('http://www.xamarin.com/logo.png')).toThrow();
+  });
+
+  test('TestGenericArgsConstructor', () => {
+    const multipart = new MultipartRelated(
+      new Header(HeaderId.ContentDescription, 'This is a description of the multipart.'),
+      new TextPart('plain', 'This is the message body.'),
+      new MimePart('image', 'gif'),
+    );
+    (multipart.at(1) as MimePart).fileName = 'attachment.gif';
+    expect(multipart.headers.contains(HeaderId.ContentDescription)).toBe(true);
+    expect(multipart.count).toBe(2);
+    expect(multipart.at(0).contentType.mimeType).toBe('text/plain');
+    expect(multipart.at(1).contentType.mimeType).toBe('image/gif');
   });
 
   test('TestDocumentRoot', () => {
@@ -34,16 +48,76 @@ describe('MultipartRelated', () => {
     expect(related.contentType.parameters.get('start')).toBeNull();
   });
 
-  test('TestReferenceByContentIdAndLocation', () => {
-    const part = new MimePart('image', 'gif');
-    part.contentId = 'img@example.com';
-    part.contentLocation = 'empty.gif';
-    part.content = new MimeContent(new MemoryStream(new Uint8Array([1, 2, 3])));
-    const related = new MultipartRelated(new TextPart('html'), part);
-    expect(related.containsUri('cid:img@example.com')).toBe(true);
-    expect(related.indexOfUri('cid:img@example.com')).toBe(1);
-    expect(related.containsUri('empty.gif')).toBe(true);
-    expect(related.openWithInfo('cid:img@example.com').mimeType).toBe('image/gif');
+  test('TestReferenceByContentId', () => {
+    const builder = new BodyBuilder();
+    builder.htmlBody = '<html>This is an <b>html</b> body.</html>';
+    builder.linkedResources.add('empty.gif', new Uint8Array(), new ContentType('image', 'gif'));
+    builder.linkedResources.add('empty.jpg', new Uint8Array(), new ContentType('image', 'jpg'));
+
+    for (const attachment of builder.linkedResources)
+      attachment.contentId = `resource-${builder.linkedResources.indexOf(attachment)}@example.com`;
+
+    const body = builder.toMessageBody();
+
+    expect(body).toBeInstanceOf(MultipartRelated);
+
+    const related = body as MultipartRelated;
+
+    expect(related.contentType.parameters.get('type')).toBe('text/html');
+
+    const root = related.root;
+
+    expect(root).not.toBeNull();
+    expect(root!.contentType.isMimeType('text', 'html')).toBe(true);
+    expect(related.contentType.parameters.get('start')).toBeNull();
+
+    for (let i = 1; i < related.count; i++) {
+      const cid = `cid:${related.at(i).contentId}`;
+
+      expect(related.containsUri(cid)).toBe(true);
+      expect(related.indexOfUri(cid)).toBe(i);
+
+      const info = related.openWithInfo(cid);
+      expect(info.mimeType).toBe(related.at(i).contentType.mimeType);
+      info.stream.dispose();
+
+      expect(() => related.open(cid).dispose()).not.toThrow();
+    }
+  });
+
+  test('TestReferenceByContentLocation', () => {
+    const builder = new BodyBuilder();
+    builder.htmlBody = '<html>This is an <b>html</b> body.</html>';
+    builder.linkedResources.add('empty.gif', new Uint8Array(), new ContentType('image', 'gif'));
+    builder.linkedResources.add('empty.jpg', new Uint8Array(), new ContentType('image', 'jpg'));
+
+    const body = builder.toMessageBody();
+
+    expect(body).toBeInstanceOf(MultipartRelated);
+
+    const related = body as MultipartRelated;
+
+    expect(related.contentType.parameters.get('type')).toBe('text/html');
+
+    const root = related.root;
+
+    expect(root).not.toBeNull();
+    expect(root!.contentType.isMimeType('text', 'html')).toBe(true);
+    expect(related.contentType.parameters.get('start')).toBeNull();
+
+    for (let i = 1; i < related.count; i++) {
+      const location = related.at(i).contentLocation;
+
+      expect(location).not.toBeNull();
+      expect(related.containsUri(location!)).toBe(true);
+      expect(related.indexOfUri(location!)).toBe(i);
+
+      const info = related.openWithInfo(location!);
+      expect(info.mimeType).toBe(related.at(i).contentType.mimeType);
+      info.stream.dispose();
+
+      expect(() => related.open(location!).dispose()).not.toThrow();
+    }
   });
 
   test('TestDocumentRootByType', () => {
