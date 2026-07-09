@@ -106,4 +106,10 @@ export class MimeVisitor {
   visitApplicationPkcs7Signature(entity: MimePart): void { this.visitMimePart(entity); }
   /** Visits a `multipart/signed` MIME entity. */
   visitMultipartSigned(entity: Multipart): void { this.visitMultipart(entity); }
+  /** Visits an `application/pgp-encrypted` MIME entity. */
+  visitApplicationPgpEncrypted(entity: MimePart): void { this.visitMimePart(entity); }
+  /** Visits an `application/pgp-signature` MIME entity. */
+  visitApplicationPgpSignature(entity: MimePart): void { this.visitMimePart(entity); }
+  /** Visits a `multipart/encrypted` MIME entity. */
+  visitMultipartEncrypted(entity: Multipart): void { this.visitMultipart(entity); }
 }

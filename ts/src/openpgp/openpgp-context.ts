@@ -8,9 +8,12 @@
 // public-key export variants.
 
 import type { MailboxAddress } from '../mailbox-address.js';
+import { MemoryStream } from '../io/stream.js';
 import { DigestAlgorithm } from '../smime/digest-algorithm.js';
 import { EncryptionAlgorithm } from '../smime/encryption-algorithm.js';
-import { CertificateNotFoundException, PrivateKeyNotFoundException } from '../smime/errors.js';
+import { CertificateNotFoundException, PrivateKeyNotFoundException, NotSupportedError } from '../smime/errors.js';
+import { DigitalSignatureCollection } from '../smime/digital-signature-collection.js';
+import { ApplicationPgpSignature } from './application-pgp-signature.js';
 import {
   OpenPgpJsEngine,
   type OpenPgpEngine,
@@ -66,6 +69,25 @@ export class OpenPgpContext {
   /** Whether MultipartSigned should prepare (7bit/CRLF) the entity before signing. */
   get prepareBeforeSigning(): boolean {
     return true;
+  }
+
+  /**
+   * The `micalg` parameter name for the digest algorithm (RFC 3156 §5).
+   *
+   * @param micalg The digest algorithm.
+   */
+  getDigestAlgorithmName(micalg: DigestAlgorithm): string {
+    switch (micalg) {
+      case DigestAlgorithm.MD5: return 'pgp-md5';
+      case DigestAlgorithm.Sha1: return 'pgp-sha1';
+      case DigestAlgorithm.RipeMD160: return 'pgp-ripemd160';
+      case DigestAlgorithm.Sha256: return 'pgp-sha256';
+      case DigestAlgorithm.Sha384: return 'pgp-sha384';
+      case DigestAlgorithm.Sha512: return 'pgp-sha512';
+      case DigestAlgorithm.Sha224: return 'pgp-sha224';
+      default:
+        throw new NotSupportedError(`${DigestAlgorithm[micalg] ?? micalg} is not supported by OpenPGP.`);
+    }
   }
 
   /**
@@ -167,10 +189,31 @@ export class OpenPgpContext {
     return this.engine.signDetached(content, [key], digestAlgo);
   }
 
+  /**
+   * Sign `content` with the signer mailbox and return the detached signature as an
+   * `application/pgp-signature` MIME part (used by {@link MultipartSigned}).
+   */
+  async signWithMailbox(
+    signer: MailboxAddress,
+    digestAlgo: DigestAlgorithm,
+    content: Uint8Array,
+  ): Promise<ApplicationPgpSignature> {
+    const armored = await this.sign(signer, digestAlgo, content);
+    return new ApplicationPgpSignature(new MemoryStream(armored));
+  }
+
   /** Verify an ASCII-armored detached signature over `content`. */
   async verify(content: Uint8Array, signatureData: Uint8Array): Promise<OpenPgpDigitalSignature[]> {
     const verifications = await this.engine.verifyDetached(content, signatureData, this.publicKeys);
     return Promise.all(verifications.map((v) => this.toDigitalSignature(v)));
+  }
+
+  /**
+   * Verify a detached signature and return the results as a {@link DigitalSignatureCollection}
+   * (the shape {@link MultipartSigned} expects).
+   */
+  async verifyDetached(content: Uint8Array, signatureData: Uint8Array): Promise<DigitalSignatureCollection> {
+    return new DigitalSignatureCollection(await this.verify(content, signatureData));
   }
 
   private async toDigitalSignature(
