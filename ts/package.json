@@ -21,6 +21,10 @@
     "./smime": {
       "types": "./dist/smime/index.d.ts",
       "default": "./dist/smime/index.js"
+    },
+    "./openpgp": {
+      "types": "./dist/openpgp/index.d.ts",
+      "default": "./dist/openpgp/index.js"
     }
   },
   "files": [
@@ -46,6 +50,7 @@
     "@types/node": "^24.0.0",
     "asn1js": "^3.0.10",
     "micro-rsa-dsa-dh": "^0.3.0",
+    "openpgp": "^6.3.1",
     "pkijs": "^3.4.0",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.0",
@@ -78,8 +83,9 @@
     "@peculiar/asn1-x509": "*",
     "@peculiar/x509": "*",
     "asn1js": "*",
-    "pkijs": "*",
-    "micro-rsa-dsa-dh": "*"
+    "micro-rsa-dsa-dh": "*",
+    "openpgp": "^6",
+    "pkijs": "*"
   },
   "peerDependenciesMeta": {
     "@noble/hashes": {
@@ -104,6 +110,9 @@
       "optional": true
     },
     "asn1js": {
+      "optional": true
+    },
+    "openpgp": {
       "optional": true
     },
     "micro-rsa-dsa-dh": {

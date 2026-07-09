@@ -337,6 +337,42 @@ the whole crypto surface.
   off); doc prose deferred to C4. Remaining S/MIME skips are genuine feature gaps
   (certs-export, missing decrypt fixtures) — see DEFERRED.md.
 
+## C3 execution plan (OpenPGP / PGP-MIME, RFC 3156)
+
+**Foundation verified (2026-07-09):** `openpgp` 6.3.1 installed (zero transitive deps),
+declared as an optional peer + `./openpgp` subpath export. Smoke-tested against the real
+`TestData/openpgp/mimekit.gpg.{pub,sec}` (armored) keyrings: `readKeys`/`readPrivateKeys`
+load them, `decryptKey` unlocks with `no.secret`, detached sign→verify and encrypt→decrypt
+both work. Backend is OpenPGP.js only for now (the plan's `OpenPgpEngine` seam keeps an
+rpgp-WASM swap cheap later).
+
+**Architecture (mirrors the S/MIME wave):**
+- `openpgp/engine.ts` — `OpenPgpEngine` interface + `OpenPgpJsEngine` (loads `openpgp` via
+  dynamic `import('openpgp')`, so `./openpgp` is the only entry that touches LGPL code).
+  Ops: load pub/priv keys, unlock, signDetached, verifyDetached, encrypt, decrypt.
+- `openpgp/openpgp-context.ts` — abstract `OpenPgpContext` (protocol getters
+  application/pgp-signature|encrypted|keys; enabled digest/cipher model;
+  `getDigestAlgorithm*`; abstract `getSigningKey(mailbox)` / `getPublicKeys(mailboxes)` /
+  `import`; concrete `sign`/`verify`/`encrypt`/`decrypt`/`signAndEncrypt` over the engine).
+- `openpgp/openpgp-js-context.ts` — concrete in-memory keyring context (Map by
+  email+fingerprint); `import(armored|bytes)`, key lookup, unlock via a password callback
+  (tests use `no.secret`). Registered as the default `application/pgp-encrypted` context.
+- MIME wrappers: `multipart-encrypted.ts` (RFC 3156 two-part: application/pgp-encrypted
+  `Version: 1` + application/octet-stream armored data), `application-pgp-encrypted.ts`,
+  `application-pgp-signature.ts`, `openpgp-digital-signature.ts` + `openpgp-digital-certificate.ts`.
+- Extend the existing `MultipartSigned` with the PGP protocol path (application/pgp-signature)
+  — verify()/create() dispatch on the protocol/context type.
+- Broaden the `MimeMessage.sign/encrypt/signAndEncrypt` augmentation to accept
+  `SecureMimeContext | OpenPgpContext` (S/MIME → ApplicationPkcs7Mime, PGP → Multipart{Signed,Encrypted}).
+- Expose OpenPGP.js `PrivateKey`/`PublicKey` handles for the raw-key ("UsingKeys") overloads.
+
+**Test scope:** 40 C# `PgpMimeTests` → 31 portable (≈16 behavioral after async-collapse):
+message sign/verify, encrypt/decrypt, sign+encrypt (mailbox + raw-key + explicit-cipher),
+detection filter, protocol/algorithm model. Fixtures: mimekit.gpg.{pub,sec}.
+**Deferred (skip + DEFERRED note):** key generation, key signing/certification, keyserver/HKP
++ auto-key-retrieve, GnuPG on-disk keyring enumeration, public-key export variants, and the
+BouncyCastle enum-mapping / .NET arg-exception-matrix tests (not meaningful in TS).
+
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
 - **EnvelopedData content decryption (CBC)**: padding removal MUST be
