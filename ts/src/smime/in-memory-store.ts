@@ -8,6 +8,7 @@
 // X509CertificateDatabase resolves certificates.
 
 import * as asn1js from 'asn1js';
+import punycode from 'punycode/punycode.js';
 import { ContentInfo, SignedData, Certificate } from 'pkijs';
 import { X509CertificateImpl } from './x509-certificate-impl.js';
 import { X509CertificateChain } from './x509-certificate-chain.js';
@@ -30,6 +31,10 @@ function emailKey(email: string | null): string | null {
   return email ? email.toLowerCase() : null;
 }
 
+function domainKey(domain: string): string {
+  return punycode.toASCII(domain).toLowerCase();
+}
+
 /** A simple, always-available in-memory certificate / private-key store. */
 export class InMemorySecureMimeStore implements ISecureMimeStore {
   private readonly certificates = new Map<string, X509Certificate>();
@@ -44,9 +49,12 @@ export class InMemorySecureMimeStore implements ISecureMimeStore {
   async getPrivateKey(mailbox: MailboxAddress): Promise<PrivateKeyEntry | null> {
     const fingerprint = mailbox instanceof SecureMailboxAddress ? mailbox.fingerprint.toLowerCase() : null;
     const address = emailKey(mailbox.address);
+    const at = address?.lastIndexOf('@') ?? -1;
+    const domain = at !== -1 ? domainKey(address!.substring(at + 1)) : null;
     for (const entry of this.privateKeys) {
       if (fingerprint && entry.certificate.getFingerprint().toLowerCase() === fingerprint) return entry;
       if (!fingerprint && address && emailKey(entry.certificate.getSubjectEmailAddress()) === address) return entry;
+      if (!fingerprint && domain && entry.certificate.getSubjectDnsNames().some((name) => domainKey(name) === domain)) return entry;
     }
     return null;
   }
@@ -96,7 +104,12 @@ export class InMemorySecureMimeStore implements ISecureMimeStore {
     }
     const address = emailKey(mailbox.address);
     if (!address) return [];
-    return [...this.certificates.values()].filter((c) => emailKey(c.getSubjectEmailAddress()) === address);
+    const at = address.lastIndexOf('@');
+    const domain = at !== -1 ? domainKey(address.substring(at + 1)) : null;
+    return [...this.certificates.values()].filter((c) =>
+      emailKey(c.getSubjectEmailAddress()) === address ||
+      (domain != null && c.getSubjectDnsNames().some((name) => domainKey(name) === domain))
+    );
   }
 }
 
