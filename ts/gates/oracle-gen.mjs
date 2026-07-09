@@ -18,15 +18,27 @@ const repoRoot = resolve(tsRoot, '..');
 const testData = join(repoRoot, 'UnitTests', 'TestData');
 const outRoot = join(tsRoot, 'gates', 'out', 'oracle');
 const oracleDll = join(repoRoot, 'oracle', 'bin', 'Release', 'net10.0', 'oracle.dll');
+const dkimDll = join(repoRoot, 'oracle-dkim', 'bin', 'Release', 'net10.0', 'oracle-dkim.dll');
 
 function oracle(...args) {
   execFileSync('dotnet', [oracleDll, ...args], { stdio: ['ignore', 'inherit', 'inherit'] });
+}
+
+function dkimOracle(...args) {
+  return execFileSync('dotnet', [dkimDll, ...args], { encoding: 'utf8' });
 }
 
 function ensureOracleBuilt() {
   if (!existsSync(oracleDll)) {
     console.log('building oracle (Release)...');
     execFileSync('dotnet', ['build', join(repoRoot, 'oracle'), '-c', 'Release', '-v', 'q'], { stdio: 'inherit' });
+  }
+}
+
+function ensureDkimOracleBuilt() {
+  if (!existsSync(dkimDll)) {
+    console.log('building oracle-dkim (Release)...');
+    execFileSync('dotnet', ['build', join(repoRoot, 'oracle-dkim'), '-c', 'Release', '-v', 'q'], { stdio: 'inherit' });
   }
 }
 
@@ -125,6 +137,39 @@ const modes = {
   idn() {
     oracle('idn', join(tsRoot, 'gates', 'idn-inputs.list'), join(outRoot, 'idn.json'));
     console.log('idn: done');
+  },
+
+  dkim() {
+    // Crypto trust anchor: DKIM signing is byte-deterministic once the t=
+    // timestamp is pinned. We emit (a) the DKIM-Signature VALUE per fixture ×
+    // canon × algo for byte-parity, and (b) full oracle-signed messages for
+    // the oracle->TS cross-verify direction.
+    ensureDkimOracleBuilt();
+    const dir = join(outRoot, 'dkim');
+    mkdirSync(join(dir, 'oracle-signed'), { recursive: true });
+    const keyfile = join(testData, 'dkim', 'example.pem');
+    const domain = 'example.com';
+    const selector = '1433868189.example';
+    const t = '1400000000';
+    const fixtures = ['gmail.msg', 'related.msg', 'multipart-no-end-boundary.msg', 'rfc8463-example.msg'];
+    const combos = [
+      ['relaxed', 'relaxed', 'rsa-sha256'],
+      ['simple', 'simple', 'rsa-sha256'],
+      ['relaxed', 'simple', 'rsa-sha1'],
+      ['simple', 'relaxed', 'rsa-sha256'],
+    ];
+    const sign = {};
+    for (const fixture of fixtures) {
+      const msgPath = join(testData, 'dkim', fixture);
+      for (const [hc, bc, algo] of combos) {
+        const key = `${fixture}|${hc}|${bc}|${algo}`;
+        sign[key] = dkimOracle('dkim-sign', msgPath, hc, bc, algo, domain, selector, keyfile, t).trim();
+        const outName = `${fixture}.${hc}.${bc}.${algo}.eml`;
+        dkimOracle('dkim-sign-full', msgPath, hc, bc, algo, domain, selector, keyfile, t, join(dir, 'oracle-signed', outName));
+      }
+    }
+    writeFileSync(join(dir, 'sign.json'), JSON.stringify({ domain, selector, t: Number(t), sign }, null, 2) + '\n');
+    console.log(`dkim: ${Object.keys(sign).length} signatures + ${Object.keys(sign).length} full messages`);
   },
 
   headers() {
