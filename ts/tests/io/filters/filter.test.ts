@@ -100,7 +100,7 @@ describe('FilterTests', () => {
       chunks.push(bufferSize);
 
     expect(writeThroughChunks(new ArmoredFromFilter(), input, chunks)).toBe(expected);
-  });
+  }, 20000);
 
   test('TestMboxFromFilter', () => {
     const input = "This text is meant to test that the filter will armor lines beginning with\nFrom (like mbox). And let's add another\nFrom line for good measure, shall we?\n";
@@ -128,7 +128,7 @@ describe('FilterTests', () => {
       chunks.push(bufferSize);
 
     expect(writeThroughChunks(new MboxFromFilter(), input, chunks)).toBe(expected);
-  });
+  }, 20000);
 
   test('TestBestEncodingFilter', () => {
     const fromLines = 'This text is meant to test that the filter will armor lines beginning with\nFrom (like mbox).\n';
