@@ -10,12 +10,20 @@ import { encodeUnstructuredHeader } from './utils/rfc2047.js';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+/**
+ * Represents an `Authentication-Results` header value.
+ */
 export class AuthenticationResults {
+  /** The authentication service identifier. */
   authenticationServiceIdentifier: string | null = null;
+  /** The optional instance identifier. */
   instance: number | null = null;
+  /** The optional authentication service version. */
   version: number | null = null;
+  /** The authentication method results. */
   readonly results: AuthenticationMethodResult[] = [];
 
+  /** Creates a new authentication results value. */
   constructor(authservid?: string) {
     if (arguments.length > 0) {
       if (authservid == null) throw new TypeError('authservid cannot be null or undefined');
@@ -23,13 +31,18 @@ export class AuthenticationResults {
     }
   }
 
+  /** The authentication service identifier. */
   get AuthenticationServiceIdentifier(): string | null { return this.authenticationServiceIdentifier; }
+  /** The optional instance identifier. */
   get Instance(): number | null { return this.instance; }
   set Instance(value: number | null) { this.instance = value; }
+  /** The optional authentication service version. */
   get Version(): number | null { return this.version; }
   set Version(value: number | null) { this.version = value; }
+  /** The authentication method results. */
   get Results(): AuthenticationMethodResult[] { return this.results; }
 
+  /** Encodes this header value into string fragments. */
   encode(options: FormatOptions, builder: string[], lineLength: number): void {
     let space = 1;
     if (this.instance != null) {
@@ -78,6 +91,7 @@ export class AuthenticationResults {
     builder.push(options.newLine);
   }
 
+  /** Serializes this authentication results value. */
   toString(): string {
     const builder: string[] = [];
     if (this.instance != null) builder.push(`i=${this.instance}; `);
@@ -97,6 +111,11 @@ export class AuthenticationResults {
     return builder.join('');
   }
 
+  /**
+   * Parses an `Authentication-Results` header value.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parse(buffer: Uint8Array, startIndex = 0, length = buffer?.length - startIndex): Result<AuthenticationResults> {
     if (!(buffer instanceof Uint8Array)) throw new TypeError('buffer cannot be null or undefined');
     if (!validRange(buffer, startIndex, length)) throw new RangeError('startIndex and length do not specify a valid range');
@@ -104,6 +123,11 @@ export class AuthenticationResults {
     return parseAuthenticationResults(buffer, cursor, startIndex + length);
   }
 
+  /**
+   * Attempts to parse an `Authentication-Results` header value.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input or invalid arguments.
+   */
   static tryParse(buffer: Uint8Array | null | undefined, startIndex = 0, length = (buffer?.length ?? 0) - startIndex): Result<AuthenticationResults> {
     if (!(buffer instanceof Uint8Array) || !validRange(buffer, startIndex, length))
       return err('invalid-arguments', 'Invalid arguments.');
@@ -112,16 +136,28 @@ export class AuthenticationResults {
   }
 }
 
+/**
+ * Represents a method result in an `Authentication-Results` header.
+ */
 export class AuthenticationMethodResult {
+  /** The Office 365 authentication service identifier, if present. */
   office365AuthenticationServiceIdentifier: string | null = null;
+  /** The authentication method name. */
   readonly method: string;
+  /** The optional method version. */
   version: number | null = null;
+  /** The authentication result token. */
   result: string;
+  /** The optional result comment. */
   resultComment: string | null = null;
+  /** The optional action specifier. */
   action: string | null = null;
+  /** The optional reason specifier. */
   reason: string | null = null;
+  /** The properties associated with this method result. */
   readonly properties: AuthenticationMethodProperty[] = [];
 
+  /** Creates a new authentication method result. */
   constructor(method: string, result = '') {
     if (method == null) throw new TypeError('method cannot be null or undefined');
     if (result == null) throw new TypeError('result cannot be null or undefined');
@@ -129,21 +165,30 @@ export class AuthenticationMethodResult {
     this.result = result;
   }
 
+  /** The Office 365 authentication service identifier, if present. */
   get Office365AuthenticationServiceIdentifier(): string | null { return this.office365AuthenticationServiceIdentifier; }
   set Office365AuthenticationServiceIdentifier(value: string | null) { this.office365AuthenticationServiceIdentifier = value; }
+  /** The authentication method name. */
   get Method(): string { return this.method; }
+  /** The optional method version. */
   get Version(): number | null { return this.version; }
   set Version(value: number | null) { this.version = value; }
+  /** The authentication result token. */
   get Result(): string { return this.result; }
   set Result(value: string) { this.result = value; }
+  /** The optional result comment. */
   get ResultComment(): string | null { return this.resultComment; }
   set ResultComment(value: string | null) { this.resultComment = value; }
+  /** The optional action specifier. */
   get Action(): string | null { return this.action; }
   set Action(value: string | null) { this.action = value; }
+  /** The optional reason specifier. */
   get Reason(): string | null { return this.reason; }
   set Reason(value: string | null) { this.reason = value; }
+  /** The properties associated with the method result. */
   get Properties(): AuthenticationMethodProperty[] { return this.properties; }
 
+  /** Encodes this method result into string fragments. */
   encode(options: FormatOptions, builder: string[], lineLength: number): number {
     const complete = this.toString();
     if (complete.length + 1 < options.maxLineLength) {
@@ -186,6 +231,7 @@ export class AuthenticationMethodResult {
     return appendTokens(builder, options, lineLength, tokens);
   }
 
+  /** Serializes this authentication method result. */
   toString(): string {
     const builder: string[] = [];
     if (this.office365AuthenticationServiceIdentifier != null) builder.push(this.office365AuthenticationServiceIdentifier, '; ');
@@ -200,12 +246,19 @@ export class AuthenticationMethodResult {
   }
 }
 
+/**
+ * Represents a property on an authentication method result.
+ */
 export class AuthenticationMethodProperty {
+  /** The property type. */
   readonly propertyType: string;
+  /** The property name. */
   readonly property: string;
+  /** The property value. */
   readonly value: string;
   private readonly quoted: boolean | null;
 
+  /** Creates a new authentication method property. */
   constructor(ptype: string, property: string, value: string, quoted: boolean | null = null) {
     if (ptype == null) throw new TypeError('ptype cannot be null or undefined');
     if (property == null) throw new TypeError('property cannot be null or undefined');
@@ -216,10 +269,14 @@ export class AuthenticationMethodProperty {
     this.quoted = quoted;
   }
 
+  /** The property type. */
   get PropertyType(): string { return this.propertyType; }
+  /** The property name. */
   get Property(): string { return this.property; }
+  /** The property value. */
   get Value(): string { return this.value; }
 
+  /** Appends encoded property tokens to the token list. */
   appendTokens(options: FormatOptions, tokens: string[]): void {
     const value = (this.quoted ?? containsTokenSpecials(this.value)) ? quote(this.value) : this.value;
     tokens.push(' ');
@@ -231,12 +288,21 @@ export class AuthenticationMethodProperty {
       tokens.push(this.propertyType, '.', this.property, '=', value);
   }
 
+  /** Serializes this authentication method property. */
   toString(): string {
     const value = (this.quoted ?? containsTokenSpecials(this.value)) ? quote(this.value) : this.value;
     return `${this.propertyType}.${this.property}=${value}`;
   }
 }
 
+/**
+ * Encodes an `Authentication-Results` header value.
+ *
+ * @param format The formatting options.
+ * @param field The header field name.
+ * @param value The header value.
+ * @returns The encoded header value bytes.
+ */
 export function encodeAuthenticationResultsValue(format: FormatOptions, field: string, value: string): Uint8Array {
   const parsed = AuthenticationResults.parse(encoder.encode(value));
   if (!parsed.ok) return encodeUnstructuredHeader(ParserOptions.default, format, utf8, field, value);

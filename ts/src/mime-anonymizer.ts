@@ -330,6 +330,9 @@ function anonymizeParameterList(rawValue: Uint8Array, anonymized: Uint8Array, st
   }
 }
 
+/**
+ * Anonymizes identifying data in MIME messages and entities.
+ */
 export class MimeAnonymizer {
   private readonly preserve = new PreserveHeaderSet();
 
@@ -342,9 +345,35 @@ export class MimeAnonymizer {
     return this.preserve;
   }
 
+  /**
+   * Anonymizes a MIME message and writes it to a stream.
+   *
+   * @param message The message to anonymize.
+   * @param stream The stream to write the anonymized message to.
+   */
   anonymize(message: MimeMessage, stream: Stream): void;
+  /**
+   * Anonymizes a MIME message using formatting options and writes it to a stream.
+   *
+   * @param options The formatting options.
+   * @param message The message to anonymize.
+   * @param stream The stream to write the anonymized message to.
+   */
   anonymize(options: FormatOptions, message: MimeMessage, stream: Stream): void;
+  /**
+   * Anonymizes a MIME entity and writes it to a stream.
+   *
+   * @param entity The MIME entity to anonymize.
+   * @param stream The stream to write the anonymized entity to.
+   */
   anonymize(entity: MimeEntity, stream: Stream): void;
+  /**
+   * Anonymizes a MIME entity using formatting options and writes it to a stream.
+   *
+   * @param options The formatting options.
+   * @param entity The MIME entity to anonymize.
+   * @param stream The stream to write the anonymized entity to.
+   */
   anonymize(options: FormatOptions, entity: MimeEntity, stream: Stream): void;
   anonymize(
     a: FormatOptions | MimeMessage | MimeEntity,
@@ -368,6 +397,12 @@ export class MimeAnonymizer {
     }
   }
 
+  /**
+   * Anonymizes a raw `Received` header value.
+   *
+   * @param rawValue The raw header value.
+   * @returns The anonymized header value.
+   */
   static anonymizeReceivedHeaderValue(rawValue: Uint8Array): Uint8Array {
     const anonymized = new Uint8Array(rawValue.length);
     let index = 0;
@@ -457,6 +492,12 @@ export class MimeAnonymizer {
     return anonymized;
   }
 
+  /**
+   * Anonymizes a raw address header value.
+   *
+   * @param rawValue The raw header value.
+   * @returns The anonymized header value.
+   */
   static anonymizeAddressHeaderValue(rawValue: Uint8Array): Uint8Array {
     const anonymized = new Uint8Array(rawValue.length);
     const state = { rfc2047: Rfc2047EncodedWordState.None };
@@ -490,6 +531,12 @@ export class MimeAnonymizer {
     return anonymized;
   }
 
+  /**
+   * Anonymizes a raw unstructured header value.
+   *
+   * @param rawValue The raw header value.
+   * @returns The anonymized header value.
+   */
   static anonymizeUnstructuredHeaderValue(rawValue: Uint8Array): Uint8Array {
     const anonymized = new Uint8Array(rawValue.length);
     const state = { rfc2047: Rfc2047EncodedWordState.None };
@@ -503,6 +550,12 @@ export class MimeAnonymizer {
     return anonymized;
   }
 
+  /**
+   * Anonymizes a raw `Content-Disposition` header value.
+   *
+   * @param rawValue The raw header value.
+   * @returns The anonymized header value.
+   */
   static anonymizeContentDispositionValue(rawValue: Uint8Array): Uint8Array {
     const anonymized = new Uint8Array(rawValue.length);
     let index = 0;
@@ -518,6 +571,12 @@ export class MimeAnonymizer {
     return anonymized;
   }
 
+  /**
+   * Anonymizes a raw `Content-Type` header value.
+   *
+   * @param rawValue The raw header value.
+   * @returns The anonymized header value.
+   */
   static anonymizeContentTypeValue(rawValue: Uint8Array): Uint8Array {
     const anonymized = new Uint8Array(rawValue.length);
     let index = 0;
@@ -815,26 +874,34 @@ export class MimeAnonymizer {
  * Case-insensitive (ordinal-ignore-case) string set, mirroring C#'s
  * HashSet<string>(StringComparer.OrdinalIgnoreCase) exposed by PreserveHeaders.
  */
+/**
+ * Case-insensitive set of header names to preserve during anonymization.
+ */
 export class PreserveHeaderSet {
   private readonly map = new Map<string, string>();
 
+  /** The number of preserved header names. */
   get size(): number {
     return this.map.size;
   }
 
+  /** Adds a header name to the set. */
   add(value: string): this {
     this.map.set(value.toLowerCase(), value);
     return this;
   }
 
+  /** Removes a header name from the set. */
   delete(value: string): boolean {
     return this.map.delete(value.toLowerCase());
   }
 
+  /** Determines whether a header name is in the set. */
   has(value: string): boolean {
     return this.map.has(value.toLowerCase());
   }
 
+  /** Removes all header names from the set. */
   clear(): void {
     this.map.clear();
   }

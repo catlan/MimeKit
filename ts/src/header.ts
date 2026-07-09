@@ -28,19 +28,36 @@ interface Word {
   length: number;
 }
 
+/**
+ * Represents a message header field and value.
+ */
 export class Header {
+  /** The parser options associated with this header. */
   readonly options: ParserOptions;
+  /** The raw header field bytes. */
   readonly rawField: Uint8Array;
   private rawValueStorage: Uint8Array;
   private explicitRawValue = false;
   private textValue: string | null = null;
 
+  /** The byte offset of this header, if known. */
   offset: number | null = null;
+  /** The header field name. */
   readonly field: string;
+  /** The well-known header identifier. */
   readonly id: HeaderId;
+  /** Whether this header is invalid. */
   readonly isInvalid: boolean;
+  /** Invoked when the header changes. */
   onChanged: (() => void) | null = null;
 
+  /**
+   * Creates a new header.
+   *
+   * @param args A field/id with value, optionally prefixed by a charset.
+   * @throws {TypeError} The field, charset, or value is null, undefined, or invalid.
+   * @throws {RangeError} The header id is not valid.
+   */
   constructor(...args: HeaderCtor) {
     this.options = ParserOptions.default.clone();
     this.isInvalid = false;
@@ -83,6 +100,17 @@ export class Header {
     this.textValue = Header.unfold(value.trim());
   }
 
+  /**
+   * Creates a header from raw field and value bytes.
+   *
+   * @param options The parser options.
+   * @param id The header identifier.
+   * @param field The header field name.
+   * @param rawValue The raw header value bytes.
+   * @param invalid Whether the header is syntactically invalid.
+   * @param rawField The raw field bytes.
+   * @returns The created header.
+   */
   static fromRaw(options: ParserOptions, id: HeaderId | string, field: string, rawValue: Uint8Array, invalid = false, rawField?: Uint8Array): Header {
     const headerId = normalizeHeaderId(id) ?? toHeaderId(field);
     const header = Object.create(Header.prototype) as Header;
@@ -101,6 +129,11 @@ export class Header {
     return header;
   }
 
+  /**
+   * Clones this header.
+   *
+   * @returns The cloned header.
+   */
   clone(): Header {
     const clone = Header.fromRaw(this.options, this.id, this.field, copyBytes(this.rawValueStorage), this.isInvalid);
     clone.explicitRawValue = this.explicitRawValue;
@@ -109,10 +142,12 @@ export class Header {
     return clone;
   }
 
+  /** The raw header value bytes. */
   get rawValue(): Uint8Array {
     return this.rawValueStorage;
   }
 
+  /** The decoded and unfolded header value. */
   get value(): string {
     this.textValue ??= Header.unfold(decodeText(this.options, this.rawValueStorage));
     return this.textValue;
@@ -122,6 +157,13 @@ export class Header {
     this.setValue(FormatOptions.default, utf8, value);
   }
 
+  /**
+   * Gets the decoded header value using the specified charset.
+   *
+   * @param charset The charset to use for decoding.
+   * @returns The decoded and unfolded header value.
+   * @throws {TypeError} `charset` is null or undefined.
+   */
   getValue(charset: string | CharsetEncoding): string {
     if (charset == null) throw new TypeError('charset cannot be null or undefined');
     const options = this.options.clone();
@@ -129,7 +171,22 @@ export class Header {
     return Header.unfold(decodeText(options, this.rawValueStorage));
   }
 
+  /**
+   * Sets the header value using the specified formatting options and charset.
+   *
+   * @param format The formatting options.
+   * @param charset The charset to use for encoding.
+   * @param value The header value.
+   * @throws {TypeError} `format`, `charset`, or `value` is null or undefined.
+   */
   setValue(format: FormatOptions, charset: string | CharsetEncoding, value: string): void;
+  /**
+   * Sets the header value using the specified charset.
+   *
+   * @param charset The charset to use for encoding.
+   * @param value The header value.
+   * @throws {TypeError} `charset` or `value` is null or undefined.
+   */
   setValue(charset: string | CharsetEncoding, value: string): void;
   setValue(a: FormatOptions | string | CharsetEncoding, b: string | CharsetEncoding, c?: string): void {
     const format = a instanceof FormatOptions ? a : FormatOptions.default;
@@ -143,6 +200,12 @@ export class Header {
     this.onChanged?.();
   }
 
+  /**
+   * Sets the raw header value bytes.
+   *
+   * @param value The raw value bytes, including a trailing newline.
+   * @throws {TypeError} `value` is null, undefined, or does not end with a newline.
+   */
   setRawValue(value: Uint8Array): void {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (value.length === 0 || value[value.length - 1] !== 0x0a)
@@ -153,6 +216,12 @@ export class Header {
     this.onChanged?.();
   }
 
+  /**
+   * Gets the raw header value bytes for the specified formatting options.
+   *
+   * @param format The formatting options.
+   * @returns The raw header value bytes.
+   */
   getRawValue(format: FormatOptions): Uint8Array {
     if (format.international && !this.explicitRawValue) {
       switch (this.id) {
@@ -202,6 +271,11 @@ export class Header {
     return this.rawValueStorage;
   }
 
+  /**
+   * Serializes this header.
+   *
+   * @returns A string representing this header.
+   */
   toString(): string {
     return this.isInvalid ? this.field : `${this.field}: ${this.value}`;
   }
@@ -257,6 +331,12 @@ export class Header {
     }
   }
 
+  /**
+   * Unfolds a header value by removing line breaks.
+   *
+   * @param text The header value text.
+   * @returns The unfolded header value.
+   */
   static unfold(text: string | null | undefined): string {
     if (text == null) return '';
     let i = 0;
@@ -274,6 +354,14 @@ export class Header {
     return value;
   }
 
+  /**
+   * Folds a header value according to the specified formatting options.
+   *
+   * @param format The formatting options.
+   * @param field The header field name.
+   * @param value The header value.
+   * @returns The folded header value.
+   */
   static fold(format: FormatOptions, field: string, value: string): string {
     const folded: string[] = [' '];
     let lineLength = field.length + 2;
@@ -321,6 +409,15 @@ export class Header {
     return folded.join('');
   }
 
+  /**
+   * Reformats an address header value for the specified formatting options.
+   *
+   * @param options The parser options.
+   * @param format The formatting options.
+   * @param field The header field name.
+   * @param rawValue The raw header value bytes.
+   * @returns The reformatted raw value bytes, or the original bytes if parsing fails.
+   */
   static reformatAddressHeader(options: ParserOptions, format: FormatOptions, field: string, rawValue: Uint8Array): Uint8Array {
     const parsed = InternetAddressList.parse(rawValue, options);
     if (!parsed.ok) return rawValue;
@@ -328,6 +425,17 @@ export class Header {
     return (format.international ? utf8 : ascii).encode(` ${parsed.value.encode(format, true, state)}${format.newLine}`);
   }
 
+  /**
+   * Parses a header from text or bytes.
+   *
+   * @param input The input to parse.
+   * @param options The parser options.
+   * @param startIndex The starting index of the input.
+   * @param length The number of bytes to parse.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   * @throws {TypeError} `input` is null or undefined.
+   * @throws {RangeError} `startIndex` or `length` is out of range.
+   */
   static parse(input: string | Uint8Array, options = ParserOptions.default, startIndex = 0, length?: number): Result<Header> {
     if (input == null) throw new TypeError('input cannot be null or undefined');
     const buffer = typeof input === 'string' ? encoder.encode(input) : input;

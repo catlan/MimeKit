@@ -18,11 +18,24 @@ import { punycodeDefault } from './encodings/punycode.js';
 const EMPTY_SENTINELS = new Uint8Array();
 const utf8Encoder = new TextEncoder();
 
+/**
+ * Represents a mailbox internet address.
+ */
 export class MailboxAddress extends InternetAddress {
+  /** The route domains for the mailbox address. */
   readonly route: DomainList;
   private _address = '';
   private at = -1;
 
+  /**
+   * Creates a new mailbox address.
+   *
+   * @param name The display name.
+   * @param address The mailbox address.
+   * @param route The optional route domains.
+   * @param at The index of the `@` separator in a pre-parsed address.
+   * @throws {TypeError} `address` is null or invalid.
+   */
   constructor(name: string | null | undefined, address: string, route?: Iterable<string>, at?: number) {
     super(name ?? null);
     if (address == null) throw new TypeError('address cannot be null');
@@ -37,6 +50,7 @@ export class MailboxAddress extends InternetAddress {
     }
   }
 
+  /** The address-spec portion of the mailbox address. */
   get address(): string {
     return this._address;
   }
@@ -64,14 +78,17 @@ export class MailboxAddress extends InternetAddress {
     this.onChanged?.();
   }
 
+  /** The local-part of the mailbox address. */
   get localPart(): string {
     return this.at !== -1 ? this._address.slice(0, this.at) : this._address;
   }
 
+  /** The domain of the mailbox address. */
   get domain(): string {
     return this.at !== -1 ? this._address.slice(this.at + 1) : '';
   }
 
+  /** Whether the mailbox address contains internationalized text. */
   get isInternational(): boolean {
     if (this._address.length === 0) return false;
     if (isInternational(this._address)) return true;
@@ -81,14 +98,17 @@ export class MailboxAddress extends InternetAddress {
     return false;
   }
 
+  /** Clones this mailbox address. */
   clone(): MailboxAddress {
     return new MailboxAddress(this.name, this._address, this.route, this.at);
   }
 
+  /** Gets the address-spec, optionally IDN-encoding the domain. */
   getAddress(idnEncode: boolean): string {
     return idnEncode ? MailboxAddress.encodeAddrspecInternal(this._address, this.at) : this._address;
   }
 
+  /** Encodes the domain portion of an address-spec using IDN when needed. */
   static encodeAddrspec(addrspec: string): string {
     if (addrspec == null) throw new TypeError('addrspec cannot be null');
     if (addrspec.length === 0) return addrspec;
@@ -99,6 +119,7 @@ export class MailboxAddress extends InternetAddress {
     return MailboxAddress.encodeAddrspecInternal(parsed.value.addrspec, parsed.value.at);
   }
 
+  /** Decodes the domain portion of an address-spec using IDN when needed. */
   static decodeAddrspec(addrspec: string): string {
     if (addrspec == null) throw new TypeError('addrspec cannot be null');
     if (addrspec.length === 0) return addrspec;
@@ -114,6 +135,7 @@ export class MailboxAddress extends InternetAddress {
     return `${addrspec.slice(0, at)}@${punycodeDefault.encode(addrspec, at + 1)}`;
   }
 
+  /** Encodes this mailbox address. */
   encode(options: FormatOptions, firstToken: boolean, state: LineState): string {
     let output = '';
     let route = this.route.encode(options);
@@ -184,6 +206,7 @@ export class MailboxAddress extends InternetAddress {
     return output;
   }
 
+  /** Serializes this mailbox address. */
   toString(options: FormatOptions = FormatOptions.default, encode = false): string {
     if (encode) {
       const state = { lineLength: 0 };
@@ -200,10 +223,16 @@ export class MailboxAddress extends InternetAddress {
     return this._address;
   }
 
+  /** Determines whether this mailbox address equals another address. */
   equals(other: InternetAddress | null | undefined): boolean {
     return other instanceof MailboxAddress && this.name === other.name && this.address === other.address;
   }
 
+  /**
+   * Parses a mailbox address.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static override parse(text: string | Uint8Array, options: ParserOptions = ParserOptions.default): Result<MailboxAddress> {
     const buffer = typeof text === 'string' ? utf8Encoder.encode(text) : text;
     const cursor = { index: 0 };

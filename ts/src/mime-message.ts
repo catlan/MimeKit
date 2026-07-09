@@ -53,9 +53,21 @@ const COLON = encoder.encode(':');
 const minDate = new Date(0);
 minDate.setUTCFullYear(1, 0, 1);
 minDate.setUTCHours(0, 0, 0, 0);
+/** The minimum DateTimeOffset value used by MimeKit for unset message dates. */
 export const dateTimeOffsetMinValue: DateTimeOffset = { epochMillis: minDate.getTime(), offsetMinutes: 0 };
 
-/** Construct a DateTimeOffset from calendar components (month is 1-based). */
+/**
+ * Constructs a DateTimeOffset from calendar components.
+ *
+ * @param year The year.
+ * @param month The 1-based month.
+ * @param day The day of month.
+ * @param hour The hour.
+ * @param minute The minute.
+ * @param second The second.
+ * @param offsetMinutes The UTC offset in minutes.
+ * @returns The DateTimeOffset value.
+ */
 export function createDateTimeOffset(
   year: number,
   month: number,
@@ -104,12 +116,21 @@ const ADDRESS_LAZY_FIELD: Partial<Record<HeaderId, LazyField>> = {
   [HeaderId.ResentBcc]: 'resentBcc',
 };
 
+/**
+ * Represents a MIME message.
+ *
+ * A message contains message headers and an optional body entity. Address,
+ * date, message-id, priority, and body helper properties are synchronized with
+ * their corresponding headers.
+ */
 export class MimeMessage {
+  /** The message headers. */
   readonly headers: HeaderList;
   /** C#: internal RfcComplianceMode compliance. */
   readonly compliance: RfcComplianceMode;
   /** C#: internal byte[] MboxMarker. */
   mboxMarker: Uint8Array | null = null;
+  /** The message body entity. */
   body: MimeEntity | null = null;
 
   private readonly addresses = new Map<HeaderId, InternetAddressList>();
@@ -131,6 +152,15 @@ export class MimeMessage {
   private inReplyToValue: string | null = null;
   private versionValue: Version | null = null;
 
+  /**
+   * Initializes a new MIME message.
+   *
+   * @param headers Initial message headers.
+   * @param from Sender addresses.
+   * @param to Recipient addresses.
+   * @param subject Message subject.
+   * @param body Message body.
+   */
   constructor();
   constructor(headers: Iterable<Header>);
   constructor(from: Iterable<InternetAddress>, to: Iterable<InternetAddress>, subject: string, body: MimeEntity | null);
@@ -236,6 +266,7 @@ export class MimeMessage {
     if (force || !this.headers.contains(HeaderId.MessageId)) this.messageId = generateMessageId();
   }
 
+  /** Gets or sets the message importance. */
   get importance(): MessageImportance {
     if (!this.lazyLoaded.has('importance')) {
       const header = this.headers.tryGetHeader(HeaderId.Importance);
@@ -251,6 +282,7 @@ export class MimeMessage {
     return this.importanceValue;
   }
 
+  /** Sets the message importance. */
   set importance(value: MessageImportance) {
     if (value === this.importanceValue) return;
     if (!isMessageImportance(value)) throw new RangeError('value is not a valid MessageImportance');
@@ -259,6 +291,7 @@ export class MimeMessage {
     this.importanceValue = value;
   }
 
+  /** Gets or sets the message priority. */
   get priority(): MessagePriority {
     if (!this.lazyLoaded.has('priority')) {
       const header = this.headers.tryGetHeader(HeaderId.Priority);
@@ -274,6 +307,7 @@ export class MimeMessage {
     return this.priorityValue;
   }
 
+  /** Sets the message priority. */
   set priority(value: MessagePriority) {
     if (value === this.priorityValue) return;
     switch (value) {
@@ -289,6 +323,7 @@ export class MimeMessage {
     this.priorityValue = value;
   }
 
+  /** Gets or sets the X-Priority value. */
   get xPriority(): XMessagePriority {
     if (!this.lazyLoaded.has('xPriority')) {
       const header = this.headers.tryGetHeader(HeaderId.XPriority);
@@ -309,6 +344,7 @@ export class MimeMessage {
     return this.xpriorityValue;
   }
 
+  /** Sets the X-Priority value. */
   set xPriority(value: XMessagePriority) {
     if (value === this.xpriorityValue) return;
     if (!isXMessagePriority(value)) throw new RangeError('value is not a valid XMessagePriority');
@@ -317,6 +353,7 @@ export class MimeMessage {
     this.xpriorityValue = value;
   }
 
+  /** Gets or sets the Sender mailbox. */
   get sender(): MailboxAddress | null {
     if (!this.lazyLoaded.has('sender')) {
       const header = this.headers.tryGetHeader(HeaderId.Sender);
@@ -327,6 +364,7 @@ export class MimeMessage {
     return this.senderValue;
   }
 
+  /** Sets the Sender mailbox. */
   set sender(value: MailboxAddress | null) {
     if (this.lazyLoaded.has('sender') && value === this.senderValue) return;
     if (value === null) {
@@ -340,6 +378,7 @@ export class MimeMessage {
     this.senderValue = value;
   }
 
+  /** Gets or sets the Resent-Sender mailbox. */
   get resentSender(): MailboxAddress | null {
     if (!this.lazyLoaded.has('resentSender')) {
       const header = this.headers.tryGetHeader(HeaderId.ResentSender);
@@ -350,6 +389,7 @@ export class MimeMessage {
     return this.resentSenderValue;
   }
 
+  /** Sets the Resent-Sender mailbox. */
   set resentSender(value: MailboxAddress | null) {
     if (this.lazyLoaded.has('resentSender') && value === this.resentSenderValue) return;
     if (value === null) {
@@ -363,23 +403,36 @@ export class MimeMessage {
     this.resentSenderValue = value;
   }
 
+  /** Gets the From address list. */
   get from(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.From, 'from'); }
+  /** Gets the Resent-From address list. */
   get resentFrom(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ResentFrom, 'resentFrom'); }
+  /** Gets the Reply-To address list. */
   get replyTo(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ReplyTo, 'replyTo'); }
+  /** Gets the Resent-Reply-To address list. */
   get resentReplyTo(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ResentReplyTo, 'resentReplyTo'); }
+  /** Gets the To address list. */
   get to(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.To, 'to'); }
+  /** Gets the Resent-To address list. */
   get resentTo(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ResentTo, 'resentTo'); }
+  /** Gets the Cc address list. */
   get cc(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.Cc, 'cc'); }
+  /** Gets the Resent-Cc address list. */
   get resentCc(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ResentCc, 'resentCc'); }
+  /** Gets the Bcc address list. */
   get bcc(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.Bcc, 'bcc'); }
+  /** Gets the Resent-Bcc address list. */
   get resentBcc(): InternetAddressList { return this.getLazyLoadedAddresses(HeaderId.ResentBcc, 'resentBcc'); }
 
+  /** Gets or sets the message subject. */
   get subject(): string | null { return this.headers.getValue('Subject'); }
+  /** Sets the message subject. */
   set subject(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     this.setHeader('Subject', value);
   }
 
+  /** Gets or sets the Date header value. */
   get date(): DateTimeOffset {
     if (!this.lazyLoaded.has('date')) {
       const header = this.headers.tryGetHeader(HeaderId.Date);
@@ -392,6 +445,7 @@ export class MimeMessage {
     return this.dateValue;
   }
 
+  /** Sets the Date header value. */
   set date(value: DateTimeOffset) {
     if (this.lazyLoaded.has('date') && dtoEquals(this.dateValue, value)) return;
     this.setHeader('Date', formatDate(value));
@@ -399,6 +453,7 @@ export class MimeMessage {
     this.dateValue = value;
   }
 
+  /** Gets or sets the Resent-Date header value. */
   get resentDate(): DateTimeOffset {
     if (!this.lazyLoaded.has('resentDate')) {
       const header = this.headers.tryGetHeader(HeaderId.ResentDate);
@@ -411,6 +466,7 @@ export class MimeMessage {
     return this.resentDateValue;
   }
 
+  /** Sets the Resent-Date header value. */
   set resentDate(value: DateTimeOffset) {
     if (dtoEquals(this.resentDateValue, value)) return;
     this.setHeader('Resent-Date', formatDate(value));
@@ -418,6 +474,7 @@ export class MimeMessage {
     this.resentDateValue = value;
   }
 
+  /** Gets the References message id list. */
   get references(): MessageIdList {
     if (!this.lazyLoaded.has('references')) {
       const header = this.headers.tryGetHeader(HeaderId.References);
@@ -433,6 +490,7 @@ export class MimeMessage {
     return this.referenceList;
   }
 
+  /** Gets or sets the In-Reply-To message id. */
   get inReplyTo(): string | null {
     if (!this.lazyLoaded.has('inReplyTo')) {
       const header = this.headers.tryGetHeader(HeaderId.InReplyTo);
@@ -445,6 +503,7 @@ export class MimeMessage {
     return this.inReplyToValue;
   }
 
+  /** Sets the In-Reply-To message id. */
   set inReplyTo(value: string | null) {
     if (this.lazyLoaded.has('inReplyTo') && this.inReplyToValue === value) return;
     if (value === null) {
@@ -459,6 +518,7 @@ export class MimeMessage {
     this.setHeader('In-Reply-To', `<${msgid}>`);
   }
 
+  /** Gets or sets the Message-Id value. */
   get messageId(): string | null {
     if (!this.lazyLoaded.has('messageId')) {
       const header = this.headers.tryGetHeader(HeaderId.MessageId);
@@ -471,6 +531,7 @@ export class MimeMessage {
     return this.messageIdValue;
   }
 
+  /** Sets the Message-Id value. */
   set messageId(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (this.lazyLoaded.has('messageId') && this.messageIdValue === value) return;
@@ -480,6 +541,7 @@ export class MimeMessage {
     this.setHeader('Message-Id', `<${msgid}>`);
   }
 
+  /** Gets or sets the Resent-Message-Id value. */
   get resentMessageId(): string | null {
     if (!this.lazyLoaded.has('resentMessageId')) {
       const header = this.headers.tryGetHeader(HeaderId.ResentMessageId);
@@ -492,6 +554,7 @@ export class MimeMessage {
     return this.resentMessageIdValue;
   }
 
+  /** Sets the Resent-Message-Id value. */
   set resentMessageId(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (this.lazyLoaded.has('resentMessageId') && this.resentMessageIdValue === value) return;
@@ -501,6 +564,7 @@ export class MimeMessage {
     this.setHeader('Resent-Message-Id', `<${msgid}>`);
   }
 
+  /** Gets or sets the MIME-Version header value. */
   get mimeVersion(): Version | null {
     if (!this.lazyLoaded.has('mimeVersion')) {
       const header = this.headers.tryGetHeader(HeaderId.MimeVersion);
@@ -513,6 +577,7 @@ export class MimeMessage {
     return this.versionValue;
   }
 
+  /** Sets the MIME-Version header value. */
   set mimeVersion(value: Version) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (this.versionValue != null && this.versionValue.compareTo(value) === 0) return;
@@ -521,9 +586,17 @@ export class MimeMessage {
     this.versionValue = value;
   }
 
+  /** Gets the plain text body, if present. */
   get textBody(): string | null { return this.getTextBody('plain'); }
+  /** Gets the HTML body, if present. */
   get htmlBody(): string | null { return this.getTextBody('html'); }
 
+  /**
+   * Gets the body text for a preferred format.
+   *
+   * @param format The preferred text format.
+   * @returns The body text, or `null` if not available.
+   */
   getTextBody(format: TextFormat): string | null {
     const body = this.body;
     if (body instanceof Multipart) {
@@ -535,10 +608,12 @@ export class MimeMessage {
     return null;
   }
 
+  /** Enumerates all body parts recursively. */
   get bodyParts(): IterableIterator<MimeEntity> {
     return enumerateMimeParts(this.body);
   }
 
+  /** Enumerates attachment body parts recursively. */
   get attachments(): IterableIterator<MimeEntity> {
     const self = this;
     return (function* () {
@@ -548,15 +623,32 @@ export class MimeMessage {
     })();
   }
 
+  /**
+   * Gets all message recipients.
+   *
+   * @param onlyUnique Whether to return only unique mailbox addresses.
+   * @returns The recipient mailboxes.
+   */
   getRecipients(onlyUnique = false): MailboxAddress[] {
     return this.getMailboxes(false, onlyUnique);
   }
 
+  /**
+   * Dispatches to the visitor method for MIME messages.
+   *
+   * @param visitor The visitor.
+   */
   accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     visitor.visitMimeMessage(this);
   }
 
+  /**
+   * Prepares the message body for transport.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum encoded line length.
+   */
   prepare(constraint: EncodingConstraint, maxLineLength = 78): void {
     if (maxLineLength < MINIMUM_LINE_LENGTH || maxLineLength > MAXIMUM_LINE_LENGTH)
       throw new RangeError('maxLineLength out of range');
@@ -567,6 +659,13 @@ export class MimeMessage {
     }
   }
 
+  /**
+   * Writes the message to a stream.
+   *
+   * @param stream The destination stream.
+   * @param headersOnly Whether to write only headers.
+   * @param options Formatting options.
+   */
   writeTo(stream: Stream): void;
   writeTo(stream: Stream, headersOnly: boolean): void;
   writeTo(options: FormatOptions, stream: Stream): void;
@@ -624,6 +723,11 @@ export class MimeMessage {
     }
   }
 
+  /**
+   * Serializes the message to a string.
+   *
+   * @returns The serialized message.
+   */
   toString(): string {
     const memory = new MemoryStream();
     this.writeTo(FormatOptions.default, memory);
@@ -634,6 +738,15 @@ export class MimeMessage {
    * C#: MimeMessage.Load. Parses a message from a stream (or byte buffer) using
    * the MIME parser. Per the port's Result convention, parse errors are returned
    * as an Err rather than thrown (C#: FormatException).
+   */
+  /**
+   * Loads a MIME message from bytes or a stream.
+   *
+   * @param stream The input stream.
+   * @param data The input bytes.
+   * @param persistent Whether parsed content should reference the source stream.
+   * @param options Parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
    */
   static load(stream: Stream, persistent?: boolean, options?: ParserOptions): Result<MimeMessage>;
   static load(data: Uint8Array, options?: ParserOptions): Result<MimeMessage>;
@@ -665,12 +778,20 @@ export class MimeMessage {
     return parser.parseMessage();
   }
 
+  /** Releases resources owned by the message body and header lists. */
   dispose(): void {
     this.body?.dispose();
   }
 
   // --- internal helpers (mirror the C# private members) ---
 
+  /**
+   * Merges message headers with body entity headers for serialization.
+   *
+   * @param headers The message headers.
+   * @param body The message body.
+   * @returns The merged headers.
+   */
   static *mergeHeaders(headers: HeaderList, body: MimeEntity): IterableIterator<Header> {
     let mesgIndex = 0;
     let bodyIndex = 0;

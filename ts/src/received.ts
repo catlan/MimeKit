@@ -9,25 +9,48 @@ import { skipWhiteSpace } from './utils/parse-utils.js';
 
 const encoder = new TextEncoder();
 
+/** Identifies a clause in a `Received` header. */
 export enum ReceivedClauseId {
+  /** No recognized clause. */
   None = 0,
+  /** The `from` clause. */
   From = 1,
+  /** The `by` clause. */
   By = 2,
+  /** The `via` clause. */
   Via = 3,
+  /** The `with` clause. */
   With = 4,
+  /** The `id` clause. */
   Id = 5,
+  /** The `for` clause. */
   For = 6,
+  /** An unknown clause. */
   Unknown = 7,
 }
 
 const keywords = ['from', 'by', 'via', 'with', 'id', 'for'] as const;
 
+/**
+ * Represents a `Received` header value.
+ */
 export class Received {
+  /** The received clauses. */
   readonly clauses: ReceivedClause[] = [];
   private dateTimeValue: DateTimeOffset | null = null;
   private dateTimeString: string | null = null;
 
+  /** Creates a new empty `Received` header value. */
   constructor();
+  /**
+   * Creates a new `Received` header value from common relay information.
+   *
+   * @param from The source host name.
+   * @param fromTcpInfo The source host TCP information.
+   * @param by The receiving host name.
+   * @param byTcpInfo The receiving host TCP information.
+   * @param dateTime The date and time the message was received.
+   */
   constructor(from: string, fromTcpInfo: string, by: string, byTcpInfo: string, dateTime: DateTimeOffset);
   constructor(from?: string, fromTcpInfo?: string, by?: string, byTcpInfo?: string, dateTime?: DateTimeOffset) {
     if (arguments.length === 0) return;
@@ -42,53 +65,72 @@ export class Received {
     this.dateTime = dateTime ?? null;
   }
 
+  /** The collection of received clauses. */
   get Clauses(): ReceivedClause[] { return this.clauses; }
 
+  /** The date and time the message was received, if available. */
   get dateTime(): DateTimeOffset | null { return this.dateTimeValue; }
   set dateTime(value: DateTimeOffset | null) {
     this.dateTimeValue = value;
     this.dateTimeString = null;
   }
+  /** The date and time the message was received, if available. */
   get DateTime(): DateTimeOffset | null { return this.dateTime; }
   set DateTime(value: DateTimeOffset | null) { this.dateTime = value; }
 
+  /** The source host name, if available. */
   get from(): string | null { return this.find(ReceivedClauseId.From)?.value ?? null; }
   set from(value: string | null) { value == null ? this.remove(ReceivedClauseId.From) : this.addOrUpdateValue(ReceivedClauseId.From, value); }
+  /** The source host name, if available. */
   get From(): string | null { return this.from; }
   set From(value: string | null) { this.from = value; }
 
+  /** The TCP connection information for the source host, if available. */
   get fromTcpInfo(): string | null { return this.find(ReceivedClauseId.From)?.comments[0] ?? null; }
   set fromTcpInfo(value: string | null) { this.addOrUpdateComment(ReceivedClauseId.From, value); }
+  /** The TCP connection information for the source host, if available. */
   get FromTcpInfo(): string | null { return this.fromTcpInfo; }
   set FromTcpInfo(value: string | null) { this.fromTcpInfo = value; }
 
+  /** The receiving host name, if available. */
   get by(): string | null { return this.find(ReceivedClauseId.By)?.value ?? null; }
   set by(value: string | null) { value == null ? this.remove(ReceivedClauseId.By) : this.addOrUpdateValue(ReceivedClauseId.By, value); }
+  /** The receiving host name, if available. */
   get By(): string | null { return this.by; }
   set By(value: string | null) { this.by = value; }
 
+  /** The TCP connection information for the receiving host, if available. */
   get byTcpInfo(): string | null { return this.find(ReceivedClauseId.By)?.comments[0] ?? null; }
   set byTcpInfo(value: string | null) { this.addOrUpdateComment(ReceivedClauseId.By, value); }
+  /** The TCP connection information for the receiving host, if available. */
   get ByTcpInfo(): string | null { return this.byTcpInfo; }
   set ByTcpInfo(value: string | null) { this.byTcpInfo = value; }
 
+  /** The physical link identifier, if available. */
   get via(): string | null { return this.find(ReceivedClauseId.Via)?.value ?? null; }
   set via(value: string | null) { value == null ? this.remove(ReceivedClauseId.Via) : this.addOrUpdateValue(ReceivedClauseId.Via, value); }
+  /** The physical link identifier, if available. */
   get Via(): string | null { return this.via; }
   set Via(value: string | null) { this.via = value; }
 
+  /** The protocol identifier, if available. */
   get with(): string | null { return this.find(ReceivedClauseId.With)?.value ?? null; }
   set with(value: string | null) { value == null ? this.remove(ReceivedClauseId.With) : this.addOrUpdateValue(ReceivedClauseId.With, value); }
+  /** The protocol identifier, if available. */
   get With(): string | null { return this.with; }
   set With(value: string | null) { this.with = value; }
 
+  /** The message identifier, if available. */
   get id(): string | null { return this.find(ReceivedClauseId.Id)?.value ?? null; }
   set id(value: string | null) { value == null ? this.remove(ReceivedClauseId.Id) : this.addOrUpdateValue(ReceivedClauseId.Id, value); }
+  /** The message identifier, if available. */
   get Id(): string | null { return this.id; }
   set Id(value: string | null) { this.id = value; }
 
+  /** The recipient address, if available. */
   get for(): string | null { return this.find(ReceivedClauseId.For)?.value ?? null; }
   set for(value: string | null) { value == null ? this.remove(ReceivedClauseId.For) : this.addOrUpdateValue(ReceivedClauseId.For, value); }
+  /** The recipient address, if available. */
   get For(): string | null { return this.for; }
   set For(value: string | null) { this.for = value; }
 
@@ -122,6 +164,12 @@ export class Received {
     if (index !== -1) this.clauses.splice(index, 1);
   }
 
+  /**
+   * Serializes this `Received` header value.
+   *
+   * @param options The formatting options.
+   * @returns The serialized string.
+   */
   toString(options = FormatOptions.default): string {
     if (options == null) throw new TypeError('options cannot be null or undefined');
     const builder: string[] = [];
@@ -142,18 +190,29 @@ export class Received {
     return builder.join('');
   }
 
+  /**
+   * Parses a `Received` header value.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parse(buffer: Uint8Array, startIndex = 0, length = buffer?.length - startIndex): Result<Received> {
     if (!(buffer instanceof Uint8Array)) throw new TypeError('buffer cannot be null or undefined');
     if (!validRange(buffer, startIndex, length)) throw new RangeError('startIndex and length do not specify a valid range');
     return parseReceived(buffer, startIndex, length, false);
   }
 
+  /**
+   * Attempts to parse a `Received` header value.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input or invalid arguments.
+   */
   static tryParse(buffer: Uint8Array | null | undefined, startIndex = 0, length = (buffer?.length ?? 0) - startIndex): Result<Received> {
     if (!(buffer instanceof Uint8Array) || !validRange(buffer, startIndex, length))
       return err('invalid-arguments', 'Invalid arguments.');
     return parseReceived(buffer, startIndex, length, false);
   }
 
+  /** Creates a `Received` value from parsed clauses and date information. */
   static fromParsed(clauses: ReceivedClause[], dateTime: DateTimeOffset | null, dateTimeString: string | null): Received {
     const received = new Received();
     received.clauses.push(...clauses);
@@ -163,13 +222,21 @@ export class Received {
   }
 }
 
+/**
+ * Represents a clause in a `Received` header value.
+ */
 export class ReceivedClause {
+  /** The clause identifier. */
   readonly id: ReceivedClauseId;
+  /** The keyword used to identify the clause. */
   readonly keyword: string;
+  /** The comments associated with the clause. */
   readonly comments: string[];
   private valueStorage = '';
 
+  /** Creates a received clause. */
   constructor(keyword: string, value: string, comment?: string);
+  /** Creates a received clause with an explicit clause identifier. */
   constructor(id: ReceivedClauseId, keyword: string, value: string, comments?: string[], validate?: boolean);
   constructor(a: string | ReceivedClauseId, b: string, c?: string, d?: string[] | string, validate = true) {
     if (typeof a === 'number') {
@@ -188,15 +255,20 @@ export class ReceivedClause {
     }
   }
 
+  /** The clause identifier. */
   get Id(): ReceivedClauseId { return this.id; }
+  /** The keyword used to identify the clause. */
   get Keyword(): string { return this.keyword; }
+  /** The comments associated with the clause. */
   get Comments(): string[] { return this.comments; }
+  /** The clause value. */
   get value(): string { return this.valueStorage; }
   set value(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     validateClauseValue(this.id, value);
     this.valueStorage = value;
   }
+  /** The clause value. */
   get Value(): string { return this.value; }
   set Value(value: string) { this.value = value; }
 }

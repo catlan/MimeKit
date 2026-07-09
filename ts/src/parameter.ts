@@ -26,15 +26,35 @@ function roundHalfToEven(value: number): number {
   return floor % 2 === 0 ? floor : floor + 1;
 }
 
+/**
+ * Represents a MIME header parameter.
+ */
 export class Parameter {
   private encodingValue: CharsetEncoding | null = null;
   private encodingMethodValue: ParameterEncodingMethod = 'default';
   private alwaysQuoteValue = false;
   private text: string;
+  /** The parameter name. */
   readonly name: string;
+  /** Invoked when the parameter changes. */
   onChanged: (() => void) | null = null;
 
+  /**
+   * Creates a new MIME parameter.
+   *
+   * @param name The parameter name.
+   * @param value The parameter value.
+   * @throws {TypeError} `name` or `value` is null, undefined, empty, or invalid.
+   */
   constructor(name: string, value: string);
+  /**
+   * Creates a new MIME parameter using the specified charset for encoded values.
+   *
+   * @param charset The charset to use when encoding the value.
+   * @param name The parameter name.
+   * @param value The parameter value.
+   * @throws {TypeError} `charset`, `name`, or `value` is null, undefined, or invalid.
+   */
   constructor(charset: string | CharsetEncoding, name: string, value: string);
   constructor(a: string | CharsetEncoding, b: string, c?: string) {
     let name: string;
@@ -66,6 +86,7 @@ export class Parameter {
     this.text = value;
   }
 
+  /** The charset used when encoding this parameter value. */
   get encoding(): CharsetEncoding {
     return this.encodingValue ?? utf8;
   }
@@ -77,6 +98,7 @@ export class Parameter {
     this.changed();
   }
 
+  /** The encoding method used when serializing this parameter. */
   get encodingMethod(): ParameterEncodingMethod {
     return this.encodingMethodValue;
   }
@@ -90,6 +112,7 @@ export class Parameter {
     this.changed();
   }
 
+  /** Whether the parameter value should always be quoted. */
   get alwaysQuote(): boolean {
     return this.alwaysQuoteValue;
   }
@@ -101,6 +124,7 @@ export class Parameter {
     this.changed();
   }
 
+  /** The parameter value. */
   get value(): string {
     return this.text;
   }
@@ -114,6 +138,11 @@ export class Parameter {
     this.changed();
   }
 
+  /**
+   * Clones this parameter.
+   *
+   * @returns The cloned parameter.
+   */
   clone(): Parameter {
     const parameter = new Parameter(this.name, this.value);
     parameter.encodingValue = this.encodingValue;
@@ -122,6 +151,14 @@ export class Parameter {
     return parameter;
   }
 
+  /**
+   * Encodes this parameter and appends it to a string builder.
+   *
+   * @param options The formatting options.
+   * @param builder The destination string fragments.
+   * @param lineLength The current output line length.
+   * @param headerEncoding The charset to use for encoded parameter values.
+   */
   encode(options: FormatOptions, builder: string[], lineLength: { value: number }, headerEncoding: CharsetEncoding = utf8): void {
     switch (this.getEncodeMethod(options, this.name, this.value)) {
     case EncodeMethod.Rfc2231:
@@ -139,10 +176,20 @@ export class Parameter {
     }
   }
 
+  /**
+   * Writes this parameter without applying header encoding.
+   *
+   * @param builder The destination string fragments.
+   */
   writeTo(builder: string[]): void {
     builder.push(this.name, '=', quote(this.value));
   }
 
+  /**
+   * Serializes this parameter.
+   *
+   * @returns A string representing this parameter.
+   */
   toString(): string {
     return `${this.name}=${quote(this.value)}`;
   }

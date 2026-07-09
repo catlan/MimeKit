@@ -19,12 +19,18 @@ interface NameValuePair {
   id: number | null;
 }
 
+/**
+ * Represents a collection of MIME header parameters.
+ */
 export class ParameterList implements Iterable<Parameter> {
   private readonly table = new Map<string, Parameter>();
   private readonly parameters: Parameter[] = [];
+  /** Invoked when the parameter list changes. */
   onChanged: (() => void) | null = null;
+  /** Invoked when the `boundary` parameter changes. */
   onBoundaryChanged: (() => void) | null = null;
 
+  /** The number of parameters in the list. */
   get count(): number {
     return this.parameters.length;
   }
@@ -34,12 +40,32 @@ export class ParameterList implements Iterable<Parameter> {
     return false;
   }
 
+  /** The number of parameters in the list. */
   get length(): number {
     return this.parameters.length;
   }
 
+  /**
+   * Adds a parameter to the list.
+   *
+   * @param parameter The parameter to add.
+   * @throws {TypeError} A parameter with the same name already exists.
+   */
   add(parameter: Parameter): void;
+  /**
+   * Adds a parameter with the specified name and value.
+   *
+   * @param name The parameter name.
+   * @param value The parameter value.
+   */
   add(name: string, value: string): void;
+  /**
+   * Adds a parameter with the specified charset, name, and value.
+   *
+   * @param charset The charset to use when encoding the value.
+   * @param name The parameter name.
+   * @param value The parameter value.
+   */
   add(charset: string | CharsetEncoding, name: string, value: string): void;
   add(a: Parameter | string | CharsetEncoding, b?: string, c?: string): void {
     let parameter: Parameter;
@@ -53,6 +79,7 @@ export class ParameterList implements Iterable<Parameter> {
     this.insert(this.parameters.length, parameter);
   }
 
+  /** Removes all parameters from the list. */
   clear(): void {
     let hadBoundary = false;
     for (const parameter of this.parameters) {
@@ -67,6 +94,13 @@ export class ParameterList implements Iterable<Parameter> {
     this.changed();
   }
 
+  /**
+   * Determines whether the list contains the specified parameter or parameter name.
+   *
+   * @param nameOrParameter The parameter or parameter name.
+   * @returns `true` if the parameter is contained; otherwise, `false`.
+   * @throws {TypeError} `nameOrParameter` is null or undefined.
+   */
   contains(nameOrParameter: string | Parameter): boolean {
     if (nameOrParameter == null)
       throw new TypeError('name cannot be null or undefined');
@@ -75,6 +109,13 @@ export class ParameterList implements Iterable<Parameter> {
     return this.table.has(nameOrParameter.toLowerCase());
   }
 
+  /**
+   * Gets the index of the specified parameter or parameter name.
+   *
+   * @param nameOrParameter The parameter or parameter name.
+   * @returns The index of the parameter, or `-1` if it is not found.
+   * @throws {TypeError} `nameOrParameter` is null or undefined.
+   */
   indexOf(nameOrParameter: string | Parameter): number {
     if (nameOrParameter == null)
       throw new TypeError('name cannot be null or undefined');
@@ -87,7 +128,22 @@ export class ParameterList implements Iterable<Parameter> {
     return -1;
   }
 
+  /**
+   * Inserts a parameter at the specified index.
+   *
+   * @param index The insertion index.
+   * @param parameter The parameter to insert.
+   * @throws {RangeError} `index` is out of range.
+   * @throws {TypeError} A parameter with the same name already exists.
+   */
   insert(index: number, parameter: Parameter): void;
+  /**
+   * Inserts a parameter with the specified name and value.
+   *
+   * @param index The insertion index.
+   * @param name The parameter name.
+   * @param value The parameter value.
+   */
   insert(index: number, name: string, value: string): void;
   insert(index: number, a: Parameter | string, b?: string): void {
     if (!Number.isInteger(index) || index < 0 || index > this.parameters.length)
@@ -104,6 +160,13 @@ export class ParameterList implements Iterable<Parameter> {
     this.changed();
   }
 
+  /**
+   * Removes a parameter from the list.
+   *
+   * @param nameOrParameter The parameter or parameter name to remove.
+   * @returns `true` if the parameter was removed; otherwise, `false`.
+   * @throws {TypeError} `nameOrParameter` is null or undefined.
+   */
   remove(nameOrParameter: string | Parameter): boolean {
     if (nameOrParameter == null)
       throw new TypeError('name cannot be null or undefined');
@@ -117,6 +180,12 @@ export class ParameterList implements Iterable<Parameter> {
     return true;
   }
 
+  /**
+   * Removes the parameter at the specified index.
+   *
+   * @param index The index to remove.
+   * @throws {RangeError} `index` is out of range.
+   */
   removeAt(index: number): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.parameters.length)
       throw new RangeError('index is out of range');
@@ -129,7 +198,18 @@ export class ParameterList implements Iterable<Parameter> {
     this.changed();
   }
 
+  /**
+   * Gets the parameter at the specified index.
+   *
+   * @param index The parameter index.
+   */
   get(index: number): Parameter;
+  /**
+   * Gets the value of the specified parameter name.
+   *
+   * @param name The parameter name.
+   * @returns The parameter value, or `null` if it is not found.
+   */
   get(name: string): string | null;
   get(indexOrName: number | string): Parameter | string | null {
     if (typeof indexOrName === 'number')
@@ -137,7 +217,20 @@ export class ParameterList implements Iterable<Parameter> {
     return this.table.get(indexOrName.toLowerCase())?.value ?? null;
   }
 
+  /**
+   * Replaces the parameter at the specified index.
+   *
+   * @param index The parameter index.
+   * @param parameter The replacement parameter.
+   * @throws {RangeError} `index` is out of range.
+   */
   set(index: number, parameter: Parameter): void;
+  /**
+   * Sets a parameter value by name, adding it if it does not exist.
+   *
+   * @param name The parameter name.
+   * @param value The parameter value.
+   */
   set(name: string, value: string): void;
   set(indexOrName: number | string, value: Parameter | string): void {
     if (typeof indexOrName === 'number') {
@@ -173,6 +266,13 @@ export class ParameterList implements Iterable<Parameter> {
     }
   }
 
+  /**
+   * Attempts to get a parameter by name.
+   *
+   * @param name The parameter name.
+   * @returns The parameter, or `null` if it is not found.
+   * @throws {TypeError} `name` is null or undefined.
+   */
   tryGetValue(name: string): Parameter | null {
     if (name == null)
       throw new TypeError('name cannot be null or undefined');
@@ -183,11 +283,24 @@ export class ParameterList implements Iterable<Parameter> {
     return this.parameters[Symbol.iterator]();
   }
 
+  /**
+   * Encodes the parameter list and appends it to a string builder.
+   *
+   * @param options The formatting options.
+   * @param builder The destination string fragments.
+   * @param lineLength The current output line length.
+   * @param charset The charset to use when encoding parameter values.
+   */
   encode(options: FormatOptions, builder: string[], lineLength: { value: number }, charset: CharsetEncoding = utf8): void {
     for (const parameter of this.parameters)
       parameter.encode(options, builder, lineLength, charset);
   }
 
+  /**
+   * Writes the parameter list without applying header encoding.
+   *
+   * @param builder The destination string fragments.
+   */
   writeTo(builder: string[]): void {
     for (const parameter of this.parameters) {
       builder.push('; ');
@@ -195,18 +308,39 @@ export class ParameterList implements Iterable<Parameter> {
     }
   }
 
+  /**
+   * Serializes the parameter list.
+   *
+   * @returns A string representing the parameter list.
+   */
   toString(): string {
     const builder: string[] = [];
     this.writeTo(builder);
     return builder.join('');
   }
 
+  /**
+   * Parses a parameter list from text or bytes.
+   *
+   * @param input The input to parse.
+   * @param options The parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parse(input: string | Uint8Array, options = ParserOptions.default): Result<ParameterList> {
     const text = typeof input === 'string' ? new TextEncoder().encode(input) : input;
     const cursor = { index: 0 };
     return ParameterList.tryParse(options, text, cursor, text.length);
   }
 
+  /**
+   * Attempts to parse a parameter list from a byte range.
+   *
+   * @param options The parser options.
+   * @param text The input buffer.
+   * @param cursor The current parse cursor.
+   * @param endIndex The end index of the input range.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static tryParse(options: ParserOptions, text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<ParameterList> {
     const rfc2231 = new Map<string, NameValuePair[]>();
     const params: NameValuePair[] = [];

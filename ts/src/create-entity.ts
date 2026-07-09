@@ -58,7 +58,17 @@ function eqIgnoreCase(value: string, ...values: string[]): boolean {
   return values.some((v) => lower === v.toLowerCase());
 }
 
-/** C#: ParserOptions.CreateEntity. */
+/**
+ * Creates the concrete MIME entity for a parsed Content-Type and header block.
+ *
+ * @param options Parser options.
+ * @param contentType The parsed Content-Type.
+ * @param headers The parsed entity headers.
+ * @param hasBodySeparator Whether the parser saw a body separator.
+ * @param toplevel Whether the entity is the top-level message body.
+ * @param depth The current MIME nesting depth.
+ * @returns The concrete MIME entity selected for the content type.
+ */
 export function createEntity(
   options: ParserOptions,
   contentType: ContentType,

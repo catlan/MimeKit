@@ -2,7 +2,15 @@ import { MessagePart } from './message-part.js';
 import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
 
+/**
+ * A text/rfc822-headers MIME entity containing message headers.
+ */
 export class TextRfc822Headers extends MessagePart {
+  /**
+   * Initializes a new text/rfc822-headers entity.
+   *
+   * @param args Constructor arguments used by the parser.
+   */
   constructor(args: MimeEntityConstructorArgs);
   constructor(...args: unknown[]) {
     if (args.length === 1 && isConstructorArgs(args[0])) {
@@ -14,6 +22,11 @@ export class TextRfc822Headers extends MessagePart {
     this.contentType.mediaType = 'text';
   }
 
+  /**
+   * Dispatches to the visitor method for text/rfc822-headers entities.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('TextRfc822Headers');

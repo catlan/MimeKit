@@ -12,7 +12,9 @@ import { type CharsetEncoding } from './utils/charset-utils.js';
 
 const ascii = new TextEncoder();
 
+/** Describes the kind of change made to a header list. */
 export type HeaderListChangedAction = 'added' | 'changed' | 'cleared' | 'removed';
+/** Receives notifications when a header list changes. */
 export type HeaderListChangedCallback = (header: Header | null, action: HeaderListChangedAction) => void;
 
 type HeaderListAddArgs =
@@ -25,33 +27,62 @@ type HeaderListInsertArgs =
   | [number, HeaderId | string, string]
   | [number, HeaderId | string, string | CharsetEncoding, string];
 
+/**
+ * Represents a list of message headers.
+ */
 export class HeaderList implements Iterable<Header> {
+  /** The parser options associated with headers in this list. */
   readonly options: ParserOptions;
+  /** Invoked when the header list changes. */
   onChanged: HeaderListChangedCallback | null = null;
+  /** Whether a body separator should be written after the headers. */
   hasBodySeparator = true;
 
   private readonly headers: Header[] = [];
   private readonly table = new Map<string, Header>();
   private readonly callbacks = new WeakMap<Header, () => void>();
 
+  /**
+   * Creates a new header list.
+   *
+   * @param options The parser options associated with headers in the list.
+   * @throws {TypeError} `options` is null or undefined.
+   */
   constructor(options: ParserOptions = ParserOptions.default.clone()) {
     if (options == null) throw new TypeError('options cannot be null or undefined');
     this.options = options.clone();
   }
 
+  /** The number of headers. */
   get count(): number {
     return this.headers.length;
   }
 
+  /** Whether this list is read-only. */
   get isReadOnly(): boolean {
     return false;
   }
 
+  /**
+   * Gets the header at the specified index.
+   *
+   * @param index The index.
+   * @returns The header.
+   * @throws {RangeError} `index` is out of range.
+   */
   at(index: number): Header {
     this.validateExistingIndex(index);
     return this.headers[index]!;
   }
 
+  /**
+   * Replaces the header at the specified index.
+   *
+   * @param index The index.
+   * @param value The replacement header.
+   * @throws {TypeError} `value` is null or undefined.
+   * @throws {RangeError} `index` is out of range.
+   */
   set(index: number, value: Header): void {
     this.validateExistingIndex(index);
     if (value == null) throw new TypeError('value cannot be null or undefined');
@@ -88,12 +119,25 @@ export class HeaderList implements Iterable<Header> {
     }
   }
 
+  /**
+   * Gets the value of the first matching header.
+   *
+   * @param idOrField The header identifier or field name.
+   * @returns The header value, or `null` if it does not exist.
+   */
   getValue(idOrField: HeaderId | string): string | null {
     const field = normalizeFieldKey(idOrField, true);
     const header = this.table.get(field);
     return header?.value ?? null;
   }
 
+  /**
+   * Sets the value of the first matching header, adding it if it does not exist.
+   *
+   * @param idOrField The header identifier or field name.
+   * @param value The header value.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   setValue(idOrField: HeaderId | string, value: string): void {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     const header = this.table.get(normalizeFieldKey(idOrField, true));
@@ -104,6 +148,11 @@ export class HeaderList implements Iterable<Header> {
     this.add(idOrField, value);
   }
 
+  /**
+   * Adds a header to the list.
+   *
+   * @param args A header instance, or a field/id with value and optional charset.
+   */
   add(...args: HeaderListAddArgs): void {
     const header = makeHeader(args);
     if (!this.table.has(keyOf(header.field)))
@@ -114,6 +163,7 @@ export class HeaderList implements Iterable<Header> {
     this.changed(header, 'added');
   }
 
+  /** Removes all headers from the list. */
   clear(): void {
     for (const header of this.headers)
       this.detach(header);
@@ -123,6 +173,13 @@ export class HeaderList implements Iterable<Header> {
     this.changed(null, 'cleared');
   }
 
+  /**
+   * Determines whether the list contains the specified header or field.
+   *
+   * @param value The header, header identifier, or field name.
+   * @returns `true` if the header is contained; otherwise, `false`.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   contains(value: Header | HeaderId | string): boolean {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (value instanceof Header)
@@ -130,6 +187,14 @@ export class HeaderList implements Iterable<Header> {
     return this.table.has(normalizeFieldKey(value, true));
   }
 
+  /**
+   * Copies the headers to an array.
+   *
+   * @param array The destination array.
+   * @param arrayIndex The index into the array.
+   * @throws {TypeError} `array` is null or undefined.
+   * @throws {RangeError} `arrayIndex` is out of range or the array is too small.
+   */
   copyTo(array: Header[], arrayIndex: number): void {
     if (array == null) throw new TypeError('array cannot be null or undefined');
     if (!Number.isInteger(arrayIndex) || arrayIndex < 0 || arrayIndex > array.length)
@@ -140,6 +205,13 @@ export class HeaderList implements Iterable<Header> {
       array[arrayIndex + i] = this.headers[i]!;
   }
 
+  /**
+   * Gets the index of the first matching header.
+   *
+   * @param value The header, header identifier, or field name.
+   * @returns The header index, or `-1` if it is not found.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   indexOf(value: Header | HeaderId | string): number {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (value instanceof Header)
@@ -152,6 +224,12 @@ export class HeaderList implements Iterable<Header> {
     return -1;
   }
 
+  /**
+   * Inserts a header at the specified index.
+   *
+   * @param args The index and a header instance, or a field/id with value and optional charset.
+   * @throws {RangeError} The index is out of range.
+   */
   insert(...args: HeaderListInsertArgs): void {
     const index = args[0];
     // C# constructs the Header (which validates its own args) BEFORE
@@ -175,6 +253,13 @@ export class HeaderList implements Iterable<Header> {
     this.changed(header, 'added');
   }
 
+  /**
+   * Gets the index of the last matching header.
+   *
+   * @param value The header identifier or field name.
+   * @returns The header index, or `-1` if it is not found.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   lastIndexOf(value: HeaderId | string): number {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     const field = normalizeFieldName(value, true);
@@ -185,6 +270,13 @@ export class HeaderList implements Iterable<Header> {
     return -1;
   }
 
+  /**
+   * Removes the first matching header.
+   *
+   * @param value The header, header identifier, or field name.
+   * @returns `true` if a header was removed; otherwise, `false`.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   remove(value: Header | HeaderId | string): boolean {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     if (value instanceof Header) {
@@ -199,6 +291,12 @@ export class HeaderList implements Iterable<Header> {
     return this.remove(header);
   }
 
+  /**
+   * Removes all headers matching the specified field.
+   *
+   * @param value The header identifier or field name.
+   * @throws {TypeError} `value` is null or undefined.
+   */
   removeAll(value: HeaderId | string): void {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     const field = normalizeFieldName(value, true);
@@ -217,6 +315,12 @@ export class HeaderList implements Iterable<Header> {
     }
   }
 
+  /**
+   * Removes the header at the specified index.
+   *
+   * @param index The index.
+   * @throws {RangeError} `index` is out of range.
+   */
   removeAt(index: number): void {
     this.validateExistingIndex(index);
     const header = this.headers[index]!;
@@ -227,6 +331,11 @@ export class HeaderList implements Iterable<Header> {
     this.changed(header, 'removed');
   }
 
+  /**
+   * Replaces all matching headers with a single header.
+   *
+   * @param args A header instance, or a field/id with value and optional charset.
+   */
   replace(...args: HeaderListAddArgs): void {
     const header = makeHeader(args);
     const first = this.table.get(keyOf(header.field));
@@ -254,11 +363,30 @@ export class HeaderList implements Iterable<Header> {
     this.changed(header, 'added');
   }
 
+  /**
+   * Attempts to get the first matching header.
+   *
+   * @param value The header identifier or field name.
+   * @returns The header, or `null` if it does not exist.
+   */
   tryGetHeader(value: HeaderId | string): Header | null {
     return this.table.get(normalizeFieldKey(value, true)) ?? null;
   }
 
+  /**
+   * Writes the headers to a stream.
+   *
+   * @param stream The output stream.
+   * @throws {TypeError} `stream` is null or undefined.
+   */
   writeTo(stream: Stream): void;
+  /**
+   * Writes the headers to a stream using the specified formatting options.
+   *
+   * @param options The formatting options.
+   * @param stream The output stream.
+   * @throws {TypeError} `options` or `stream` is null or undefined.
+   */
   writeTo(options: FormatOptions, stream: Stream): void;
   writeTo(a: FormatOptions | Stream, b?: Stream): void {
     const options = a instanceof FormatOptions ? a : FormatOptions.default;
@@ -298,6 +426,14 @@ export class HeaderList implements Iterable<Header> {
    * C#: HeaderList.Load. Parses a list of headers from a stream (or byte buffer)
    * using the MIME parser. Parse errors are returned as an Err (C#:
    * FormatException) per the port's Result convention.
+   */
+  /**
+   * Parses a list of headers from a stream or byte buffer.
+   *
+   * @param source The source stream or buffer.
+   * @param options The parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   * @throws {TypeError} `source` is null or undefined.
    */
   static load(source: Stream | Uint8Array, options: ParserOptions = ParserOptions.default): Result<HeaderList> {
     if (source == null) throw new TypeError('stream cannot be null or undefined');

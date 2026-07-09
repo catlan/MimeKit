@@ -15,6 +15,7 @@ import {
   type CharsetEncoding,
 } from './utils/charset-utils.js';
 
+/** Text body format values understood by {@link TextPart}. */
 export const TextFormat = {
   Text: 'text',
   Plain: 'plain',
@@ -25,14 +26,30 @@ export const TextFormat = {
   CompressedRichText: 'compressedRichText',
 } as const;
 
+/** A text body format value. */
 export type TextFormat = typeof TextFormat[keyof typeof TextFormat];
 
+/** Confidence level for detected text encodings. */
 export type TextEncodingConfidence = 'irrelevant' | 'certain' | 'tentative' | 'undefined';
 
 const ascii = tryGetEncoding('us-ascii')!;
 const encoder = new TextEncoder();
 
+/**
+ * A MIME part containing text content.
+ *
+ * TextPart handles plain text, flowed text, HTML, enriched text, and rich text
+ * bodies and decodes their content using the declared or detected charset.
+ */
 export class TextPart extends MimePart {
+  /**
+   * Initializes a new text part.
+   *
+   * @param subtype The text media subtype.
+   * @param format A predefined text format.
+   * @param contentType The content type to use.
+   * @throws {TypeError} Constructor arguments are invalid.
+   */
   constructor();
   constructor(subtype: string, ...args: unknown[]);
   constructor(format: TextFormat);
@@ -83,6 +100,7 @@ export class TextPart extends MimePart {
       this.setText(encoding ?? utf8, text);
   }
 
+  /** Gets the best matching text format for this part. */
   get format(): TextFormat {
     this.checkDisposed('TextPart');
     if (this.contentType.mediaType.toLowerCase() === 'text') {
@@ -103,30 +121,40 @@ export class TextPart extends MimePart {
     return TextFormat.Plain;
   }
 
+  /** Gets whether this part is `text/enriched` or `text/richtext`. */
   get isEnriched(): boolean {
     this.checkDisposed('TextPart');
     return this.contentType.isMimeType('text', 'enriched') || this.contentType.isMimeType('text', 'richtext');
   }
 
+  /** Gets whether this part is flowed plain text. */
   get isFlowed(): boolean {
     return this.isPlain && this.contentType.format?.trim().toLowerCase() === 'flowed';
   }
 
+  /** Gets whether this part is HTML text. */
   get isHtml(): boolean {
     this.checkDisposed('TextPart');
     return this.contentType.isMimeType('text', 'html');
   }
 
+  /** Gets whether this part is plain text. */
   get isPlain(): boolean {
     this.checkDisposed('TextPart');
     return this.contentType.isMimeType('text', 'plain');
   }
 
+  /** Gets whether this part is rich text. */
   get isRichText(): boolean {
     this.checkDisposed('TextPart');
     return this.contentType.isMimeType('text', 'rtf') || this.contentType.isMimeType('application', 'rtf');
   }
 
+  /**
+   * Dispatches to the visitor method for text parts.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null)
       throw new TypeError('visitor cannot be null or undefined');
@@ -134,14 +162,22 @@ export class TextPart extends MimePart {
     visitor.visitTextPart(this);
   }
 
+  /** Gets or sets the decoded text using UTF-8 when setting. */
   get text(): string {
     return this.getText().text;
   }
 
+  /** Sets the text content using UTF-8. */
   set text(value: string) {
     this.setText(utf8, value);
   }
 
+  /**
+   * Tests whether this part matches a text format.
+   *
+   * @param format The format to test.
+   * @returns `true` if this part matches `format`; otherwise `false`.
+   */
   isFormat(format: TextFormat): boolean {
     switch (format) {
     case TextFormat.Plain: return this.isPlain;
@@ -153,6 +189,11 @@ export class TextPart extends MimePart {
     }
   }
 
+  /**
+   * Attempts to detect the charset encoding used by the content.
+   *
+   * @returns The detected encoding and confidence, or an undefined confidence.
+   */
   tryDetectEncoding(): { ok: true; encoding: CharsetEncoding; confidence: TextEncodingConfidence } | { ok: false; encoding: null; confidence: TextEncodingConfidence } {
     this.checkDisposed('TextPart');
     if (this.content === null)
@@ -176,6 +217,14 @@ export class TextPart extends MimePart {
     return { ok: false, encoding: null, confidence: 'undefined' };
   }
 
+  /**
+   * Gets the decoded text.
+   *
+   * @param encoding The encoding to use.
+   * @param charset The charset name to use.
+   * @returns The decoded text, or the decoded text with the detected encoding.
+   * @throws {TypeError} The charset is unsupported or the part has been disposed.
+   */
   getText(): { text: string; encoding: CharsetEncoding };
   getText(encoding: CharsetEncoding): string;
   getText(charset: string): string;
@@ -198,6 +247,13 @@ export class TextPart extends MimePart {
     }
   }
 
+  /**
+   * Sets the text content using the specified charset.
+   *
+   * @param charset The charset name or encoding.
+   * @param text The text content.
+   * @throws {TypeError} `charset` or `text` is null, or the charset is unsupported.
+   */
   setText(charset: string | CharsetEncoding, text: string): void {
     if (charset == null) throw new TypeError('charset cannot be null or undefined');
     if (text == null) throw new TypeError('text cannot be null or undefined');

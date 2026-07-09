@@ -27,28 +27,43 @@ const latin1Decoder = new TextDecoder('iso-8859-1');
 const ATOM_SPECIALS = '()<>@,;:\\".[]';
 const COMMA_GREATER_THAN_OR_SEMI_COLON = new Uint8Array([0x2c, 0x3e, 0x3b]);
 
+/** Flags that control internet address parsing. */
 export const enum AddressParserFlags {
+  /** No address parser flags. */
   None = 0,
+  /** Allow parsing mailbox addresses. */
   AllowMailboxAddress = 1 << 0,
+  /** Allow parsing group addresses. */
   AllowGroupAddress = 1 << 1,
+  /** Return parse errors for malformed input. */
   ThrowOnError = 1 << 2,
+  /** Internal parser mode. */
   Internal = 1 << 3,
+  /** Flags used for try-parse operations. */
   TryParse = AllowMailboxAddress | AllowGroupAddress,
+  /** Flags used for parse operations. */
   Parse = TryParse | ThrowOnError,
 }
 
+/** Parsed mailbox address-spec data. */
 export interface ParsedAddressSpec {
+  /** The parsed address-spec. */
   addrspec: string;
+  /** The index of the `@` separator. */
   at: number;
 }
 
+/** Constructors used by the shared address parser to create concrete address types. */
 export interface AddressConstructors {
+  /** Constructor for mailbox addresses. */
   mailbox: new (name: string | null | undefined, address: string, route?: Iterable<string>, at?: number) => InternetAddress;
+  /** Constructor for group addresses. */
   group: new (name: string | null | undefined, members?: Iterable<InternetAddress>) => InternetAddress;
 }
 
 let constructors: AddressConstructors | null = null;
 
+/** Registers concrete internet address constructors for the parser. */
 export function registerAddressConstructors(value: AddressConstructors): void {
   constructors = value;
 }
@@ -63,15 +78,21 @@ function makeGroup(name: string | null | undefined, members?: Iterable<InternetA
   return new constructors.group(name, members);
 }
 
+/**
+ * Base class for internet addresses.
+ */
 export abstract class InternetAddress {
+  /** Invoked when the address changes. */
   onChanged: (() => void) | null = null;
   private _name: string | null;
+  /** The charset used when encoding the display name. */
   encoding: string | CharsetEncoding = 'utf-8';
 
   protected constructor(name?: string | null) {
     this._name = name ?? null;
   }
 
+  /** The display name for the address, if available. */
   get name(): string | null {
     return this._name;
   }
@@ -82,11 +103,16 @@ export abstract class InternetAddress {
     this.changed();
   }
 
+  /** Clones this internet address. */
   abstract clone(): InternetAddress;
+  /** Determines whether this address equals another address. */
   abstract equals(other: InternetAddress | null | undefined): boolean;
+  /** Encodes this address. */
   abstract encode(options: FormatOptions, firstToken: boolean, state: LineState): string;
+  /** Serializes this address. */
   abstract toString(options?: FormatOptions, encode?: boolean): string;
 
+  /** Compares this address with another address. */
   compareTo(other: InternetAddress): number {
     if (other == null) throw new TypeError('other cannot be null');
     const nameCompare = compareIgnoreCase(this.name ?? '', other.name ?? '');
@@ -125,6 +151,7 @@ export abstract class InternetAddress {
     this.onChanged?.();
   }
 
+  /** Encodes an internationalized display-name phrase when quoting is required. */
   static encodeInternationalizedPhrase(phrase: string): string {
     for (let i = 0; i < phrase.length; i++) {
       if (ATOM_SPECIALS.includes(phrase[i]!))
@@ -133,6 +160,13 @@ export abstract class InternetAddress {
     return phrase;
   }
 
+  /**
+   * Parses an internet address.
+   *
+   * @param text The text to parse.
+   * @param options The parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parse(text: string | Uint8Array, options: ParserOptions = ParserOptions.default): Result<InternetAddress> {
     const buffer = typeof text === 'string' ? utf8Encoder.encode(text) : text;
     const cursor = { index: 0 };
@@ -145,6 +179,11 @@ export abstract class InternetAddress {
     return ok(parsed.value);
   }
 
+  /**
+   * Attempts to parse an internet address from a byte range.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static tryParseInternal(
     flags: AddressParserFlags,
     options: ParserOptions,
@@ -157,10 +196,13 @@ export abstract class InternetAddress {
   }
 }
 
+/** Tracks the current encoded line length. */
 export interface LineState {
+  /** The current encoded line length. */
   lineLength: number;
 }
 
+/** Appends address text, folding before it when necessary. */
 export function appendAddressFold(options: FormatOptions, text: string, firstToken: boolean, state: LineState): string {
   if (!firstToken && state.lineLength + text.length > options.maxLineLength) {
     state.lineLength = 1 + text.length;
@@ -170,6 +212,7 @@ export function appendAddressFold(options: FormatOptions, text: string, firstTok
   return text;
 }
 
+/** Appends a line break suitable for continued address output. */
 export function lineWrap(options: FormatOptions, text: string): string {
   if (text.length === 0)
     return `${options.newLine}\t`;
@@ -180,6 +223,7 @@ export function lineWrap(options: FormatOptions, text: string): string {
   return `${text}${options.newLine}\t`;
 }
 
+/** Appends a phrase value with folding. */
 export function appendFolded(options: FormatOptions, text: string, firstToken: boolean, value: string, state: LineState): string {
   let output = text;
   let wordIndex = 0;

@@ -10,23 +10,40 @@ import { MultipartRelated } from './multipart-related.js';
 import { TextPart } from './text-part.js';
 import { utf8, type CharsetEncoding } from './utils/charset-utils.js';
 
+/**
+ * Builds a MIME body tree from text bodies, linked resources, and attachments.
+ *
+ * The generated structure follows the usual multipart nesting rules for plain
+ * text, HTML, related resources, and attachments.
+ */
 export class BodyBuilder {
+  /** Attachments to include in the generated message body. */
   readonly attachments = new AttachmentCollection();
+  /** Linked resources referenced by the HTML body. */
   readonly linkedResources = new AttachmentCollection(true);
+  /** The plain text body. */
   textBody: string | null = null;
+  /** The HTML body. */
   htmlBody: string | null = null;
 
   private bodyEncodingValue: CharsetEncoding = utf8;
 
+  /** Gets or sets the charset used for generated text parts. */
   get bodyEncoding(): CharsetEncoding {
     return this.bodyEncodingValue;
   }
 
+  /** Sets the charset used for generated text parts. */
   set bodyEncoding(value: CharsetEncoding) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
     this.bodyEncodingValue = value;
   }
 
+  /**
+   * Builds the MIME entity tree.
+   *
+   * @returns The MIME entity representing the complete message body.
+   */
   toMessageBody(): MimeEntity {
     let alternative: MultipartAlternative | null = null;
     let body: MimeEntity | null = null;

@@ -5,9 +5,16 @@ import { MimePart } from './mime-part.js';
 import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
 
+/**
+ * A message/disposition-notification MIME part.
+ *
+ * Disposition notifications are machine-readable reports denoting the
+ * disposition of a message after successful delivery.
+ */
 export class MessageDispositionNotification extends MimePart {
   private fieldsValue: HeaderList | null = null;
 
+  /** Initializes a new message/disposition-notification part. */
   constructor();
   constructor(args: MimeEntityConstructorArgs);
   constructor(args?: MimeEntityConstructorArgs) {
@@ -18,7 +25,9 @@ export class MessageDispositionNotification extends MimePart {
     super('message', 'disposition-notification');
   }
 
+  /** Gets the disposition notification fields. */
   get Fields(): HeaderList { return this.fields; }
+  /** Gets the disposition notification fields. */
   get fields(): HeaderList {
     this.checkDisposed('MessageDispositionNotification');
     if (this.fieldsValue == null) {
@@ -36,6 +45,11 @@ export class MessageDispositionNotification extends MimePart {
     return this.fieldsValue;
   }
 
+  /**
+   * Dispatches to the visitor method for disposition notification parts.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('MessageDispositionNotification');
