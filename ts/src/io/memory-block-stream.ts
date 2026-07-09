@@ -15,12 +15,22 @@ const BLOCK_SIZE = 2048;
 // C#: MaxCapacity = int.MaxValue * BlockSize (exact, within Number.MAX_SAFE_INTEGER)
 const MAX_CAPACITY = 2147483647 * BLOCK_SIZE;
 
+/**
+ * An efficient memory stream implementation that sacrifices direct access to the internal byte buffer
+ * in order to improve performance.
+ *
+ * Instead of resizing one internal byte array, the stream chains blocks of non-contiguous memory.
+ * This avoids copying old data into newly allocated arrays.
+ */
 export class MemoryBlockStream extends Stream {
   private readonly blocks: Uint8Array[] = [];
   private positionValue = 0;
   private lengthValue = 0;
   private disposed = false;
 
+  /**
+   * Create a memory block stream with an initial memory block of 2048 bytes.
+   */
   constructor() {
     super();
     this.blocks.push(new Uint8Array(BLOCK_SIZE));
@@ -31,7 +41,11 @@ export class MemoryBlockStream extends Stream {
       throw new TypeError('MemoryBlockStream has been disposed');
   }
 
-  /** Copy the stream data into a newly allocated, contiguous byte array. */
+  /**
+   * Copy the stream data into a newly allocated, contiguous byte array.
+   *
+   * @returns The copied array.
+   */
   toArray(): Uint8Array {
     this.checkDisposed();
 
@@ -53,24 +67,56 @@ export class MemoryBlockStream extends Stream {
     return array;
   }
 
+  /**
+   * Whether the stream supports reading.
+   *
+   * The memory block stream is always readable.
+   */
   override get canRead(): boolean { return true; }
+  /**
+   * Whether the stream supports writing.
+   *
+   * The memory block stream is always writable.
+   */
   override get canWrite(): boolean { return true; }
+  /**
+   * Whether the stream supports seeking.
+   *
+   * The memory block stream is always seekable.
+   */
   override get canSeek(): boolean { return true; }
 
+  /**
+   * The length of the stream, in bytes.
+   */
   override get length(): number {
     this.checkDisposed();
     return this.lengthValue;
   }
 
+  /**
+   * The current position within the stream.
+   */
   override get position(): number {
     this.checkDisposed();
     return this.positionValue;
   }
 
+  /**
+   * Set the current position within the stream.
+   */
   override set position(value: number) {
     this.seek(value, 'begin');
   }
 
+  /**
+   * Read bytes from the stream.
+   *
+   * @param buffer The buffer to read data into.
+   * @param offset The offset into the buffer to start reading data.
+   * @param count The number of bytes to read.
+   * @returns The total number of bytes read into the buffer, or zero if the end of the stream has been reached.
+   */
   override read(buffer: Uint8Array, offset: number, count: number): number {
     this.checkDisposed();
     Stream.validateBufferArguments(buffer, offset, count);
@@ -96,6 +142,13 @@ export class MemoryBlockStream extends Stream {
     return nread;
   }
 
+  /**
+   * Write bytes to the stream.
+   *
+   * @param buffer The buffer to write.
+   * @param offset The offset of the first byte to write.
+   * @param count The number of bytes to write.
+   */
   override write(buffer: Uint8Array, offset: number, count: number): void {
     this.checkDisposed();
     Stream.validateBufferArguments(buffer, offset, count);
@@ -126,6 +179,13 @@ export class MemoryBlockStream extends Stream {
     this.lengthValue = Math.max(this.lengthValue, this.positionValue);
   }
 
+  /**
+   * Set the position within the stream.
+   *
+   * @param offset The offset relative to `origin`.
+   * @param origin The reference point used to obtain the new position.
+   * @returns The new position within the stream.
+   */
   override seek(offset: number, origin: SeekOrigin): number {
     let real: number;
 
@@ -163,10 +223,21 @@ export class MemoryBlockStream extends Stream {
     return this.positionValue;
   }
 
+  /**
+   * Flush the stream.
+   */
   override flush(): void {
     this.checkDisposed();
   }
 
+  /**
+   * Set the length of the stream.
+   *
+   * If the length is reduced, blocks no longer needed are released and truncated bytes are cleared.
+   *
+   * @param value The desired length in bytes.
+   * @throws {RangeError} `value` is outside the valid range.
+   */
   override setLength(value: number): void {
     this.checkDisposed();
 
@@ -199,6 +270,9 @@ export class MemoryBlockStream extends Stream {
     this.lengthValue = value;
   }
 
+  /**
+   * Dispose the stream and release its blocks.
+   */
   override dispose(): void {
     if (!this.disposed) {
       this.blocks.length = 0;

@@ -1,11 +1,24 @@
 import type { IMimeFilter, MimeFilterResult } from './mime-filter.js';
 
+/**
+ * A base implementation for MIME filters.
+ */
 export abstract class MimeFilterBase implements IMimeFilter {
+  /** The reusable output buffer used by this filter. */
   protected outputBuffer?: Uint8Array;
   private preloadLength = 0;
   private preload?: Uint8Array;
   private inbuf?: Uint8Array;
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected abstract filterInternal(
     input: Uint8Array,
     startIndex: number,
@@ -45,6 +58,16 @@ export abstract class MimeFilterBase implements IMimeFilter {
       throw new RangeError(`length ${length} out of range [0, ${input.length - startIndex}]`);
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The number of bytes of input to filter.
+   * @returns The filtered output range.
+   * @throws {TypeError} `input` is not a `Uint8Array`.
+   * @throws {RangeError} `startIndex` and `length` do not specify a valid range in `input`.
+   */
   filter(input: Uint8Array, startIndex: number, length: number): MimeFilterResult {
     MimeFilterBase.validateArguments(input, startIndex, length);
 
@@ -54,6 +77,16 @@ export abstract class MimeFilterBase implements IMimeFilter {
     return this.filterInternal(filteredInput, range.startIndex, range.length, false);
   }
 
+  /**
+   * Filter the specified input buffer, flushing all internally buffered data to the output.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The number of bytes of input to filter.
+   * @returns The filtered output range.
+   * @throws {TypeError} `input` is not a `Uint8Array`.
+   * @throws {RangeError} `startIndex` and `length` do not specify a valid range in `input`.
+   */
   flush(input: Uint8Array, startIndex: number, length: number): MimeFilterResult {
     MimeFilterBase.validateArguments(input, startIndex, length);
 
@@ -63,10 +96,20 @@ export abstract class MimeFilterBase implements IMimeFilter {
     return this.filterInternal(filteredInput, range.startIndex, range.length, true);
   }
 
+  /**
+   * Reset the filter.
+   */
   reset(): void {
     this.preloadLength = 0;
   }
 
+  /**
+   * Save the remaining input for the next round of processing.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the buffer to save.
+   * @param length The length of the buffer to save, starting at `startIndex`.
+   */
   protected saveRemainingInput(input: Uint8Array, startIndex: number, length: number): void {
     if (length === 0)
       return;
@@ -78,6 +121,13 @@ export abstract class MimeFilterBase implements IMimeFilter {
     this.preloadLength = length;
   }
 
+  /**
+   * Ensure that the output buffer is at least the specified size.
+   *
+   * @param size The minimum size needed.
+   * @param keep Whether the current output should be preserved.
+   * @returns The output buffer.
+   */
   protected ensureOutputSize(size: number, keep: boolean): Uint8Array {
     if (this.outputBuffer && this.outputBuffer.length >= size)
       return this.outputBuffer;

@@ -2,6 +2,9 @@ import type { ContentEncoding } from '../../content-encoding.js';
 import { MimeFilterBase } from './mime-filter-base.js';
 import type { MimeFilterResult } from './mime-filter.js';
 
+/**
+ * Constraints used when selecting the most efficient content-transfer-encoding.
+ */
 export type EncodingConstraint =
   | 'none'
   | '8bit'
@@ -13,6 +16,12 @@ const CR = 0x0d;
 const LF = 0x0a;
 const NUL = 0x00;
 
+/**
+ * A filter that can be used to determine the most efficient content-transfer-encoding.
+ *
+ * Keeps track of the content that passes through the filter in order to determine
+ * the most efficient {@link ContentEncoding} to use.
+ */
 export class BestEncodingFilter extends MimeFilterBase {
   private readonly marker = new Uint8Array(6);
   private maxline = 0;
@@ -24,6 +33,14 @@ export class BestEncodingFilter extends MimeFilterBase {
   private total = 0;
   private pc = 0;
 
+  /**
+   * Get the best encoding given the specified constraints.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum allowable line length, not counting CRLF. Must be between 60 and 998 inclusive.
+   * @returns The best encoding.
+   * @throws {RangeError} `constraint` is invalid or `maxLineLength` is outside the supported range.
+   */
   getBestEncoding(constraint: EncodingConstraint, maxLineLength = 78): ContentEncoding {
     if (!Number.isInteger(maxLineLength) || maxLineLength < MINIMUM_LINE_LENGTH || maxLineLength > MAXIMUM_LINE_LENGTH)
       throw new RangeError('maxLineLength must be between 60 and 998');
@@ -116,6 +133,15 @@ export class BestEncodingFilter extends MimeFilterBase {
     }
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param _flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The unmodified input range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, _flush: boolean): MimeFilterResult {
     this.scan(input, startIndex, length);
     this.maxline = Math.max(this.maxline, this.linelen);
@@ -124,6 +150,9 @@ export class BestEncodingFilter extends MimeFilterBase {
     return { buffer: input, index: startIndex, length };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.hasMarker = false;
     this.markerLength = 0;

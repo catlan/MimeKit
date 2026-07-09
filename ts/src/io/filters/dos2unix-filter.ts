@@ -4,10 +4,18 @@ import type { MimeFilterResult } from './mime-filter.js';
 const CR = 0x0d;
 const LF = 0x0a;
 
+/**
+ * A filter that converts Windows/DOS line endings to Unix line endings.
+ */
 export class Dos2UnixFilter extends MimeFilterBase {
   private readonly ensureNewLine: boolean;
   private pc = 0;
 
+  /**
+   * Create a filter that converts Windows/DOS line endings to Unix line endings.
+   *
+   * @param ensureNewLine Whether to ensure that the stream ends with a new line.
+   */
   constructor(ensureNewLine = false) {
     super();
     this.ensureNewLine = ensureNewLine;
@@ -41,6 +49,15 @@ export class Dos2UnixFilter extends MimeFilterBase {
     return outputIndex;
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     const size = length + (this.pc === CR ? 1 : 0) + (flush && this.ensureNewLine ? 1 : 0);
     const output = this.ensureOutputSize(size, false);
@@ -49,6 +66,9 @@ export class Dos2UnixFilter extends MimeFilterBase {
     return { buffer: output, index: 0, length: outputLength };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.pc = 0;
     super.reset();

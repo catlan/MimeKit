@@ -11,7 +11,21 @@ import { isWhitespace } from '../../utils/byte-extensions.js';
 
 const X = 0x78; // 'x'
 
+/**
+ * A filter for anonymizing content.
+ *
+ * Replaces all non-whitespace bytes with an `x`.
+ */
 export class AnonymizeFilter extends MimeFilterBase {
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param _flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(
     input: Uint8Array,
     startIndex: number,
