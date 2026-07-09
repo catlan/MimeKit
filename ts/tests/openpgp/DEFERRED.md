@@ -27,6 +27,17 @@ port is a follow-up. Notably not yet ported as dedicated tests:
 - The raw-`PgpPublicKey`/`PgpSecretKey` ("UsingKeys") overloads exist in `OpenPgpContext`
   (encrypt/sign accept key handles) but lack dedicated ported tests.
 
+## Known minor nuances (follow-ups)
+- **micalg vs actual hash for ECC keys**: `signDetached` passes the digest as a *preference* and
+  the multipart/signed `micalg` is derived from `resolveSigningDigest` (a static SHA-256 upgrade).
+  For the RSA fixture these always agree. If OpenPGP.js enforces a stronger curve-minimum hash for
+  an ECC key, `micalg` could under-report — though `OpenPgpDigitalSignature.digestAlgorithm` is read
+  from the real signature packet and stays truthful. Revisit when an ECC PGP key fixture is added.
+- **Third-context dispatch**: `MimeMessage.encrypt`/`signAndEncrypt` and `MultipartSigned` dispatch
+  by protocol string / cast (the S/MIME layer cannot `instanceof OpenPgpContext` without a cycle).
+  The two real contexts work; a hypothetical third `CryptographyContext` would fail with an unclear
+  error. Add `instanceof` guards if a third backend is introduced.
+
 ## Skipped (not meaningful in TS)
 - `TestAlgorithmMappings` — SKIP:BouncyCastle enum mapping.
 - `TestArgumentExceptions` — SKIP:.NET/BouncyCastle overload-matrix null guards (the TS type
