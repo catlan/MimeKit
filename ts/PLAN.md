@@ -239,6 +239,20 @@ publish (Q2).
 - Mutation of a `Multipart` during iteration is not fail-fast (C#'s
   `List<T>` enumerator throws) — accepted deviation; JS array iteration
   has no versioning and adding it buys nothing real.
+- **Deliberate divergences (C# reference bugs fixed, final-review):**
+  (a) rfc2231 encode of non-charset chunks decodes with the chunk's best
+  encoding, not hard-coded UTF-8 — C# Parameter.cs:490-497 emits U+FFFD
+  garbage for latin1-able values under international=true; (b) formatDate
+  emits RFC-5322-correct '-0330' for negative fractional offsets — C#
+  DateUtils.cs:654-658 emits malformed '-03-30'; (c) rfc2231 undecodable
+  bytes yield U+FFFD (TextDecoder) where C# GetEncoding fallback yields
+  '?'. None corpus-reachable; recorded here since the ratchet only covers
+  gate-visible cases.
+- `MimeMessage.WriteTo(fileName)` overloads — node-entry (filesystem)
+  surface, deferred with the Node adapter entry point.
+- ~~idnDecode no-op / mime-utils-parse-utils dedup~~ RESOLVED (Punycode
+  wrapper gated 27/27; dedup executed wave-2C; survivors carry documented
+  contract rationale).
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
   (sync core; Web Streams adapters at edges, wave 9).
 
