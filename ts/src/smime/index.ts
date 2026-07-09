@@ -83,10 +83,22 @@ export { DefaultPkcs12Loader, loadPkcs12 } from './pkcs12-loader.js';
 export { buildCertificateChain } from './chain-builder.js';
 export { InMemorySecureMimeStore, canEncrypt, parseCertificates } from './in-memory-store.js';
 
+// ---- Concrete crypto engine (wave C2b-2a: CMS SignedData/EnvelopedData/CompressedData)
+export {
+  PkijsSecureMimeContext,
+  type PkijsSecureMimeContextOptions,
+} from './pkijs-secure-mime-context.js';
+
 // Register the concrete PKCS#12 loader so `CmsSigner.load(...)` works.
 import { CmsSigner } from './cms-signer.js';
 import { DefaultPkcs12Loader } from './pkcs12-loader.js';
 CmsSigner.pkcs12Loader = new DefaultPkcs12Loader();
+
+// Register the default S/MIME context factory so the no-context wrapper
+// overloads (multipartSigned.verify(), pkcs7.decrypt(), ...) work.
+import { registerSecureMimeContext } from './secure-mime-context.js';
+import { PkijsSecureMimeContext } from './pkijs-secure-mime-context.js';
+registerSecureMimeContext(() => new PkijsSecureMimeContext());
 
 // Wire the S/MIME MIME types into the core parser's create-entity dispatch.
 registerEntityType('multipart', 'signed', (args) => new MultipartSigned(args));

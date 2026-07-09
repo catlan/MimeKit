@@ -84,6 +84,11 @@ export class InMemorySecureMimeStore implements ISecureMimeStore {
     return this.privateKeys.filter((e) => canSign(e.certificate.getKeyUsageFlags()));
   }
 
+  /** All registered private-key entries (decryption candidates). */
+  getDecryptors(): PrivateKeyEntry[] {
+    return [...this.privateKeys];
+  }
+
   private matchCertificates(mailbox: MailboxAddress): X509Certificate[] {
     if (mailbox instanceof SecureMailboxAddress) {
       const cert = this.certificates.get(mailbox.fingerprint.toLowerCase());
