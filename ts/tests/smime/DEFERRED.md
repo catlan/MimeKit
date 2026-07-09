@@ -10,13 +10,38 @@ keys + PKCS#8/PEM/PKCS#12 private-key import, the `Pkcs12Loader`, a name-based
 `X509CertificateChain` builder, and an in-memory `ISecureMimeStore`. This
 unblocks every test that only needs a *parsed certificate / private key*.
 
-Wave **C2b-2** (next) adds the concrete pkijs/WebCrypto `SecureMimeContext`
-(CMS `SignedData` sign/verify + `EnvelopedData` encrypt/decrypt + compress),
-which unblocks the remaining suites below. They carry the marker:
+Wave **C2b-2a** (this wave) adds the concrete pkijs/WebCrypto
+`PkijsSecureMimeContext` — the CMS engine implementing the C2a async primitives:
+`SignedData` sign/verify (detached multipart/signed + encapsulated
+application/pkcs7-mime), `EnvelopedData` encrypt/decrypt (AES-CBC via WebCrypto;
+3DES/RC2-CBC via the C2b-1 primitives; RSA-OAEP via WebCrypto; RSA PKCS#1 v1.5
+key transport via node:crypto on Node, opt-in pure-JS BigInt in the browser;
+uniform-error PKCS#7 unpad), and `CompressedData` compress/decompress (zlib via
+`CompressionStream`). Shipped with the `oracle-smime` C# trust anchor and the
+bidirectional `smime.gate.test.ts` cross-verify gate over the algorithm matrix,
+plus a **representative** end-to-end test subset
+(`pkijs-secure-mime-context.test.ts`).
+
+Wave **C2b-2b** (next) is the FULL 1:1 port of the two ~5.5k-line suites
+(`SecureMimeTests` + `ApplicationPkcs7MimeTests`) and the remaining context
+suites below, on top of this engine. They carry the marker:
 
 ```
-// deferred(C2b-2): needs concrete SecureMimeContext (CMS sign/verify/encrypt/decrypt)
+// deferred(C2b-2b): full 1:1 port of SecureMimeTests / ApplicationPkcs7MimeTests
 ```
+
+### Deferred to C2b-2b — nuances not yet covered by the C2b-2a engine
+
+- **X.509 chain / trust-anchor validation + CRL/OCSP**: `SecureMimeDigitalSignature.chain`
+  is populated with a name-ordered chain but full PKIX path validation,
+  revocation (`CheckCertificateRevocation`), and the expired/revoked-cert
+  fixtures are deferred.
+- **DSA signing certificates** (`smdsa*.pem` / `dsa/smime.pfx`): WebCrypto has no
+  DSA; deferred (BouncyCastle-only in C#).
+- **`Export` / certs-only PKCS#7** production (`ApplicationPkcs7Mime` certs-only)
+  and the `Import` of a signed-data cert bundle beyond the C2b-1 `parseCertificates`.
+- **EC key-agreement recipients** (ECDH) for `EnvelopedData` — only RSA key
+  transport is implemented; the test certs encrypt to RSA recipients.
 
 ## Ported now (C2a + C2b-1) — for reference
 

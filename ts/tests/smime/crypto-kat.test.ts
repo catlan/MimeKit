@@ -10,8 +10,8 @@
 //           carry case) plus id=1/2/3 (key/IV/MAC) derivations.
 
 import { describe, expect, test } from 'vitest';
-import { DesKey, tripleDesCbcDecrypt } from '../../src/smime/crypto/des.js';
-import { rc2CbcDecrypt } from '../../src/smime/crypto/rc2.js';
+import { DesKey, tripleDesCbcDecrypt, tripleDesCbcEncrypt } from '../../src/smime/crypto/des.js';
+import { rc2CbcDecrypt, rc2CbcEncrypt } from '../../src/smime/crypto/rc2.js';
 import { pkcs12Derive, passwordToBmp } from '../../src/smime/crypto/pkcs12-kdf.js';
 
 function hex(s: string): Uint8Array {
@@ -102,6 +102,45 @@ describe('PKCS#12 KDF (RFC 7292 B.2, SHA-1)', () => {
     test(`derive id=${id} n=${n} iter=${iterations}`, () => {
       const out = pkcs12Derive(bmp, hex(salt), iterations, id, n);
       expect(toHex(out)).toBe(expected);
+    });
+  }
+});
+
+// The ENCRYPT direction is what the S/MIME EnvelopedData path uses; the block
+// above only pins DECRYPT. These pin encrypt (plaintext -> ciphertext) against
+// published vectors so a silent encrypt regression can't hide behind a matching
+// (self-inverse) round-trip.
+
+describe('3DES-EDE-CBC ENCRYPT KAT (openssl des-ede3-cbc -nopad)', () => {
+  test('encrypt matches the published ciphertext', () => {
+    // Same key/iv/ct as the decrypt round-trip above, exercised pt -> ct.
+    const key = hex('0123456789abcdef23456789abcdef01456789abcdef0123');
+    const iv = hex('0011223344556677');
+    const plaintext = hex('00112233445566778899aabbccddeeff');
+    const ct = tripleDesCbcEncrypt(key, iv, plaintext);
+    expect(toHex(ct)).toBe('4eba739c998bcb602398af2375920b66');
+  });
+});
+
+describe('RC2 RFC 2268 section 5 ENCRYPT vectors (pt -> ct)', () => {
+  // key(hex), effectiveBits, plaintext, ciphertext
+  const vectors: [string, number, string, string][] = [
+    ['0000000000000000', 63, '0000000000000000', 'ebb773f993278eff'],
+    ['ffffffffffffffff', 64, 'ffffffffffffffff', '278b27e42e2f0d49'],
+    ['3000000000000000', 64, '1000000000000001', '30649edf9be7d2c2'],
+    ['88', 64, '0000000000000000', '61a8a244adacccf0'],
+    ['88bca90e90875a', 64, '0000000000000000', '6ccf4308974c267f'],
+    ['88bca90e90875a7f0f79c384627bafb2', 64, '0000000000000000', '1a807d272bbe5db1'],
+    ['88bca90e90875a7f0f79c384627bafb2', 128, '0000000000000000', '2269552ab0f85ca6'],
+    ['88bca90e90875a7f0f79c384627bafb216f80a6f85920584c42fceb0be255daf1e', 129, '0000000000000000', '5b78d3a43dfff1f1'],
+  ];
+
+  for (const [key, effectiveBits, plain, cipher] of vectors) {
+    test(`encrypt key=${key} eff=${effectiveBits}`, () => {
+      // Single-block CBC with a zero IV is equivalent to a raw ECB block encrypt.
+      const iv = new Uint8Array(8);
+      const ct = rc2CbcEncrypt(hex(key), effectiveBits, iv, hex(plain));
+      expect(toHex(ct)).toBe(cipher);
     });
   }
 });
