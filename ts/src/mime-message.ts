@@ -634,6 +634,35 @@ export class MimeMessage {
   }
 
   /**
+   * Gets the mailbox that should be used as the signer when signing the message.
+   *
+   * C#: MimeMessage.GetMessageSigner. If either of the Resent-Sender or Resent-From
+   * headers are set, the Resent-Sender (or first Resent-From mailbox) is used;
+   * otherwise the Sender or first From mailbox is used.
+   *
+   * @returns The signer mailbox, or `null` if no sender has been set.
+   */
+  getMessageSigner(): MailboxAddress | null {
+    if (this.resentSender != null) return this.resentSender;
+    for (const mailbox of this.resentFrom.mailboxes) return mailbox;
+    if (this.sender != null) return this.sender;
+    for (const mailbox of this.from.mailboxes) return mailbox;
+    return null;
+  }
+
+  /**
+   * Gets the set of mailboxes a message should be encrypted to.
+   *
+   * C#: MimeMessage.GetEncryptionRecipients — the signer(s) plus every recipient
+   * (To/Cc/Bcc, or the Resent-* equivalents), de-duplicated.
+   *
+   * @returns The unique recipient mailboxes.
+   */
+  getEncryptionRecipients(): MailboxAddress[] {
+    return this.getMailboxes(true, true);
+  }
+
+  /**
    * Dispatches to the visitor method for MIME messages.
    *
    * @param visitor The visitor.
