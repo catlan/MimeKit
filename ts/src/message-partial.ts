@@ -48,7 +48,20 @@ const JOIN_KEEP: ReadonlySet<HeaderId> = new Set<HeaderId>([
   HeaderId.MimeVersion,
 ]);
 
+/**
+ * A MIME part containing a fragment of a larger message.
+ *
+ * The message/partial type is used to split large messages into multiple
+ * parts, typically for transports with message size limits.
+ */
 export class MessagePartial extends MimePart {
+  /**
+   * Initializes a new message/partial entity.
+   *
+   * @param id The id value shared among all partial message parts.
+   * @param number The 1-based part number for this fragment.
+   * @param total The total number of fragments.
+   */
   constructor(args: MimeEntityConstructorArgs);
   constructor(id: string, number: number, total: number);
   constructor(idOrArgs: string | MimeEntityConstructorArgs, number?: number, total?: number) {
@@ -66,20 +79,37 @@ export class MessagePartial extends MimePart {
     this.contentType.parameters.add(new Parameter('total', String(total)));
   }
 
+  /** Gets the `id` parameter of the Content-Type header. */
   get Id(): string | null { return this.id; }
+  /** Gets the `id` parameter of the Content-Type header. */
   get id(): string | null { return this.contentType.parameters.get('id') as string | null; }
+  /** Gets the `number` parameter of the Content-Type header. */
   get Number(): number | null { return this.number; }
+  /** Gets the `number` parameter of the Content-Type header. */
   get number(): number | null { return parseNullableInt(this.contentType.parameters.get('number') as string | null); }
+  /** Gets the `total` parameter of the Content-Type header. */
   get Total(): number | null { return this.total; }
+  /** Gets the `total` parameter of the Content-Type header. */
   get total(): number | null { return parseNullableInt(this.contentType.parameters.get('total') as string | null); }
 
+  /**
+   * Dispatches to the visitor method for message/partial entities.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('MessagePartial');
     visitor.visitMessagePartial(this);
   }
 
-  /** C#: MessagePartial.Split. */
+  /**
+   * Splits a message into multiple message/partial messages.
+   *
+   * @param message The message to split.
+   * @param maxSize The maximum size for each message body.
+   * @returns The partial messages.
+   */
   static split(message: MimeMessage, maxSize: number): MimeMessage[] {
     if (message == null) throw new TypeError('message cannot be null or undefined');
     if (!Number.isInteger(maxSize) || maxSize < 1) throw new RangeError('maxSize out of range');
@@ -128,7 +158,14 @@ export class MessagePartial extends MimePart {
     return result;
   }
 
-  /** C#: MessagePartial.Join. */
+  /**
+   * Joins message/partial parts into the complete message.
+   *
+   * @param options Parser options to use.
+   * @param message The message containing the first message/partial body.
+   * @param partials The partial message parts.
+   * @returns The reassembled message, or `null` when reassembly fails.
+   */
   static join(message: MimeMessage, partials: Iterable<MessagePartial>): MimeMessage | null;
   static join(options: ParserOptions, message: MimeMessage, partials: Iterable<MessagePartial>): MimeMessage | null;
   static join(

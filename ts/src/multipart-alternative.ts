@@ -3,7 +3,18 @@ import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
 import { TextPart, TextFormat } from './text-part.js';
 
+/**
+ * A multipart/alternative MIME entity.
+ *
+ * The child parts are ordered from least faithful to most faithful
+ * representation of the same content.
+ */
 export class MultipartAlternative extends Multipart {
+  /**
+   * Initializes a new multipart/alternative entity.
+   *
+   * @param args Initialization arguments: headers and MIME entities.
+   */
   constructor(...args: unknown[]);
   constructor(args: MimeEntityConstructorArgs);
   constructor(...args: unknown[]) {
@@ -14,22 +25,43 @@ export class MultipartAlternative extends Multipart {
     super('alternative', ...args);
   }
 
+  /** Gets the plain text body, if present. */
   get TextBody(): string | null { return this.textBody; }
+  /** Gets the plain text body, if present. */
   get textBody(): string | null { return this.getTextBody(TextFormat.Plain); }
+  /** Gets the HTML body, if present. */
   get HtmlBody(): string | null { return this.htmlBody; }
+  /** Gets the HTML body, if present. */
   get htmlBody(): string | null { return this.getTextBody(TextFormat.Html); }
 
+  /**
+   * Dispatches to the visitor method for multipart/alternative entities.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('MultipartAlternative');
     visitor.visitMultipartAlternative(this);
   }
 
+  /**
+   * Gets the text body in the preferred format.
+   *
+   * @param format The preferred text format.
+   * @returns The body text, or `null` if not available.
+   */
   getTextBody(format: TextFormat): string | null {
     const body = this.tryGetValue(format);
     return body == null ? null : MultipartAlternative.getText(body);
   }
 
+  /**
+   * Finds the preferred text part for the requested format.
+   *
+   * @param format The preferred text format.
+   * @returns The matching text part, or `null`.
+   */
   override tryGetValue(format: TextFormat): TextPart | null {
     for (let i = this.count - 1; i >= 0; i--) {
       const child = this.at(i);
@@ -43,6 +75,12 @@ export class MultipartAlternative extends Multipart {
     return null;
   }
 
+  /**
+   * Gets decoded display text from a text part.
+   *
+   * @param text The text part.
+   * @returns The decoded text, with flowed text unwrapped when applicable.
+   */
   static getText(text: TextPart): string {
     if (text.isFlowed) {
       const delsp = text.contentType.parameters.get('delsp');

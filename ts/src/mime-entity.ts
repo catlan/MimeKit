@@ -13,11 +13,19 @@ import { type Result } from './result.js';
 import { utf8 } from './utils/charset-utils.js';
 import { tryParseMsgId } from './utils/parse-utils.js';
 
+/**
+ * Constructor state used by the parser when creating a MIME entity.
+ */
 export interface MimeEntityConstructorArgs {
+  /** Parser options used when parsing headers and parameters. */
   parserOptions: ParserOptions;
+  /** The headers parsed for the entity. */
   headers: Iterable<Header>;
+  /** The parsed Content-Type header value. */
   contentType: ContentType;
+  /** Whether the parser saw a body separator for this entity. */
   hasBodySeparator: boolean;
+  /** Whether the entity is the top-level message body. */
   isTopLevel: boolean;
 }
 
@@ -34,8 +42,17 @@ type LazyField =
 
 const encoder = new TextEncoder();
 
+/**
+ * Base class for all MIME entities.
+ *
+ * A MIME entity has a set of headers and a Content-Type. Subclasses provide the
+ * concrete content model for single parts, multipart containers, and embedded
+ * messages.
+ */
 export abstract class MimeEntity {
+  /** The headers belonging to this MIME entity. */
   readonly headers: HeaderList;
+  /** The entity's Content-Type value. */
   readonly contentType: ContentType;
   ensureNewLine = false;
   protected readonly lazyLoaded = new Set<LazyField>();
@@ -76,6 +93,11 @@ export abstract class MimeEntity {
       this.serializeContentType();
   }
 
+  /**
+   * Gets or sets the Content-Disposition header value.
+   *
+   * @throws {TypeError} The entity has been disposed.
+   */
   get contentDisposition(): ContentDisposition | null {
     this.checkDisposed();
     if (!this.lazyLoaded.has('contentDisposition')) {
@@ -92,6 +114,7 @@ export abstract class MimeEntity {
     return this.dispositionValue;
   }
 
+  /** Sets the Content-Disposition header value. */
   set contentDisposition(value: ContentDisposition | null) {
     this.checkDisposed();
     if (this.lazyLoaded.has('contentDisposition') && this.dispositionValue === value)
@@ -108,6 +131,11 @@ export abstract class MimeEntity {
     this.lazyLoaded.add('contentDisposition');
   }
 
+  /**
+   * Gets or sets the absolute Content-Base URI.
+   *
+   * @throws {TypeError} `value` is not an absolute URI or the entity has been disposed.
+   */
   get contentBase(): string | null {
     this.checkDisposed();
     if (!this.lazyLoaded.has('contentBase')) {
@@ -120,6 +148,7 @@ export abstract class MimeEntity {
     return this.contentBaseValue;
   }
 
+  /** Sets the absolute Content-Base URI. */
   set contentBase(value: string | URL | null) {
     this.checkDisposed();
     const text = value == null ? null : value.toString();
@@ -130,6 +159,11 @@ export abstract class MimeEntity {
     this.lazyLoaded.add('contentBase');
   }
 
+  /**
+   * Gets or sets the Content-Location URI.
+   *
+   * @throws {TypeError} The entity has been disposed.
+   */
   get contentLocation(): string | null {
     this.checkDisposed();
     if (!this.lazyLoaded.has('contentLocation')) {
@@ -142,6 +176,7 @@ export abstract class MimeEntity {
     return this.contentLocationValue;
   }
 
+  /** Sets the Content-Location URI. */
   set contentLocation(value: string | URL | null) {
     this.checkDisposed();
     const text = value == null ? null : value.toString();
@@ -150,6 +185,11 @@ export abstract class MimeEntity {
     this.lazyLoaded.add('contentLocation');
   }
 
+  /**
+   * Gets or sets the Content-Id header value.
+   *
+   * @throws {TypeError} `value` is not a valid message id or the entity has been disposed.
+   */
   get contentId(): string | null {
     this.checkDisposed();
     if (!this.lazyLoaded.has('contentId')) {
@@ -165,6 +205,7 @@ export abstract class MimeEntity {
     return this.contentIdValue;
   }
 
+  /** Sets the Content-Id header value. */
   set contentId(value: string | null) {
     this.checkDisposed();
     if (value === null) {
@@ -183,11 +224,18 @@ export abstract class MimeEntity {
     this.lazyLoaded.add('contentId');
   }
 
+  /**
+   * Gets or sets whether this entity is marked as an attachment.
+   *
+   * Setting this updates the Content-Disposition disposition between
+   * `attachment` and `inline`.
+   */
   get isAttachment(): boolean {
     this.checkDisposed();
     return this.contentDisposition?.isAttachment ?? false;
   }
 
+  /** Sets whether this entity is marked as an attachment. */
   set isAttachment(value: boolean) {
     this.checkDisposed();
     if (value) {
@@ -200,6 +248,12 @@ export abstract class MimeEntity {
     }
   }
 
+  /**
+   * Dispatches to the specific visitor method for this MIME entity.
+   *
+   * @param visitor The visitor.
+   * @throws {TypeError} `visitor` is null or the entity has been disposed.
+   */
   accept(visitor: MimeVisitor): void {
     if (visitor == null)
       throw new TypeError('visitor cannot be null or undefined');
@@ -207,8 +261,22 @@ export abstract class MimeEntity {
     visitor.visitMimeEntity(this);
   }
 
+  /**
+   * Prepares the entity for transport under the requested encoding constraint.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum encoded line length.
+   */
   abstract prepare(constraint: string, maxLineLength?: number): void;
 
+  /**
+   * Writes the MIME entity to a stream.
+   *
+   * @param stream The destination stream.
+   * @param options Formatting options.
+   * @param contentOnly Whether to omit the entity headers.
+   * @throws {TypeError} `options` or `stream` is null, or the entity has been disposed.
+   */
   writeTo(stream: Stream): void;
   writeTo(options: FormatOptions, stream: Stream): void;
   writeTo(options: FormatOptions, stream: Stream, contentOnly: boolean): void;
@@ -222,12 +290,18 @@ export abstract class MimeEntity {
       this.headers.writeTo(options, stream);
   }
 
+  /**
+   * Serializes the MIME entity to a string.
+   *
+   * @returns The serialized MIME entity.
+   */
   toString(): string {
     const memory = new MemoryStream();
     this.writeTo(memory);
     return latin1String(memory.toArray());
   }
 
+  /** Releases resources held by this entity. */
   dispose(): void {
     if (this.disposed)
       return;

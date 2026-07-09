@@ -17,15 +17,38 @@ import {
 } from './html-converter-utils.js';
 import { TextToHtml } from './text-to-html.js';
 
+/**
+ * A flowed text to HTML converter.
+ *
+ * Used to convert flowed text as described in RFC 3676 into HTML.
+ */
 export class FlowedToHtml extends TextConverter {
+  /**
+   * Gets or sets whether the trailing space on a wrapped line should be deleted.
+   *
+   * The flowed text format defines a Content-Type parameter called `delsp` which
+   * can have a value of `yes` or `no`. If the parameter exists and the value is
+   * `yes`, set this property to `true`; otherwise set it to `false`.
+   */
   deleteSpace = false;
+  /** Gets or sets the footer format. */
   footerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the header format. */
   headerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the callback used for custom filtering of HTML tags and content. */
   htmlTagCallback: HtmlTagCallback | null = null;
+  /**
+   * Gets or sets whether the converter should output only an HTML fragment.
+   *
+   * When `false`, the converter outputs an entire HTML document; when `true`,
+   * it outputs only the HTML body content.
+   */
   outputHtmlFragment = false;
   private readonly scanner = buildUrlScanner();
 
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Flowed; }
+  /** The output format. */
   override get outputFormat(): TextFormat { return TextFormat.Html; }
 
   private writeHeaderFooter(value: string, format: HeaderFooterFormat, writer: TextWriter): void {
@@ -75,6 +98,13 @@ export class FlowedToHtml extends TextConverter {
     if (!ctx.deleteTag) htmlWriter.writeMarkupText('\n');
   }
 
+  /**
+   * Converts the text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   * @throws {TypeError} `text` or `writer` is `null` or `undefined`.
+   */
   override convertText(text: string, writer: TextWriter): void {
     if (text === null || text === undefined) throw new TypeError('text');
     if (writer === null || writer === undefined) throw new TypeError('writer');

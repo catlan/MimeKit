@@ -6,9 +6,17 @@ function isWhiteSpace(c: string): boolean {
   return /\s/.test(c) || (code >= 0x200b && code <= 0x200d);
 }
 
+/** A text previewer for plain text. */
 export class PlainTextPreviewer extends TextPreviewer {
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Plain; }
 
+  /**
+   * Gets a text preview of a string of text.
+   *
+   * @param text The original text.
+   * @returns A shortened preview of the original text.
+   */
   protected override getPreviewTextCore(text: string): string {
     if (text.length === 0) return '';
     const max = Math.min(this.maximumPreviewLength, text.length);

@@ -1,3 +1,9 @@
+/**
+ * Public API barrel for mimekit-ts.
+ *
+ * Re-exports parser, formatter, MIME entity, stream/filter, encoding, text,
+ * utility, and TNEF APIs from their implementation modules.
+ */
 export type { Result, Ok, Err, MimeError } from './result.js';
 export { ok, err, mimeError, unwrap } from './result.js';
 export type { ContentEncoding } from './content-encoding.js';

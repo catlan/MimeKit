@@ -565,6 +565,10 @@ const mimeTypes = new Map<string, string>([
 /**
  * Get the MIME-type for the given file name based on its extension.
  * C#: MimeTypes.GetMimeType.
+ *
+ * @param fileName The file name.
+ * @returns The MIME type, or `application/octet-stream` when the extension is unknown.
+ * @throws {TypeError} `fileName` is null or undefined.
  */
 export function getMimeType(fileName: string): string {
   if (fileName == null) throw new TypeError('fileName cannot be null or undefined');

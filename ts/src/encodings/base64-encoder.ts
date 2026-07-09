@@ -19,6 +19,13 @@ const base64Alphabet = new Uint8Array([
 const minimumLineLength = 60;
 const maximumLineLength = 998;
 
+/**
+ * Incrementally encodes content using the base64 encoding.
+ *
+ * Base64 is often used in MIME to encode binary content such as images and
+ * other multimedia so that data remains intact over 7-bit transports such as
+ * SMTP.
+ */
 export class Base64Encoder implements MimeEncoder {
   private readonly quartetsPerLine: number;
   private quartets = 0;
@@ -26,6 +33,16 @@ export class Base64Encoder implements MimeEncoder {
   private saved2 = 0;
   private saved = 0;
 
+  /**
+   * Creates a new base64 encoder.
+   *
+   * Values over 76 octets are capped at 76 unless line length limits are
+   * explicitly overridden.
+   *
+   * @param maxLineLength - The maximum number of octets per line, not counting the line break.
+   * @param overrideMaxLineLengthLimits - Whether to bypass the normal MIME line-length limits.
+   * @throws {RangeError} `maxLineLength` is outside the supported range.
+   */
   constructor(maxLineLength = 76, overrideMaxLineLengthLimits = false) {
     if (!overrideMaxLineLengthLimits) {
       if (!Number.isInteger(maxLineLength) || maxLineLength < minimumLineLength || maxLineLength > maximumLineLength)
@@ -38,10 +55,16 @@ export class Base64Encoder implements MimeEncoder {
     this.quartetsPerLine = Math.trunc(maxLineLength / 4);
   }
 
+  /** The encoding that this encoder supports. */
   get encoding(): ContentEncoding {
     return 'base64';
   }
 
+  /**
+   * Creates a new base64 encoder with exactly the same state as this encoder.
+   *
+   * @returns A new encoder with identical state.
+   */
   clone(): MimeEncoder {
     // C# Clone() uses the PUBLIC validating constructor: an encoder built via
     // the internal override ctor re-clamps (or throws) on clone. Mirror that.
@@ -53,17 +76,46 @@ export class Base64Encoder implements MimeEncoder {
     return clone;
   }
 
+  /**
+   * Estimates the number of bytes needed to encode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     const maxLineLength = (this.quartetsPerLine * 4) + 1;
     const maxInputPerLine = this.quartetsPerLine * 3;
     return (Math.trunc((inputLength + 2) / maxInputPerLine) * maxLineLength) + maxLineLength;
   }
 
+  /**
+   * Encodes the specified input into the output buffer.
+   *
+   * The output buffer should be large enough to hold all encoded input. Use
+   * {@link estimateOutputLength} to estimate the required size.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   encode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
     return this.encodeInternal(input, startIndex, length, output, 0);
   }
 
+  /**
+   * Encodes the specified input into the output buffer and flushes internal state.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   flush(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -91,6 +143,7 @@ export class Base64Encoder implements MimeEncoder {
     return outIndex;
   }
 
+  /** Resets the state of the encoder. */
   reset(): void {
     this.quartets = 0;
     this.saved1 = 0;

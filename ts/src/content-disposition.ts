@@ -10,21 +10,36 @@ import { formatDate, parseDate, type DateTimeOffset } from './utils/date-utils.j
 
 const encoder = new TextEncoder();
 
+/**
+ * Represents a `Content-Disposition` header value.
+ */
 export class ContentDisposition {
+  /** The `attachment` disposition token. */
   static readonly attachment = 'attachment';
+  /** The `form-data` disposition token. */
   static readonly formData = 'form-data';
+  /** The `inline` disposition token. */
   static readonly inline = 'inline';
 
   private dispositionValue!: string;
+  /** The content disposition parameters. */
   parameters: ParameterList;
+  /** Invoked when the content disposition changes. */
   onChanged: (() => void) | null = null;
 
+  /**
+   * Creates a new content disposition.
+   *
+   * @param disposition The disposition token.
+   * @throws {TypeError} `disposition` is null, undefined, or invalid.
+   */
   constructor(disposition = ContentDisposition.attachment) {
     this.parameters = new ParameterList();
     this.parameters.onChanged = () => this.changed();
     this.disposition = disposition;
   }
 
+  /** The disposition token. */
   get disposition(): string { return this.dispositionValue; }
   set disposition(value: string) {
     validateDisposition(value);
@@ -33,6 +48,7 @@ export class ContentDisposition {
     this.changed();
   }
 
+  /** Whether this disposition represents an attachment. */
   get isAttachment(): boolean {
     return equalsIgnoreCase(this.dispositionValue, ContentDisposition.attachment);
   }
@@ -40,18 +56,23 @@ export class ContentDisposition {
     this.dispositionValue = value ? ContentDisposition.attachment : ContentDisposition.inline;
   }
 
+  /** The file name parameter, if available. */
   get fileName(): string | null { return this.parameters.get('filename') as string | null; }
   set fileName(value: string | null) { value !== null ? this.parameters.set('filename', value) : this.parameters.remove('filename'); }
 
+  /** The creation date parameter, if available. */
   get creationDate(): DateTimeOffset | null { return getDate(this.parameters.get('creation-date') as string | null); }
   set creationDate(value: DateTimeOffset | null) { value ? this.parameters.set('creation-date', formatDate(value)) : this.parameters.remove('creation-date'); }
 
+  /** The modification date parameter, if available. */
   get modificationDate(): DateTimeOffset | null { return getDate(this.parameters.get('modification-date') as string | null); }
   set modificationDate(value: DateTimeOffset | null) { value ? this.parameters.set('modification-date', formatDate(value)) : this.parameters.remove('modification-date'); }
 
+  /** The read date parameter, if available. */
   get readDate(): DateTimeOffset | null { return getDate(this.parameters.get('read-date') as string | null); }
   set readDate(value: DateTimeOffset | null) { value ? this.parameters.set('read-date', formatDate(value)) : this.parameters.remove('read-date'); }
 
+  /** The size parameter, if available. */
   get size(): number | null {
     const value = this.parameters.get('size') as string | null;
     if (value === null || value.trim() === '') return null;
@@ -61,6 +82,11 @@ export class ContentDisposition {
     value !== null ? this.parameters.set('size', String(value)) : this.parameters.remove('size');
   }
 
+  /**
+   * Clones this content disposition.
+   *
+   * @returns The cloned content disposition.
+   */
   clone(): ContentDisposition {
     const clone = new ContentDisposition(this.dispositionValue);
     for (const parameter of this.parameters)
@@ -68,6 +94,13 @@ export class ContentDisposition {
     return clone;
   }
 
+  /**
+   * Encodes this content disposition as a folded header value.
+   *
+   * @param options The formatting options.
+   * @param charset The charset to use when encoding parameter values.
+   * @returns The serialized header value.
+   */
   encode(options = FormatOptions.default, charset: CharsetEncoding = utf8): string {
     const builder = [' ', this.dispositionValue];
     const lineLength = { value: 'Content-Disposition:'.length + builder.join('').length };
@@ -76,6 +109,14 @@ export class ContentDisposition {
     return builder.join('');
   }
 
+  /**
+   * Serializes this content disposition.
+   *
+   * @param options The formatting options.
+   * @param charset The charset to use when encoding parameter values.
+   * @param encode If `true`, parameter values will be encoded.
+   * @returns The serialized string.
+   */
   toString(options = FormatOptions.default, charset: CharsetEncoding = utf8, encode = false): string {
     const builder = ['Content-Disposition: ', this.dispositionValue];
     if (encode) {
@@ -87,6 +128,14 @@ export class ContentDisposition {
     return builder.join('');
   }
 
+  /**
+   * Parses a content disposition from text or bytes.
+   *
+   * @param input The input to parse.
+   * @param options The parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   * @throws {TypeError} `input` is null or undefined.
+   */
   static parse(input: string | Uint8Array, options = ParserOptions.default): Result<ContentDisposition> {
     if (input == null) throw new TypeError('input cannot be null or undefined');
     const text = typeof input === 'string' ? encoder.encode(input) : input;
@@ -94,6 +143,15 @@ export class ContentDisposition {
     return ContentDisposition.tryParse(options, text, cursor, text.length);
   }
 
+  /**
+   * Attempts to parse a content disposition from a byte range.
+   *
+   * @param options The parser options.
+   * @param text The input buffer.
+   * @param cursor The current parse cursor.
+   * @param endIndex The end index of the input range.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static tryParse(options: ParserOptions, text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<ContentDisposition> {
     let skip = skipCommentsAndWhiteSpace(text, cursor, endIndex);
     if (!skip.ok) return skip;

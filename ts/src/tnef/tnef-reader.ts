@@ -8,18 +8,56 @@ import { type TnefComplianceMode } from './tnef-compliance-mode.js';
 import { TnefComplianceStatus, type TnefComplianceStatus as TnefComplianceStatusValue } from './tnef-compliance-status.js';
 import { TnefPropertyReader } from './tnef-property-reader.js';
 
+/**
+ * A TNEF reader.
+ */
 export class TnefReader {
+  /**
+   * The expected TNEF stream signature.
+   */
   static readonly tnefSignature = 0x223e9f78;
 
+  /**
+   * Gets the TNEF property reader.
+   */
   readonly tnefPropertyReader: TnefPropertyReader;
+  /**
+   * Gets the compliance mode.
+   */
   readonly complianceMode: TnefComplianceMode;
+  /**
+   * Gets the current compliance status of the TNEF stream.
+   *
+   * As the reader progresses, this value may change if errors are encountered.
+   */
   complianceStatus: TnefComplianceStatusValue = TnefComplianceStatus.Compliant;
+  /**
+   * Gets the attachment key value.
+   */
   attachmentKey = 0;
+  /**
+   * Gets the current attribute's level.
+   */
   attributeLevel: TnefAttributeLevelValue = TnefAttributeLevel.Message;
+  /**
+   * Gets the current attribute's tag.
+   */
   attributeTag: TnefAttributeTagValue = TnefAttributeTag.Null;
+  /**
+   * Gets the length of the current attribute's raw value.
+   */
   attributeRawValueLength = 0;
+  /**
+   * Gets the stream offset of the current attribute's raw value.
+   */
   attributeRawValueStreamOffset = 0;
+  /**
+   * Gets the TNEF version.
+   */
   tnefVersion = 0;
+  /**
+   * Gets the message codepage.
+   */
   messageCodepage: number;
 
   private readonly data: Uint8Array;
@@ -27,6 +65,20 @@ export class TnefReader {
   private checksum = 0;
   private closed = false;
 
+  /**
+   * Creates a new TNEF reader.
+   *
+   * When reading with strict compliance, a {@link TnefError} is thrown
+   * immediately at the first sign of invalid or corrupted data. When reading
+   * with loose compliance, issues are accumulated in {@link complianceStatus}
+   * unless the stream is too corrupted to continue.
+   *
+   * @param inputStream the input stream or bytes.
+   * @param defaultMessageCodepage the default message codepage.
+   * @param complianceMode the compliance mode.
+   * @throws {RangeError} `defaultMessageCodepage` is negative.
+   * @throws {TnefError} the TNEF stream is corrupted or invalid in strict mode.
+   */
   constructor(inputStream: Stream | Uint8Array, defaultMessageCodepage = 0, complianceMode: TnefComplianceMode = 'loose') {
     if (defaultMessageCodepage < 0) throw new RangeError('defaultMessageCodepage must be non-negative');
     this.data = inputStream instanceof Uint8Array ? inputStream.slice() : readAll(inputStream);
@@ -36,14 +88,29 @@ export class TnefReader {
     this.decodeHeader();
   }
 
+  /**
+   * Gets the current stream offset.
+   */
   get streamOffset(): number {
     return this.offset;
   }
 
+  /**
+   * Gets the current attribute's type.
+   */
   get attributeType(): number {
     return (this.attributeTag as number) & 0xf0000;
   }
 
+  /**
+   * Set the message codepage.
+   *
+   * Invalid codepages are recorded as compliance issues and fall back to
+   * Windows-1252 unless strict mode raises a {@link TnefError}.
+   *
+   * @param value the message codepage.
+   * @throws {TnefError} `value` is invalid in strict mode.
+   */
   setMessageCodepage(value: number): void {
     if (value === this.messageCodepage) return;
     const normalized = normalizeCodepage(value);
@@ -55,24 +122,49 @@ export class TnefReader {
     }
   }
 
+  /**
+   * Reset the compliance status to {@link TnefComplianceStatus.Compliant}.
+   */
   resetComplianceStatus(): void {
     this.complianceStatus = TnefComplianceStatus.Compliant;
   }
 
+  /**
+   * Close the reader.
+   */
   close(): void {
     this.closed = true;
   }
 
+  /**
+   * Dispose the reader.
+   */
   dispose(): void {
     this.close();
   }
 
+  /**
+   * Set a TNEF compliance error.
+   *
+   * In strict mode this raises a {@link TnefError}; otherwise it records the
+   * error in {@link complianceStatus}.
+   *
+   * @param error the compliance error.
+   * @param cause the underlying cause.
+   * @throws {TnefError} strict mode is enabled and `error` is not compliant.
+   */
   setComplianceError(error: TnefComplianceStatusValue, cause?: unknown): void {
     this.complianceStatus = (this.complianceStatus | error) as TnefComplianceStatusValue;
     if (this.complianceMode !== 'strict' || error === TnefComplianceStatus.Compliant) return;
     throw new TnefError(error, complianceMessage(error), { cause });
   }
 
+  /**
+   * Read the next TNEF attribute.
+   *
+   * @returns `true` if another attribute is available; otherwise, `false`.
+   * @throws {TnefError} the TNEF stream is corrupted or invalid in strict mode.
+   */
   readNextAttribute(): boolean {
     this.checkDisposed();
     if (this.attributeRawValueStreamOffset !== 0 && !this.skipAttributeRawValue())
@@ -113,6 +205,15 @@ export class TnefReader {
     return true;
   }
 
+  /**
+   * Read bytes from the current attribute's raw value.
+   *
+   * @param buffer the buffer to read data into.
+   * @param offset the offset into the buffer to start reading data.
+   * @param count the number of bytes to read.
+   * @returns the number of bytes read into the buffer.
+   * @throws {RangeError} `offset` or `count` is out of range.
+   */
   readAttributeRawValue(buffer: Uint8Array, offset: number, count: number): number {
     validateBufferArguments(buffer, offset, count);
     this.checkDisposed();
@@ -130,12 +231,22 @@ export class TnefReader {
     return n;
   }
 
+  /**
+   * Read a single byte.
+   *
+   * @returns the byte value.
+   */
   readByte(): number {
     this.ensure(1);
     this.updateChecksum(this.data, this.offset, 1);
     return this.data[this.offset++]!;
   }
 
+  /**
+   * Read a signed 16-bit integer.
+   *
+   * @returns the integer value.
+   */
   readInt16(): number {
     this.ensure(2);
     this.updateChecksum(this.data, this.offset, 2);
@@ -144,6 +255,11 @@ export class TnefReader {
     return value;
   }
 
+  /**
+   * Read a signed 32-bit integer.
+   *
+   * @returns the integer value.
+   */
   readInt32(): number {
     this.ensure(4);
     this.updateChecksum(this.data, this.offset, 4);
@@ -152,11 +268,21 @@ export class TnefReader {
     return value;
   }
 
+  /**
+   * Peek at the next signed 32-bit integer without advancing the stream.
+   *
+   * @returns the integer value.
+   */
   peekInt32(): number {
     this.ensure(4);
     return this.dataView().getInt32(this.offset, true);
   }
 
+  /**
+   * Read a signed 64-bit integer.
+   *
+   * @returns the integer value.
+   */
   readInt64(): number {
     this.ensure(8);
     this.updateChecksum(this.data, this.offset, 8);
@@ -165,6 +291,11 @@ export class TnefReader {
     return value;
   }
 
+  /**
+   * Read a 32-bit floating point value.
+   *
+   * @returns the floating point value.
+   */
   readSingle(): number {
     this.ensure(4);
     this.updateChecksum(this.data, this.offset, 4);
@@ -173,6 +304,11 @@ export class TnefReader {
     return value;
   }
 
+  /**
+   * Read a 64-bit floating point value.
+   *
+   * @returns the floating point value.
+   */
   readDouble(): number {
     this.ensure(8);
     this.updateChecksum(this.data, this.offset, 8);
@@ -181,6 +317,12 @@ export class TnefReader {
     return value;
   }
 
+  /**
+   * Skip bytes in the TNEF stream.
+   *
+   * @param count the number of bytes to skip.
+   * @returns `true` if all bytes were skipped; otherwise, `false`.
+   */
   skip(count: number): boolean {
     this.checkDisposed();
     if (count <= 0) return true;

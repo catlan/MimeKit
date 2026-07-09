@@ -32,14 +32,27 @@ function encodeLine(input: Uint8Array, length: number, output: Uint8Array, offse
   return outptr - offset;
 }
 
+/**
+ * Incrementally encodes content using Unix-to-Unix encoding.
+ *
+ * UUEncoding predates MIME and was used to encode binary content so data
+ * remained intact over 7-bit transports such as SMTP. It is largely deprecated
+ * in favor of base64, though some older mail clients still use it.
+ */
 export class UUEncoder implements MimeEncoder {
   private readonly linebuf = new Uint8Array(maxInputPerLine);
   private uulen = 0;
 
+  /** The encoding that this encoder supports. */
   get encoding(): ContentEncoding {
     return 'uuencode';
   }
 
+  /**
+   * Creates a new UU encoder with exactly the same state as this encoder.
+   *
+   * @returns A new encoder with identical state.
+   */
   clone(): MimeEncoder {
     const encoder = new UUEncoder();
     encoder.linebuf.set(this.linebuf);
@@ -47,10 +60,26 @@ export class UUEncoder implements MimeEncoder {
     return encoder;
   }
 
+  /**
+   * Estimates the number of bytes needed to encode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     return (Math.trunc((inputLength + 2) / maxInputPerLine) * maxOutputPerLine) + maxOutputPerLine + 2;
   }
 
+  /**
+   * Encodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   encode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -73,6 +102,16 @@ export class UUEncoder implements MimeEncoder {
     return outptr;
   }
 
+  /**
+   * Encodes the specified input into the output buffer and flushes internal state.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   flush(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -94,6 +133,7 @@ export class UUEncoder implements MimeEncoder {
     return outptr;
   }
 
+  /** Resets the state of the encoder. */
   reset(): void {
     this.uulen = 0;
   }

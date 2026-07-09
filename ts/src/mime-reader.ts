@@ -25,10 +25,15 @@ import { isBlank, isCtrl, isWhitespace } from './utils/byte-extensions.js';
 import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
 import { skipWhiteSpace, tryParseInt32 } from './utils/parse-utils.js';
 
-/** Port of MimeKit/MimeFormat.cs (Default === Entity). */
+/**
+ * MIME input format.
+ *
+ * `entity` parses a single message or entity; `mbox` also recognizes mbox
+ * message separators.
+ */
 export type MimeFormat = 'entity' | 'mbox';
 
-/** Port of MimeKit/NewLineFormat.cs. */
+/** Newline format detected while scanning content. */
 export type ReaderNewLineFormat = 'unix' | 'dos' | 'mixed';
 
 enum BoundaryType {
@@ -126,6 +131,12 @@ enum ScanContentType {
   MultipartEpilogue,
 }
 
+/**
+ * A forward-only, event-driven MIME reader.
+ *
+ * MimeReader tokenizes MIME input and invokes protected event hooks as it reads
+ * messages, entities, headers, boundaries, and content.
+ */
 export class MimeReader {
   // I/O buffering
   private readonly input = new Uint8Array(ReadAheadSize + BlockSize + PadSize);
@@ -163,6 +174,13 @@ export class MimeReader {
   protected stream!: Stream;
   protected streamPosition = 0;
 
+  /**
+   * Initializes a new MIME reader.
+   *
+   * @param stream The input stream.
+   * @param options Parser options.
+   * @param format The MIME input format.
+   */
   constructor(stream: Stream, format?: MimeFormat);
   constructor(options: ParserOptions, stream: Stream, format?: MimeFormat);
   constructor(a: Stream | ParserOptions, b?: Stream | MimeFormat, c?: MimeFormat) {
@@ -182,9 +200,11 @@ export class MimeReader {
     this.initialize(stream, format);
   }
 
+  /** Gets or sets parser options. */
   get Options(): ParserOptions {
     return this.options;
   }
+  /** Sets parser options. */
   set Options(value: ParserOptions) {
     this.setOptions(value);
   }
@@ -194,12 +214,12 @@ export class MimeReader {
     this.options = value === ParserOptions.default ? value.clone() : value;
   }
 
-  /** C#: IsEndOfStream. */
+  /** Gets whether the reader has reached end-of-stream. */
   get isEndOfStream(): boolean {
     return this.state === MimeParserState.Eos;
   }
 
-  /** C#: Position. */
+  /** Gets the current reader position. */
   get Position(): number {
     return this.getOffset(this.inputIndex);
   }
@@ -231,6 +251,12 @@ export class MimeReader {
     this.currentBoundary = null;
   }
 
+  /**
+   * Resets the reader to use a new input stream.
+   *
+   * @param stream The input stream.
+   * @param format The MIME input format.
+   */
   setStream(stream: Stream, format: MimeFormat = 'entity'): void {
     this.initialize(stream, format);
   }
@@ -1446,7 +1472,11 @@ export class MimeReader {
     return this.getLineCount(beginLineNumber, beginOffset, endOffset);
   }
 
-  /** C#: ReadHeaders. */
+  /**
+   * Reads a header block and emits header events.
+   *
+   * @throws {FormatError} The input cannot be parsed as headers.
+   */
   readHeaders(): void {
     this.state = MimeParserState.Headers;
     this.toplevel = true;
@@ -1456,7 +1486,11 @@ export class MimeReader {
     this.state = this.eos && this.inputIndex === this.inputEnd ? MimeParserState.Eos : MimeParserState.Complete;
   }
 
-  /** C#: ReadEntity. */
+  /**
+   * Reads a MIME entity and emits entity events.
+   *
+   * @throws {FormatError} The input cannot be parsed as an entity.
+   */
   readEntity(): void {
     const beginLineNumber = this.lineNumber;
 
@@ -1509,7 +1543,11 @@ export class MimeReader {
     this.state = MimeParserState.Eos;
   }
 
-  /** C#: ReadMessage. */
+  /**
+   * Reads a MIME message and emits message and entity events.
+   *
+   * @throws {FormatError} The input cannot be parsed as a message.
+   */
   readMessage(): void {
     // scan the from-line if we are parsing an mbox
     while (this.state !== MimeParserState.MessageHeaders) {
@@ -1615,6 +1653,11 @@ function latin1String(bytes: Uint8Array, start: number, length: number): string 
  * kept faithful to the C# TryStep-style FormatException sites.
  */
 export class FormatError extends Error {
+  /**
+   * Initializes a new format error.
+   *
+   * @param message The parse error message.
+   */
   constructor(message: string) {
     super(message);
     this.name = 'FormatError';

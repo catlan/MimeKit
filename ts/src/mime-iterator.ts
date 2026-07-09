@@ -8,7 +8,11 @@ interface MimeNode {
   readonly indexed: boolean;
 }
 
+/**
+ * Iterates over the MIME entities in a message.
+ */
 export class MimeIterator implements Iterable<MimeEntity> {
+  /** The message being iterated. */
   readonly message: MimeMessage;
   private readonly stack: MimeNode[] = [];
   private readonly path: number[] = [];
@@ -16,39 +20,54 @@ export class MimeIterator implements Iterable<MimeEntity> {
   private currentValue: MimeEntity | null = null;
   private index = -1;
 
+  /**
+   * Creates a new MIME iterator.
+   *
+   * @param message The message to iterate.
+   * @throws {TypeError} `message` is null or undefined.
+   */
   constructor(message: MimeMessage) {
     if (message == null) throw new TypeError('message cannot be null or undefined');
     this.message = message;
   }
 
+  /** The message being iterated. */
   get Message(): MimeMessage { return this.message; }
 
+  /** The current MIME entity. */
   get current(): MimeEntity {
     if (this.currentValue == null) throw new Error('Iterator is not positioned on an entity.');
     return this.currentValue;
   }
 
+  /** The current MIME entity. */
   get Current(): MimeEntity { return this.current; }
 
+  /** The parent entity of the current entity, if available. */
   get parent(): MimeEntity | null {
     if (this.currentValue == null) throw new Error('Iterator is not positioned on an entity.');
     return this.stack.length > 0 ? this.stack[this.stack.length - 1]!.entity : null;
   }
 
+  /** The parent entity of the current entity, if available. */
   get Parent(): MimeEntity | null { return this.parent; }
 
+  /** The depth of the current entity in the MIME tree. */
   get depth(): number {
     if (this.currentValue == null) throw new Error('Iterator is not positioned on an entity.');
     return this.stack.length;
   }
 
+  /** The depth of the current entity in the MIME tree. */
   get Depth(): number { return this.depth; }
 
+  /** The path specifier for the current entity. */
   get pathSpecifier(): string {
     if (this.currentValue == null) throw new Error('Iterator is not positioned on an entity.');
     return [...this.path.map((value) => `${value + 1}`), `${this.index + 1}`].join('.');
   }
 
+  /** The path specifier for the current entity. */
   get PathSpecifier(): string { return this.pathSpecifier; }
 
   private push(entity: MimeEntity): void {
@@ -67,6 +86,11 @@ export class MimeIterator implements Iterable<MimeEntity> {
     return true;
   }
 
+  /**
+   * Advances the iterator to the next entity.
+   *
+   * @returns `true` if the iterator advanced; otherwise, `false`.
+   */
   moveNext(): boolean {
     if (this.moveFirst) {
       this.currentValue = this.message.body;
@@ -111,8 +135,16 @@ export class MimeIterator implements Iterable<MimeEntity> {
     return false;
   }
 
+  /** Advances the iterator to the next entity. */
   MoveNext(): boolean { return this.moveNext(); }
 
+  /**
+   * Advances the iterator to the specified path.
+   *
+   * @param pathSpecifier The path specifier.
+   * @returns `true` if the iterator moved to the requested entity; otherwise, `false`.
+   * @throws {TypeError} `pathSpecifier` is null, undefined, or empty.
+   */
   moveTo(pathSpecifier: string): boolean {
     if (pathSpecifier == null) throw new TypeError('pathSpecifier cannot be null or undefined');
     if (pathSpecifier.length === 0) throw new TypeError('The path specifier cannot be empty.');
@@ -142,8 +174,10 @@ export class MimeIterator implements Iterable<MimeEntity> {
     return false;
   }
 
+  /** Advances the iterator to the specified path. */
   MoveTo(pathSpecifier: string): boolean { return this.moveTo(pathSpecifier); }
 
+  /** Resets the iterator to its initial position. */
   reset(): void {
     this.moveFirst = true;
     this.currentValue = null;
@@ -152,6 +186,7 @@ export class MimeIterator implements Iterable<MimeEntity> {
     this.index = -1;
   }
 
+  /** Resets the iterator to its initial position. */
   Reset(): void { this.reset(); }
 
   *[Symbol.iterator](): IterableIterator<MimeEntity> {

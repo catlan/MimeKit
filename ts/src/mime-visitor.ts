@@ -14,7 +14,16 @@ import { TextPart } from './text-part.js';
 import { TextRfc822Headers } from './text-rfc822-headers.js';
 import { TnefPart } from './tnef/tnef-part.js';
 
+/**
+ * Base visitor for traversing MIME messages and entities.
+ */
 export class MimeVisitor {
+  /**
+   * Visits a MIME entity and dispatches to the most specific visit method.
+   *
+   * @param entity The MIME entity.
+   * @throws {TypeError} `entity` is null or undefined.
+   */
   visit(entity: MimeEntity): void {
     if (entity == null) throw new TypeError('entity cannot be null or undefined');
     if (entity instanceof TextRfc822Headers) return this.visitTextRfc822Headers(entity);
@@ -33,37 +42,55 @@ export class MimeVisitor {
     this.visitMimeEntity(entity);
   }
 
+  /** Visits the abstract MIME entity. */
   visitMimeEntity(_entity: MimeEntity): void {}
+  /** Visits a MIME part entity. */
   visitMimePart(entity: MimePart): void { this.visitMimeEntity(entity); }
+  /** Visits a text-based MIME part entity. */
   visitTextPart(entity: TextPart): void { this.visitMimePart(entity); }
+  /** Visits a TNEF MIME part entity. */
   visitTnefPart(entity: TnefPart): void { this.visitMimePart(entity); }
+  /** Visits the children of a multipart entity. */
   visitChildren(multipart: Multipart): void {
     for (const child of multipart)
       this.visit(child);
   }
+  /** Visits a multipart MIME entity. */
   visitMultipart(entity: Multipart): void {
     this.visitMimeEntity(entity);
     this.visitChildren(entity);
   }
+  /** Visits a `multipart/alternative` MIME entity. */
   visitMultipartAlternative(entity: MultipartAlternative): void { this.visitMultipart(entity); }
+  /** Visits a `multipart/related` MIME entity. */
   visitMultipartRelated(entity: MultipartRelated): void { this.visitMultipart(entity); }
+  /** Visits a `multipart/report` MIME entity. */
   visitMultipartReport(entity: MultipartReport): void { this.visitMultipart(entity); }
+  /** Visits the message contained by a message part. */
   visitMessage(entity: MessagePart): void {
     entity.message?.accept(this);
   }
+  /** Visits a `message/rfc822` or `message/news` MIME entity. */
   visitMessagePart(entity: MessagePart): void {
     this.visitMimeEntity(entity);
     this.visitMessage(entity);
   }
+  /** Visits the body of a MIME message. */
   visitBody(message: MimeMessage): void {
     message.body?.accept(this);
   }
+  /** Visits a MIME message. */
   visitMimeMessage(message: MimeMessage): void {
     this.visitBody(message);
   }
+  /** Visits a `message/partial` MIME entity. */
   visitMessagePartial(entity: MessagePartial): void { this.visitMimePart(entity); }
+  /** Visits a `message/delivery-status` MIME entity. */
   visitMessageDeliveryStatus(entity: MessageDeliveryStatus): void { this.visitMimePart(entity); }
+  /** Visits a `message/disposition-notification` MIME entity. */
   visitMessageDispositionNotification(entity: MessageDispositionNotification): void { this.visitMimePart(entity); }
+  /** Visits a `message/feedback-report` MIME entity. */
   visitMessageFeedbackReport(entity: MessageFeedbackReport): void { this.visitMimePart(entity); }
+  /** Visits a `text/rfc822-headers` MIME entity. */
   visitTextRfc822Headers(entity: TextRfc822Headers): void { this.visitMessagePart(entity); }
 }

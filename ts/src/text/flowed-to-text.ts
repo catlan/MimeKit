@@ -14,11 +14,32 @@ function unquote(line: string): { line: string; quoteDepth: number } {
   return index > 0 ? { line: line.substring(index), quoteDepth } : { line, quoteDepth };
 }
 
+/**
+ * A flowed text to text converter.
+ *
+ * Unwraps flowed text as described in RFC 3676.
+ */
 export class FlowedToText extends TextConverter {
+  /**
+   * Gets or sets whether the trailing space on a wrapped line should be deleted.
+   *
+   * The flowed text format defines a Content-Type parameter called `delsp` which
+   * can have a value of `yes` or `no`. If the parameter exists and the value is
+   * `yes`, set this property to `true`; otherwise set it to `false`.
+   */
   deleteSpace = false;
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Flowed; }
+  /** The output format. */
   override get outputFormat(): TextFormat { return TextFormat.Plain; }
 
+  /**
+   * Converts the text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   * @throws {TypeError} `text` or `writer` is `null` or `undefined`.
+   */
   override convertText(text: string, writer: TextWriter): void {
     if (text === null || text === undefined) throw new TypeError('text');
     if (writer === null || writer === undefined) throw new TypeError('writer');

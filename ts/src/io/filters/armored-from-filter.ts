@@ -37,9 +37,28 @@ function sequenceEqual(input: Uint8Array, startIndex: number, length: number, ma
   return true;
 }
 
+/**
+ * A filter that armors lines beginning with `"From "` by encoding the `F` with quoted-printable encoding.
+ *
+ * From-armoring serves a similar purpose as {@link MboxFromFilter}, but replaces lines beginning
+ * with `"From "` using `"=46rom "` instead of the irreversible `">From "` form. This requires the
+ * content modified by this filter to use quoted-printable transfer encoding in order to work properly.
+ *
+ * This armoring technique preserves content so receiving clients can still verify PGP/MIME and
+ * S/MIME signatures.
+ */
 export class ArmoredFromFilter extends MimeFilterBase {
   private midline = false;
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     const fromOffsets: number[] = [];
     const spanEnd = startIndex + length;
@@ -112,6 +131,9 @@ export class ArmoredFromFilter extends MimeFilterBase {
     return { buffer: input, index: startIndex, length: endIndex };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.midline = false;
     super.reset();

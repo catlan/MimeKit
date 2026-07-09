@@ -23,28 +23,50 @@ import { TextPart } from './text-part.js';
 
 const BUFFER_LENGTH = 4096;
 
+/**
+ * A mutable collection of MIME attachments or linked resources.
+ */
 export class AttachmentCollection implements Iterable<MimeEntity> {
   private readonly attachments: MimeEntity[] = [];
   private readonly linked: boolean;
 
+  /**
+   * Initializes a new attachment collection.
+   *
+   * @param linkedResources Whether new attachments should be marked as linked resources.
+   */
   constructor(linkedResources = false) {
     this.linked = linkedResources;
   }
 
+  /** Gets the number of attachments in the collection. */
   get count(): number {
     return this.attachments.length;
   }
 
+  /** Gets whether this collection is read-only. */
   get isReadOnly(): boolean {
     return false;
   }
 
+  /**
+   * Gets the attachment at the specified index.
+   *
+   * @param index The zero-based index.
+   * @returns The attachment.
+   */
   at(index: number): MimeEntity {
     if (!Number.isInteger(index) || index < 0 || index >= this.count)
       throw new RangeError('index out of range');
     return this.attachments[index]!;
   }
 
+  /**
+   * Replaces the attachment at the specified index.
+   *
+   * @param index The zero-based index.
+   * @param value The replacement attachment.
+   */
   set(index: number, value: MimeEntity): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.count)
       throw new RangeError('index out of range');
@@ -52,6 +74,16 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
     this.attachments[index] = value;
   }
 
+  /**
+   * Adds an attachment to the collection.
+   *
+   * @param attachment The attachment entity.
+   * @param fileName The file name for a new attachment.
+   * @param data Attachment bytes.
+   * @param stream Attachment content stream.
+   * @param contentType The attachment content type.
+   * @returns The created attachment for content overloads.
+   */
   add(attachment: MimeEntity): void;
   add(fileName: string, data: Uint8Array): MimeEntity;
   add(fileName: string, stream: Stream): MimeEntity;
@@ -98,6 +130,11 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
     return attachment;
   }
 
+  /**
+   * Removes all attachments.
+   *
+   * @param dispose Whether to dispose removed attachments.
+   */
   clear(dispose = false): void {
     if (dispose) {
       for (const attachment of this.attachments)
@@ -106,11 +143,23 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
     this.attachments.length = 0;
   }
 
+  /**
+   * Tests whether the collection contains an attachment.
+   *
+   * @param attachment The attachment to locate.
+   * @returns `true` if present; otherwise `false`.
+   */
   contains(attachment: MimeEntity): boolean {
     if (attachment == null) throw new TypeError('attachment cannot be null or undefined');
     return this.attachments.includes(attachment);
   }
 
+  /**
+   * Copies attachments into an array.
+   *
+   * @param array The destination array.
+   * @param arrayIndex The starting index in `array`.
+   */
   copyTo(array: MimeEntity[], arrayIndex: number): void {
     if (array == null) throw new TypeError('array cannot be null or undefined');
     if (!Number.isInteger(arrayIndex) || arrayIndex < 0 || arrayIndex >= array.length)
@@ -119,11 +168,23 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
       array[arrayIndex + i] = this.attachments[i]!;
   }
 
+  /**
+   * Gets the index of an attachment.
+   *
+   * @param attachment The attachment to locate.
+   * @returns The zero-based index, or `-1` if not found.
+   */
   indexOf(attachment: MimeEntity): number {
     if (attachment == null) throw new TypeError('attachment cannot be null or undefined');
     return this.attachments.indexOf(attachment);
   }
 
+  /**
+   * Inserts an attachment at the specified index.
+   *
+   * @param index The insertion index.
+   * @param attachment The attachment to insert.
+   */
   insert(index: number, attachment: MimeEntity): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.count)
       throw new RangeError('index out of range');
@@ -131,6 +192,12 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
     this.attachments.splice(index, 0, attachment);
   }
 
+  /**
+   * Removes an attachment.
+   *
+   * @param attachment The attachment to remove.
+   * @returns `true` if removed; otherwise `false`.
+   */
   remove(attachment: MimeEntity): boolean {
     if (attachment == null) throw new TypeError('attachment cannot be null or undefined');
     const index = this.attachments.indexOf(attachment);
@@ -139,12 +206,18 @@ export class AttachmentCollection implements Iterable<MimeEntity> {
     return true;
   }
 
+  /**
+   * Removes the attachment at the specified index.
+   *
+   * @param index The zero-based index.
+   */
   removeAt(index: number): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.count)
       throw new RangeError('index out of range');
     this.attachments.splice(index, 1);
   }
 
+  /** Returns an iterator over the attachments. */
   [Symbol.iterator](): Iterator<MimeEntity> {
     return this.attachments[Symbol.iterator]();
   }

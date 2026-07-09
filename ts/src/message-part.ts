@@ -5,9 +5,19 @@ import { MimeEntity, type MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeMessage } from './mime-message.js';
 import type { MimeVisitor } from './mime-visitor.js';
 
+/**
+ * A message/* MIME entity containing an embedded message.
+ */
 export class MessagePart extends MimeEntity {
+  /** The embedded message. */
   message: MimeMessage | null = null;
 
+  /**
+   * Initializes a new message part.
+   *
+   * @param subtype The message media subtype.
+   * @param args Initialization arguments.
+   */
   constructor();
   constructor(subtype: string, ...args: unknown[]);
   constructor(args: MimeEntityConstructorArgs);
@@ -30,15 +40,28 @@ export class MessagePart extends MimeEntity {
     }
   }
 
+  /** Gets or sets the embedded message. */
   get Message(): MimeMessage | null { return this.message; }
+  /** Sets the embedded message. */
   set Message(value: MimeMessage | null) { this.message = value; }
 
+  /**
+   * Dispatches to the visitor method for message parts.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('MessagePart');
     visitor.visitMessagePart(this);
   }
 
+  /**
+   * Prepares the embedded message for transport.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum encoded line length.
+   */
   override prepare(constraint: EncodingConstraint, maxLineLength = 78): void {
     if (maxLineLength < MINIMUM_LINE_LENGTH || maxLineLength > MAXIMUM_LINE_LENGTH)
       throw new RangeError('maxLineLength out of range');
@@ -46,6 +69,13 @@ export class MessagePart extends MimeEntity {
     this.message?.prepare(constraint, maxLineLength);
   }
 
+  /**
+   * Writes the message part to a stream.
+   *
+   * @param options Formatting options.
+   * @param stream The destination stream.
+   * @param contentOnly Whether to omit the message part headers.
+   */
   override writeTo(a: FormatOptions | Stream, b?: Stream, contentOnly = false): void {
     const options = a instanceof FormatOptions ? a : FormatOptions.default;
     const stream = a instanceof FormatOptions ? b : a;
@@ -64,6 +94,7 @@ export class MessagePart extends MimeEntity {
     this.message.writeTo(messageOptions, stream!);
   }
 
+  /** Disposes the embedded message and base entity resources. */
   override dispose(): void {
     this.message?.dispose();
     super.dispose();

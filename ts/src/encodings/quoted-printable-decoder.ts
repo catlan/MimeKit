@@ -19,16 +19,33 @@ function toXDigit(c: number): number {
   return c - 0x30;
 }
 
+/**
+ * Incrementally decodes content encoded with the quoted-printable encoding.
+ *
+ * Quoted-printable is often used in MIME for textual content outside the ASCII
+ * range so that text remains intact over 7-bit transports such as SMTP.
+ */
 export class QuotedPrintableDecoder implements MimeDecoder {
+  /** The encoding that this decoder supports. */
   readonly encoding: ContentEncoding = 'quoted-printable';
   private readonly rfc2047: boolean;
   private state = QpDecoderState.PassThrough;
   private saved = 0;
 
+  /**
+   * Creates a new quoted-printable decoder.
+   *
+   * @param rfc2047 - Whether this decoder will decode RFC 2047 encoded-word tokens.
+   */
   constructor(rfc2047 = false) {
     this.rfc2047 = rfc2047;
   }
 
+  /**
+   * Creates a new quoted-printable decoder with exactly the same state as this decoder.
+   *
+   * @returns A new decoder with identical state.
+   */
   clone(): QuotedPrintableDecoder {
     const clone = new QuotedPrintableDecoder(this.rfc2047);
     clone.state = this.state;
@@ -36,6 +53,12 @@ export class QuotedPrintableDecoder implements MimeDecoder {
     return clone;
   }
 
+  /**
+   * Estimates the number of bytes needed to decode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     switch (this.state) {
       case QpDecoderState.PassThrough: return inputLength;
@@ -44,6 +67,16 @@ export class QuotedPrintableDecoder implements MimeDecoder {
     }
   }
 
+  /**
+   * Decodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   decode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -116,6 +149,7 @@ export class QuotedPrintableDecoder implements MimeDecoder {
     return out;
   }
 
+  /** Resets the state of the decoder. */
   reset(): void {
     this.state = QpDecoderState.PassThrough;
     this.saved = 0;

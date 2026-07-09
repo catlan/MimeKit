@@ -1,5 +1,8 @@
 // Port of MimeKit/HeaderId.cs.
 
+/**
+ * Identifies well-known message header fields.
+ */
 export enum HeaderId {
   AcceptLanguage = "AcceptLanguage",
   AdHoc = "AdHoc",
@@ -135,6 +138,7 @@ export enum HeaderId {
   Unknown = "Unknown",
 }
 
+/** Maps known header identifiers to their canonical field names. */
 export const headerIdNameTable = [
   [HeaderId.AcceptLanguage, "Accept-Language"],
   [HeaderId.AdHoc, "Ad-Hoc"],
@@ -269,16 +273,29 @@ export const headerIdNameTable = [
   [HeaderId.XStatus, "X-Status"],
 ] as const;
 
+/** A known header identifier, excluding {@link HeaderId.Unknown}. */
 export type KnownHeaderId = Exclude<HeaderId, HeaderId.Unknown>;
 
 const idToName = new Map<HeaderId, string>(headerIdNameTable);
 const nameToId = new Map<string, HeaderId>(headerIdNameTable.map(([id, name]) => [name.toLowerCase(), id]));
 
+/**
+ * Gets the canonical header field name for a header identifier.
+ *
+ * @param value The header identifier.
+ * @returns The canonical field name, or `Unknown` if it is not recognized.
+ */
 export function toHeaderName(value: HeaderId | string | number): string {
   if (typeof value === 'number') return 'Unknown';
   return idToName.get(value as HeaderId) ?? 'Unknown';
 }
 
+/**
+ * Gets the header identifier for a field name.
+ *
+ * @param name The header field name.
+ * @returns The matching header identifier, or {@link HeaderId.Unknown}.
+ */
 export function toHeaderId(name: string | null | undefined): HeaderId {
   if (name == null) return HeaderId.Unknown;
   return nameToId.get(name.toLowerCase()) ?? HeaderId.Unknown;

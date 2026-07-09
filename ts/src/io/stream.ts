@@ -11,15 +11,24 @@
  * RangeError/TypeError, mirroring C#'s ArgumentException/NotSupportedException.
  */
 
+/**
+ * The reference point used for seeking within a stream.
+ */
 export type SeekOrigin = 'begin' | 'current' | 'end';
 
 export abstract class Stream {
+  /** Whether the stream supports reading. */
   abstract get canRead(): boolean;
+  /** Whether the stream supports writing. */
   abstract get canWrite(): boolean;
+  /** Whether the stream supports seeking. */
   abstract get canSeek(): boolean;
 
+  /** The length of the stream, in bytes. */
   abstract get length(): number;
+  /** The current position within the stream. */
   abstract get position(): number;
+  /** Set the current position within the stream. */
   abstract set position(value: number);
 
   /**
@@ -31,13 +40,33 @@ export abstract class Stream {
   /** Write `count` bytes from `buffer` starting at `offset`. */
   abstract write(buffer: Uint8Array, offset: number, count: number): void;
 
+  /**
+   * Set the position within the stream.
+   *
+   * @param offset The offset relative to `origin`.
+   * @param origin The reference point used to obtain the new position.
+   * @returns The new position within the stream.
+   */
   abstract seek(offset: number, origin: SeekOrigin): number;
 
+  /**
+   * Flush any buffered data.
+   */
   abstract flush(): void;
 
+  /**
+   * Set the length of the stream.
+   *
+   * @param value The desired length in bytes.
+   */
   abstract setLength(value: number): void;
 
-  /** Read the remainder of the stream into a single buffer. */
+  /**
+   * Copy data from this stream to another stream.
+   *
+   * @param destination The stream that will receive the copied data.
+   * @param bufferSize The temporary buffer size to use while copying.
+   */
   copyTo(destination: Stream, bufferSize = 4096): void {
     const buffer = new Uint8Array(bufferSize);
     let n: number;
@@ -48,6 +77,14 @@ export abstract class Stream {
   /** Release resources. Base implementation does nothing. */
   dispose(): void {}
 
+  /**
+   * Validate buffer, offset, and count arguments for stream read/write operations.
+   *
+   * @param buffer The buffer supplied by the caller.
+   * @param offset The starting offset in the buffer.
+   * @param count The number of bytes to read or write.
+   * @throws {RangeError} `offset` or `count` does not specify a valid range in `buffer`.
+   */
   protected static validateBufferArguments(buffer: Uint8Array, offset: number, count: number): void {
     if (!Number.isInteger(offset) || offset < 0 || offset > buffer.length)
       throw new RangeError(`offset ${offset} out of range [0, ${buffer.length}]`);
@@ -55,6 +92,12 @@ export abstract class Stream {
       throw new RangeError(`count ${count} out of range [0, ${buffer.length - offset}]`);
   }
 
+  /**
+   * Throw for an unsupported stream operation.
+   *
+   * @param operation The unsupported operation name.
+   * @throws {TypeError} Always thrown because the operation is unsupported.
+   */
   protected throwNotSupported(operation: string): never {
     throw new TypeError(`${this.constructor.name} does not support ${operation}`);
   }
@@ -69,6 +112,11 @@ export class MemoryStream extends Stream {
   private lengthValue = 0;
   private positionValue = 0;
 
+  /**
+   * Create a growable memory stream.
+   *
+   * @param initial Optional initial contents to copy into the stream.
+   */
   constructor(initial?: Uint8Array) {
     super();
     if (initial) {
@@ -79,13 +127,19 @@ export class MemoryStream extends Stream {
     }
   }
 
+  /** Whether the stream supports reading. */
   override get canRead(): boolean { return true; }
+  /** Whether the stream supports writing. */
   override get canWrite(): boolean { return true; }
+  /** Whether the stream supports seeking. */
   override get canSeek(): boolean { return true; }
 
+  /** The length of the stream, in bytes. */
   override get length(): number { return this.lengthValue; }
 
+  /** The current position within the stream. */
   override get position(): number { return this.positionValue; }
+  /** Set the current position within the stream. */
   override set position(value: number) {
     if (!Number.isInteger(value) || value < 0)
       throw new RangeError(`position ${value} must be a non-negative integer`);
@@ -103,6 +157,14 @@ export class MemoryStream extends Stream {
     this.buffer = grown;
   }
 
+  /**
+   * Read bytes from the stream.
+   *
+   * @param buffer The buffer to read data into.
+   * @param offset The offset into the buffer to start reading data.
+   * @param count The number of bytes to read.
+   * @returns The total number of bytes read into the buffer, or zero if the end of the stream has been reached.
+   */
   override read(buffer: Uint8Array, offset: number, count: number): number {
     Stream.validateBufferArguments(buffer, offset, count);
     const available = this.lengthValue - this.positionValue;
@@ -114,6 +176,13 @@ export class MemoryStream extends Stream {
     return n;
   }
 
+  /**
+   * Write bytes to the stream.
+   *
+   * @param buffer The buffer to write.
+   * @param offset The offset of the first byte to write.
+   * @param count The number of bytes to write.
+   */
   override write(buffer: Uint8Array, offset: number, count: number): void {
     Stream.validateBufferArguments(buffer, offset, count);
     const end = this.positionValue + count;
@@ -127,6 +196,13 @@ export class MemoryStream extends Stream {
       this.lengthValue = end;
   }
 
+  /**
+   * Set the position within the stream.
+   *
+   * @param offset The offset relative to `origin`.
+   * @param origin The reference point used to obtain the new position.
+   * @returns The new position within the stream.
+   */
   override seek(offset: number, origin: SeekOrigin): number {
     const base = origin === 'begin' ? 0 : origin === 'current' ? this.positionValue : this.lengthValue;
     const target = base + offset;
@@ -136,8 +212,16 @@ export class MemoryStream extends Stream {
     return target;
   }
 
+  /**
+   * Flush the stream.
+   */
   override flush(): void {}
 
+  /**
+   * Set the length of the stream.
+   *
+   * @param value The desired length in bytes.
+   */
   override setLength(value: number): void {
     if (!Number.isInteger(value) || value < 0)
       throw new RangeError(`length ${value} must be a non-negative integer`);
@@ -149,7 +233,11 @@ export class MemoryStream extends Stream {
       this.positionValue = value;
   }
 
-  /** The stream's contents as a copy (C#: MemoryStream.ToArray). */
+  /**
+   * The stream's contents as a copy.
+   *
+   * @returns The copied stream contents.
+   */
   toArray(): Uint8Array {
     return this.buffer.slice(0, this.lengthValue);
   }

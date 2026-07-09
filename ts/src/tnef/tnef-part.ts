@@ -32,8 +32,24 @@ import { TnefPropertyType } from './tnef-property-type.js';
 import { TnefReader } from './tnef-reader.js';
 import type { ITnefPart } from './itnef-part.js';
 
+/**
+ * A MIME part containing Microsoft TNEF data.
+ *
+ * Represents an `application/ms-tnef` or `application/vnd.ms-tnef` part. TNEF
+ * (Transport Neutral Encapsulation Format) attachments are most often sent by
+ * Microsoft Outlook clients.
+ */
 export class TnefPart extends MimePart implements ITnefPart {
+  /**
+   * Creates a new {@link TnefPart} with a Content-Type of `application/ms-tnef`
+   * and a filename of `winmail.dat`.
+   */
   constructor();
+  /**
+   * Creates a new {@link TnefPart} from parser constructor arguments.
+   *
+   * @param args information used by the constructor.
+   */
   constructor(args: MimeEntityConstructorArgs);
   constructor(args?: MimeEntityConstructorArgs) {
     if (args !== undefined) {
@@ -44,6 +60,12 @@ export class TnefPart extends MimePart implements ITnefPart {
     }
   }
 
+  /**
+   * Dispatches to the specific visit method for this MIME entity.
+   *
+   * @param visitor the visitor.
+   * @throws {TypeError} `visitor` is null or undefined.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('TnefPart');
@@ -52,6 +74,15 @@ export class TnefPart extends MimePart implements ITnefPart {
     else visitor.visitMimePart(this);
   }
 
+  /**
+   * Convert the TNEF content into a {@link MimeMessage}.
+   *
+   * TNEF data often contains properties that map to {@link MimeMessage} headers
+   * and file attachments that are mapped to MIME parts.
+   *
+   * @returns a message representing the TNEF data in MIME format.
+   * @throws {TypeError} the content is null or the part has been disposed.
+   */
   convertToMessage(): MimeMessage {
     this.checkDisposed('TnefPart');
     if (this.content === null) throw new TypeError('Cannot parse null TNEF data.');
@@ -62,6 +93,14 @@ export class TnefPart extends MimePart implements ITnefPart {
     return extractTnefMessage(reader);
   }
 
+  /**
+   * Extract the embedded attachments from the TNEF data.
+   *
+   * Parses the TNEF data and extracts all embedded file attachments.
+   *
+   * @returns the attachments.
+   * @throws {TypeError} the content is null or the part has been disposed.
+   */
   *extractAttachments(): Iterable<MimeEntity> {
     const message = this.convertToMessage();
     const body = message.body;

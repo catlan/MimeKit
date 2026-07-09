@@ -11,13 +11,28 @@ import { MimeFilterBase } from './mime-filter-base.js';
 import type { IMimeFilter, MimeFilterResult } from './mime-filter.js';
 import { PassThroughFilter } from './pass-through-filter.js';
 
+/**
+ * A filter for encoding MIME content.
+ *
+ * Uses a {@link MimeEncoder} to incrementally encode data.
+ */
 export class EncoderFilter extends MimeFilterBase {
+  /** The encoder used by this filter. */
   readonly encoder: MimeEncoder;
 
+  /**
+   * The encoding supported by the encoder.
+   */
   get encoding(): ContentEncoding {
     return this.encoder.encoding;
   }
 
+  /**
+   * Create an encoder filter using the specified encoder.
+   *
+   * @param encoder A specific encoder for the filter to use.
+   * @throws {TypeError} `encoder` is null or undefined.
+   */
   constructor(encoder: MimeEncoder) {
     super();
     if (encoder == null)
@@ -26,7 +41,24 @@ export class EncoderFilter extends MimeFilterBase {
     this.encoder = encoder;
   }
 
+  /**
+   * Create a filter that will encode using the specified encoding.
+   *
+   * @param encoding The encoding to create a filter for.
+   * @param maxLineLength The maximum number of octets allowed per line, not counting CRLF.
+   * @returns A new encoder filter, or a pass-through filter for unsupported encodings.
+   * @throws {RangeError} `maxLineLength` is outside the supported range for the selected encoder.
+   */
   static create(encoding: ContentEncoding, maxLineLength?: number): IMimeFilter;
+  /**
+   * Create a filter that will encode using the specified encoding name.
+   *
+   * @param name The name of the encoding to create a filter for.
+   * @param maxLineLength The maximum number of octets allowed per line, not counting CRLF.
+   * @returns A new encoder filter, or a pass-through filter for unsupported encodings.
+   * @throws {TypeError} `name` is null or undefined.
+   * @throws {RangeError} `maxLineLength` is outside the supported range for the selected encoder.
+   */
   static create(name: string, maxLineLength?: number): IMimeFilter;
   static create(encodingOrName: ContentEncoding | string, maxLineLength = 78): IMimeFilter {
     if (encodingOrName == null)
@@ -43,6 +75,15 @@ export class EncoderFilter extends MimeFilterBase {
     }
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     const output = this.ensureOutputSize(this.encoder.estimateOutputLength(length), false);
     const outputLength = flush
@@ -52,6 +93,9 @@ export class EncoderFilter extends MimeFilterBase {
     return { buffer: output, index: 0, length: outputLength };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.encoder.reset();
     super.reset();

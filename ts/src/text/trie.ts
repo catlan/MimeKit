@@ -28,16 +28,25 @@ function lowerChar(c: string): string {
   return c.toLowerCase();
 }
 
+/** The result of searching an Aho-Corasick trie. */
 export interface TrieSearchResult {
+  /** The first index of a matched pattern, or `-1` if no pattern matched. */
   index: number;
+  /** The pattern that matched, or `null` if no pattern matched. */
   pattern: string | null;
 }
 
+/** An Aho-Corasick trie graph. */
 export class Trie {
   private readonly failStates: Array<TrieState | null> = [];
   private readonly root = new TrieState(null);
   private readonly ignoreCase: boolean;
 
+  /**
+   * Creates a new trie.
+   *
+   * @param ignoreCase `true` if searching should ignore case; otherwise, `false`.
+   */
   constructor(ignoreCase = false) {
     this.ignoreCase = ignoreCase;
   }
@@ -60,6 +69,12 @@ export class Trie {
     return inserted;
   }
 
+  /**
+   * Adds a search pattern.
+   *
+   * @param pattern The search pattern.
+   * @throws {TypeError} `pattern` is `null`, `undefined`, or an empty string.
+   */
   add(pattern: string): void {
     if (pattern === null || pattern === undefined) throw new TypeError('pattern');
     if (pattern.length === 0) throw new TypeError('The pattern cannot be empty.');
@@ -108,6 +123,16 @@ export class Trie {
     }
   }
 
+  /**
+   * Searches text for any of the patterns added to the trie.
+   *
+   * @param text The text to search.
+   * @param startIndex The starting index of the text.
+   * @param count The number of characters to search, starting at `startIndex`.
+   * @returns The first index of a matched pattern and the pattern that matched.
+   * @throws {TypeError} `text` is `null` or `undefined`.
+   * @throws {RangeError} `startIndex` and `count` do not specify a valid range in `text`.
+   */
   search(text: string, startIndex = 0, count = text?.length - startIndex): TrieSearchResult {
     validateRange(text, startIndex, count);
 

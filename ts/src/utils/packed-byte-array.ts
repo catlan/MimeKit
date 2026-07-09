@@ -1,14 +1,25 @@
 const INITIAL_BUFFER_SIZE = 64;
 
+/**
+ * Compact run-length byte collection used by parsers that accumulate repeated
+ * byte values.
+ */
 export class PackedByteArray {
   private buffer = new Uint16Array(INITIAL_BUFFER_SIZE);
   private lengthValue = 0;
   private cursor = -1;
 
+  /** Number of unpacked bytes stored in the collection. */
   get count(): number {
     return this.lengthValue;
   }
 
+  /**
+   * Add a byte to the collection.
+   *
+   * @param item - Byte value to add.
+   * @throws {RangeError} `item` is outside the byte range.
+   */
   add(item: number): void {
     if (!Number.isInteger(item) || item < 0 || item > 255)
       throw new RangeError(`byte ${item} out of range [0, 255]`);
@@ -27,11 +38,22 @@ export class PackedByteArray {
     this.lengthValue++;
   }
 
+  /**
+   * Remove all stored bytes.
+   */
   clear(): void {
     this.cursor = -1;
     this.lengthValue = 0;
   }
 
+  /**
+   * Copy the unpacked bytes to an output array.
+   *
+   * @param array - Destination array.
+   * @param arrayIndex - Destination start index.
+   * @throws {TypeError} `array` is not a Uint8Array.
+   * @throws {RangeError} `arrayIndex` is outside the destination range.
+   */
   copyTo(array: Uint8Array, arrayIndex: number): void {
     if (!(array instanceof Uint8Array))
       throw new TypeError('array must be a Uint8Array');

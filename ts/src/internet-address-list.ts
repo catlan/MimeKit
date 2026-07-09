@@ -12,10 +12,15 @@ import { GroupAddress } from './group-address.js';
 
 const utf8Encoder = new TextEncoder();
 
+/**
+ * Represents a list of internet addresses.
+ */
 export class InternetAddressList implements Iterable<InternetAddress> {
+  /** Invoked when the address list changes. */
   onChanged: (() => void) | null = null;
   private readonly list: InternetAddress[] = [];
 
+  /** Creates a new internet address list. */
   constructor(addresses?: Iterable<InternetAddress>) {
     if (addresses === null) throw new TypeError('addresses cannot be null');
     if (addresses !== undefined) {
@@ -24,14 +29,17 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     }
   }
 
+  /** The number of addresses in the list. */
   get count(): number {
     return this.list.length;
   }
 
+  /** Whether this list is read-only. */
   get isReadOnly(): boolean {
     return false;
   }
 
+  /** Enumerates all mailbox addresses, including members of group addresses. */
   get mailboxes(): Iterable<MailboxAddress> {
     const self = this;
     return (function* () {
@@ -46,11 +54,13 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     })();
   }
 
+  /** Gets the address at the specified index. */
   at(index: number): InternetAddress {
     this.validateExistingIndex(index);
     return this.list[index]!;
   }
 
+  /** Sets the address at the specified index. */
   set(index: number, address: InternetAddress): void {
     if (address == null) throw new TypeError('address cannot be null');
     this.validateExistingIndex(index);
@@ -61,11 +71,13 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     this.changed();
   }
 
+  /** Gets the index of the requested address, or `-1` if it is not found. */
   indexOf(address: InternetAddress): number {
     if (address == null) throw new TypeError('address cannot be null');
     return this.list.indexOf(address);
   }
 
+  /** Inserts an address at the specified index. */
   insert(index: number, address: InternetAddress): void {
     if (address == null) throw new TypeError('address cannot be null');
     if (!Number.isInteger(index) || index < 0 || index > this.list.length)
@@ -75,6 +87,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     this.changed();
   }
 
+  /** Removes the address at the specified index. */
   removeAt(index: number): void {
     this.validateExistingIndex(index);
     this.detach(this.list[index]!);
@@ -82,6 +95,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     this.changed();
   }
 
+  /** Adds an address to the list. */
   add(address: InternetAddress): void {
     if (address == null) throw new TypeError('address cannot be null');
     this.attach(address);
@@ -89,6 +103,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     this.changed();
   }
 
+  /** Adds a sequence of addresses to the list. */
   addRange(addresses: Iterable<InternetAddress>): void {
     if (addresses == null) throw new TypeError('addresses cannot be null');
     let changed = false;
@@ -101,6 +116,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     if (changed) this.changed();
   }
 
+  /** Removes all addresses from the list. */
   clear(): void {
     if (this.list.length === 0) return;
     for (const address of this.list)
@@ -109,11 +125,13 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     this.changed();
   }
 
+  /** Determines whether the list contains the specified address. */
   contains(address: InternetAddress): boolean {
     if (address == null) throw new TypeError('address cannot be null');
     return this.list.includes(address);
   }
 
+  /** Copies the addresses to an array. */
   copyTo(array: InternetAddress[], arrayIndex: number): void {
     if (array == null) throw new TypeError('array cannot be null');
     if (!Number.isInteger(arrayIndex) || arrayIndex < 0 || arrayIndex > array.length)
@@ -124,6 +142,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
       array[arrayIndex + i] = this.list[i]!;
   }
 
+  /** Removes an address from the list. */
   remove(address: InternetAddress): boolean {
     if (address == null) throw new TypeError('address cannot be null');
     const index = this.list.indexOf(address);
@@ -134,6 +153,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return true;
   }
 
+  /** Determines whether this list equals another address list. */
   equals(other: InternetAddressList | null | undefined): boolean {
     if (other == null || other.count !== this.count) return false;
     for (let i = 0; i < this.count; i++) {
@@ -142,6 +162,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return true;
   }
 
+  /** Compares this address list with another address list. */
   compareTo(other: InternetAddressList): number {
     if (other == null) throw new TypeError('other cannot be null');
     const n = Math.min(this.count, other.count);
@@ -152,6 +173,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return this.count - other.count;
   }
 
+  /** Encodes the address list. */
   encode(options: FormatOptions, firstToken: boolean, state: LineState): string {
     let output = '';
     for (let i = 0; i < this.list.length; i++) {
@@ -164,6 +186,7 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return output;
   }
 
+  /** Serializes the address list. */
   toString(options: FormatOptions = FormatOptions.default, encode = false): string {
     if (encode) {
       const state = { lineLength: 0 };
@@ -176,6 +199,11 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return this.list[Symbol.iterator]();
   }
 
+  /**
+   * Parses an internet address list.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parse(text: string | Uint8Array, options: ParserOptions = ParserOptions.default): Result<InternetAddressList> {
     if (text == null)
       throw new TypeError('text cannot be null or undefined');
@@ -186,6 +214,11 @@ export class InternetAddressList implements Iterable<InternetAddress> {
     return ok(new InternetAddressList(parsed.value));
   }
 
+  /**
+   * Parses an address list from a byte range.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static parseInternal(text: Uint8Array, cursor: { index: number }, endIndex: number, options: ParserOptions, isGroup: boolean, groupDepth: number): Result<InternetAddress[]> {
     return tryParseAddressListInternal(AddressParserFlags.Parse, options, text, cursor, endIndex, isGroup, groupDepth);
   }

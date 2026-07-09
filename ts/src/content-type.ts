@@ -9,12 +9,24 @@ import { skipCommentsAndWhiteSpace, type ParseCursor } from './utils/parse-utils
 
 const encoder = new TextEncoder();
 
+/**
+ * Represents a `Content-Type` header value.
+ */
 export class ContentType {
   private type: string;
   private subtype: string;
+  /** The content type parameters. */
   parameters: ParameterList;
+  /** Invoked when the content type changes. */
   onChanged: (() => void) | null = null;
 
+  /**
+   * Creates a new content type with the specified media type and subtype.
+   *
+   * @param mediaType The media type.
+   * @param mediaSubtype The media subtype.
+   * @throws {TypeError} `mediaType` or `mediaSubtype` is null or undefined.
+   */
   constructor(mediaType: string, mediaSubtype: string) {
     if (mediaType == null) throw new TypeError('mediaType cannot be null or undefined');
     if (mediaSubtype == null) throw new TypeError('mediaSubtype cannot be null or undefined');
@@ -24,6 +36,7 @@ export class ContentType {
     this.parameters.onChanged = () => this.changed();
   }
 
+  /** The media type. */
   get mediaType(): string { return this.type; }
   set mediaType(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
@@ -32,6 +45,7 @@ export class ContentType {
     this.changed();
   }
 
+  /** The media subtype. */
   get mediaSubtype(): string { return this.subtype; }
   set mediaSubtype(value: string) {
     if (value == null) throw new TypeError('value cannot be null or undefined');
@@ -40,12 +54,15 @@ export class ContentType {
     this.changed();
   }
 
+  /** The `boundary` parameter, if available. */
   get boundary(): string | null { return this.parameters.get('boundary') as string | null; }
   set boundary(value: string | null) { value !== null ? this.parameters.set('boundary', value) : this.parameters.remove('boundary'); }
 
+  /** The `charset` parameter, if available. */
   get charset(): string | null { return this.parameters.get('charset') as string | null; }
   set charset(value: string | null) { value !== null ? this.parameters.set('charset', value) : this.parameters.remove('charset'); }
 
+  /** The charset encoding represented by the `charset` parameter, if available. */
   get charsetEncoding(): CharsetEncoding | null {
     return this.charset === null ? null : tryGetEncoding(this.charset);
   }
@@ -53,14 +70,22 @@ export class ContentType {
     this.charset = value ? getMimeCharset(value) : null;
   }
 
+  /** The `format` parameter, if available. */
   get format(): string | null { return this.parameters.get('format') as string | null; }
   set format(value: string | null) { value !== null ? this.parameters.set('format', value) : this.parameters.remove('format'); }
 
+  /** The MIME type in `type/subtype` form. */
   get mimeType(): string { return `${this.mediaType}/${this.mediaSubtype}`; }
 
+  /** The `name` parameter, if available. */
   get name(): string | null { return this.parameters.get('name') as string | null; }
   set name(value: string | null) { value !== null ? this.parameters.set('name', value) : this.parameters.remove('name'); }
 
+  /**
+   * Clones this content type.
+   *
+   * @returns The cloned content type.
+   */
   clone(): ContentType {
     const clone = new ContentType(this.type, this.subtype);
     for (const parameter of this.parameters)
@@ -68,6 +93,16 @@ export class ContentType {
     return clone;
   }
 
+  /**
+   * Determines whether this content type matches the specified media type and subtype.
+   *
+   * The `*` wildcard may be used for either argument.
+   *
+   * @param mediaType The media type.
+   * @param mediaSubtype The media subtype.
+   * @returns `true` if this content type matches; otherwise, `false`.
+   * @throws {TypeError} `mediaType` or `mediaSubtype` is null or undefined.
+   */
   isMimeType(mediaType: string, mediaSubtype: string): boolean {
     if (mediaType == null) throw new TypeError('mediaType cannot be null or undefined');
     if (mediaSubtype == null) throw new TypeError('mediaSubtype cannot be null or undefined');
@@ -76,6 +111,13 @@ export class ContentType {
     return false;
   }
 
+  /**
+   * Encodes this content type as a folded header value.
+   *
+   * @param options The formatting options.
+   * @param charset The charset to use when encoding parameter values.
+   * @returns The serialized header value.
+   */
   encode(options = FormatOptions.default, charset: CharsetEncoding = utf8): string {
     const builder = [' ', this.mediaType, '/', this.mediaSubtype];
     const lineLength = { value: 'Content-Type:'.length + builder.join('').length };
@@ -84,6 +126,14 @@ export class ContentType {
     return builder.join('');
   }
 
+  /**
+   * Serializes this content type.
+   *
+   * @param options The formatting options.
+   * @param charset The charset to use when encoding parameter values.
+   * @param encode If `true`, parameter values will be encoded.
+   * @returns The serialized string.
+   */
   toString(options = FormatOptions.default, charset: CharsetEncoding = utf8, encode = false): string {
     const builder = ['Content-Type: ', this.mediaType, '/', this.mediaSubtype];
     if (encode) {
@@ -95,6 +145,14 @@ export class ContentType {
     return builder.join('');
   }
 
+  /**
+   * Parses a content type from text or bytes.
+   *
+   * @param input The input to parse.
+   * @param options The parser options.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   * @throws {TypeError} `input` is null or undefined.
+   */
   static parse(input: string | Uint8Array, options = ParserOptions.default): Result<ContentType> {
     if (input == null) throw new TypeError('input cannot be null or undefined');
     const text = typeof input === 'string' ? encoder.encode(input) : input;
@@ -102,6 +160,16 @@ export class ContentType {
     return ContentType.tryParse(options, text, cursor, text.length);
   }
 
+  /**
+   * Attempts to parse a content type from a byte range.
+   *
+   * @param options The parser options.
+   * @param text The input buffer.
+   * @param cursor The current parse cursor.
+   * @param endIndex The end index of the input range.
+   * @param partial Receives a partially parsed content type when type/subtype parsing succeeds.
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   static tryParse(options: ParserOptions, text: Uint8Array, cursor: ParseCursor, endIndex: number, partial?: { contentType: ContentType | null }): Result<ContentType> {
     let skip = skipCommentsAndWhiteSpace(text, cursor, endIndex);
     if (!skip.ok) return skip;

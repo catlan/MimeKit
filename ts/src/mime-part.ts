@@ -18,14 +18,29 @@ import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
 const DEFAULT_MAX_LINE_LENGTH = 78;
 const encoder = new TextEncoder();
 
+/**
+ * A single MIME part containing encoded content.
+ *
+ * MimePart is used for leaf entities such as attachments and most non-text
+ * body parts.
+ */
 export class MimePart extends MimeEntity {
   private encoderMaxLineLength = DEFAULT_MAX_LINE_LENGTH;
   private encodingValue: ContentEncoding = 'default';
   private descriptionValue: string | null = null;
   private md5sumValue: string | null = null;
   private durationValue: number | null = null;
+  /** The MIME content for this part. */
   content: MimeContent | null = null;
 
+  /**
+   * Initializes a new MIME part.
+   *
+   * @param contentType The content type to use, or a complete content type string.
+   * @param mediaType The media type.
+   * @param mediaSubtype The media subtype.
+   * @throws {TypeError} Constructor arguments are invalid.
+   */
   constructor();
   constructor(contentType: ContentType);
   constructor(contentType: string);
@@ -75,6 +90,11 @@ export class MimePart extends MimeEntity {
       this.content = content;
   }
 
+  /**
+   * Gets or sets the Content-Description header value.
+   *
+   * @throws {TypeError} The part has been disposed.
+   */
   get contentDescription(): string | null {
     this.checkDisposed('MimePart');
     if (!this.lazyLoaded.has('contentDescription')) {
@@ -86,6 +106,7 @@ export class MimePart extends MimeEntity {
     return this.descriptionValue;
   }
 
+  /** Sets the Content-Description header value. */
   set contentDescription(value: string | null) {
     this.checkDisposed('MimePart');
     this.descriptionValue = value?.trim() ?? null;
@@ -93,6 +114,12 @@ export class MimePart extends MimeEntity {
     this.lazyLoaded.add('contentDescription');
   }
 
+  /**
+   * Gets or sets the Content-Duration value in seconds.
+   *
+   * @throws {RangeError} `value` is not a non-negative integer.
+   * @throws {TypeError} The part has been disposed.
+   */
   get contentDuration(): number | null {
     this.checkDisposed('MimePart');
     if (!this.lazyLoaded.has('contentDuration')) {
@@ -105,6 +132,7 @@ export class MimePart extends MimeEntity {
     return this.durationValue;
   }
 
+  /** Sets the Content-Duration value in seconds. */
   set contentDuration(value: number | null) {
     this.checkDisposed('MimePart');
     if (value !== null && (!Number.isInteger(value) || value < 0))
@@ -114,6 +142,11 @@ export class MimePart extends MimeEntity {
     this.lazyLoaded.add('contentDuration');
   }
 
+  /**
+   * Gets or sets the Content-MD5 checksum value.
+   *
+   * @throws {TypeError} The part has been disposed.
+   */
   get contentMd5(): string | null {
     this.checkDisposed('MimePart');
     if (!this.lazyLoaded.has('contentMd5')) {
@@ -125,6 +158,7 @@ export class MimePart extends MimeEntity {
     return this.md5sumValue;
   }
 
+  /** Sets the Content-MD5 checksum value. */
   set contentMd5(value: string | null) {
     this.checkDisposed('MimePart');
     this.md5sumValue = value?.trim() ?? null;
@@ -132,6 +166,11 @@ export class MimePart extends MimeEntity {
     this.lazyLoaded.add('contentMd5');
   }
 
+  /**
+   * Gets or sets the Content-Transfer-Encoding value.
+   *
+   * @throws {TypeError} `value` is not a valid content encoding or the part has been disposed.
+   */
   get contentTransferEncoding(): ContentEncoding {
     this.checkDisposed('MimePart');
     if (!this.lazyLoaded.has('contentTransferEncoding')) {
@@ -146,6 +185,7 @@ export class MimePart extends MimeEntity {
     return this.encodingValue;
   }
 
+  /** Sets the Content-Transfer-Encoding value. */
   set contentTransferEncoding(value: ContentEncoding) {
     this.checkDisposed('MimePart');
     validateContentEncoding(value);
@@ -154,10 +194,14 @@ export class MimePart extends MimeEntity {
     this.lazyLoaded.add('contentTransferEncoding');
   }
 
+  /**
+   * Gets or sets the file name from Content-Disposition or Content-Type.
+   */
   get fileName(): string | null {
     return (this.contentDisposition?.fileName ?? this.contentType.name)?.trim() ?? null;
   }
 
+  /** Sets the file name in Content-Disposition and Content-Type. */
   set fileName(value: string | null) {
     if (value !== null) {
       this.contentDisposition ??= new ContentDisposition(ContentDisposition.attachment);
@@ -168,6 +212,13 @@ export class MimePart extends MimeEntity {
     this.contentType.name = value;
   }
 
+  /**
+   * Calculates the best content-transfer-encoding for this part.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum line length.
+   * @returns The best content-transfer-encoding.
+   */
   getBestEncoding(constraint: EncodingConstraint, maxLineLength = DEFAULT_MAX_LINE_LENGTH): ContentEncoding {
     this.checkDisposed('MimePart');
     if (this.contentType.isMimeType('text', '*') || this.contentType.isMimeType('message', '*')) {
@@ -184,6 +235,12 @@ export class MimePart extends MimeEntity {
     return constraint === 'none' ? 'binary' : 'base64';
   }
 
+  /**
+   * Computes a base64-encoded MD5 checksum for the decoded content.
+   *
+   * @returns The computed checksum.
+   * @throws {TypeError} The part has no content or has been disposed.
+   */
   computeContentMd5(): string {
     this.checkDisposed('MimePart');
     if (this.content === null)
@@ -198,6 +255,11 @@ export class MimePart extends MimeEntity {
     return base64(md5(memory.toArray()));
   }
 
+  /**
+   * Verifies the Content-MD5 checksum against the decoded content.
+   *
+   * @returns `true` if the checksum matches; otherwise `false`.
+   */
   verifyContentMd5(): boolean {
     this.checkDisposed('MimePart');
     if (this.md5sumValue == null || this.md5sumValue.trim() === '' || this.content === null)
@@ -206,6 +268,11 @@ export class MimePart extends MimeEntity {
   }
 
 
+  /**
+   * Dispatches to the visitor method for MIME parts.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null)
       throw new TypeError('visitor cannot be null or undefined');
@@ -213,6 +280,13 @@ export class MimePart extends MimeEntity {
     visitor.visitMimePart(this);
   }
 
+  /**
+   * Prepares this part for transport under the requested encoding constraint.
+   *
+   * @param constraint The encoding constraint.
+   * @param maxLineLength The maximum encoded line length.
+   * @throws {RangeError} `maxLineLength` is outside the supported range.
+   */
   override prepare(constraint: EncodingConstraint, maxLineLength = DEFAULT_MAX_LINE_LENGTH): void {
     if (!Number.isInteger(maxLineLength) || maxLineLength < MINIMUM_LINE_LENGTH || maxLineLength > MAXIMUM_LINE_LENGTH)
       throw new RangeError('maxLineLength must be between 60 and 998');
@@ -237,6 +311,13 @@ export class MimePart extends MimeEntity {
     this.contentTransferEncoding = best;
   }
 
+  /**
+   * Writes the MIME part to a stream.
+   *
+   * @param stream The destination stream.
+   * @param options Formatting options.
+   * @param contentOnly Whether to omit the part headers.
+   */
   override writeTo(stream: Stream): void;
   override writeTo(options: FormatOptions, stream: Stream): void;
   override writeTo(options: FormatOptions, stream: Stream, contentOnly: boolean): void;
@@ -312,6 +393,7 @@ export class MimePart extends MimeEntity {
     }
   }
 
+  /** Releases the content and base entity resources. */
   override dispose(): void {
     this.content?.dispose();
     super.dispose();

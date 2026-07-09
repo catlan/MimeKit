@@ -1,14 +1,43 @@
 import { Stream, type SeekOrigin } from './stream.js';
 
+/**
+ * A bounded stream confined to reading and writing data in a limited subset of an underlying stream.
+ *
+ * Wraps an arbitrary stream, limiting I/O operations to a subset of the source stream. If
+ * {@link endBoundary} is `-1`, then the end of the stream is unbound.
+ */
 export class BoundStream extends Stream {
   private positionValue = 0;
   private disposed = false;
   private eos = false;
 
+  /**
+   * The underlying stream.
+   *
+   * All I/O is performed on the base stream.
+   */
   readonly baseStream: Stream;
+  /**
+   * The byte offset into {@link baseStream} that marks the beginning of the substream.
+   */
   readonly startBoundary: number;
+  /**
+   * The byte offset into {@link baseStream} that marks the end of the substream, or `-1` if unbound.
+   */
   endBoundary: number;
 
+  /**
+   * Create a bounded stream.
+   *
+   * If `endBoundary` is less than `0`, then the end of the stream is unbounded.
+   *
+   * @param baseStream The underlying stream.
+   * @param startBoundary The offset in the base stream that marks the start of this substream.
+   * @param endBoundary The offset in the base stream that marks the end of this substream.
+   * @param leaveOpen Whether to leave `baseStream` open after this stream is disposed.
+   * @throws {TypeError} `baseStream` is not a stream.
+   * @throws {RangeError} `startBoundary` is less than zero or `endBoundary` is before `startBoundary`.
+   */
   constructor(baseStream: Stream, startBoundary: number, endBoundary: number, private readonly leaveOpen: boolean) {
     super();
 
@@ -46,11 +75,35 @@ export class BoundStream extends Stream {
       throw new TypeError('The stream does not support writing');
   }
 
+  /**
+   * Whether the stream supports reading.
+   *
+   * The bounded stream only supports reading if the underlying stream supports it.
+   */
   override get canRead(): boolean { return this.baseStream.canRead; }
+  /**
+   * Whether the stream supports writing.
+   *
+   * The bounded stream only supports writing if the underlying stream supports it.
+   */
   override get canWrite(): boolean { return this.baseStream.canWrite; }
+  /**
+   * Whether the stream supports seeking.
+   *
+   * The bounded stream only supports seeking if the underlying stream supports it.
+   */
   override get canSeek(): boolean { return this.baseStream.canSeek; }
+  /**
+   * Whether I/O operations can time out.
+   */
   get canTimeout(): boolean { return false; }
 
+  /**
+   * The length of the bounded stream, in bytes.
+   *
+   * If {@link endBoundary} is non-negative, the length is `endBoundary - startBoundary`.
+   * If the end is unbound, the length is based on the underlying stream length.
+   */
   override get length(): number {
     this.checkDisposed();
 
@@ -62,9 +115,21 @@ export class BoundStream extends Stream {
     return this.baseStream.length - this.startBoundary;
   }
 
+  /**
+   * The current position within the bounded stream, relative to {@link startBoundary}.
+   */
   override get position(): number { return this.positionValue; }
+  /** Set the current position within the bounded stream. */
   override set position(value: number) { this.seek(value, 'begin'); }
 
+  /**
+   * Read bytes from the bounded stream.
+   *
+   * @param buffer The buffer to read data into.
+   * @param offset The offset into the buffer to start reading data.
+   * @param count The number of bytes to read.
+   * @returns The total number of bytes read into the buffer, or zero if the end of the stream has been reached.
+   */
   override read(buffer: Uint8Array, offset: number, count: number): number {
     this.checkDisposed();
     this.checkCanRead();
@@ -91,6 +156,13 @@ export class BoundStream extends Stream {
     return nread;
   }
 
+  /**
+   * Write bytes to the bounded stream.
+   *
+   * @param buffer The buffer to write.
+   * @param offset The offset of the first byte to write.
+   * @param count The number of bytes to write.
+   */
   override write(buffer: Uint8Array, offset: number, count: number): void {
     this.checkDisposed();
     this.checkCanWrite();
@@ -111,6 +183,13 @@ export class BoundStream extends Stream {
       this.eos = true;
   }
 
+  /**
+   * Set the position within the bounded stream.
+   *
+   * @param offset The offset relative to `origin`.
+   * @param origin The reference point used to obtain the new position.
+   * @returns The new position within the bounded stream.
+   */
   override seek(offset: number, origin: SeekOrigin): number {
     this.checkDisposed();
     this.checkCanSeek();
@@ -152,12 +231,21 @@ export class BoundStream extends Stream {
     return this.positionValue;
   }
 
+  /**
+   * Flush writes to the underlying stream.
+   */
   override flush(): void {
     this.checkDisposed();
     this.checkCanWrite();
     this.baseStream.flush();
   }
 
+  /**
+   * Set the length of the bounded stream.
+   *
+   * @param value The desired length in bytes.
+   * @throws {RangeError} `value` is negative or not an integer.
+   */
   override setLength(value: number): void {
     this.checkDisposed();
     if (!Number.isInteger(value) || value < 0)
@@ -173,6 +261,9 @@ export class BoundStream extends Stream {
     }
   }
 
+  /**
+   * Dispose the bounded stream, disposing the underlying stream unless `leaveOpen` was set.
+   */
   override dispose(): void {
     if (!this.leaveOpen)
       this.baseStream.dispose();

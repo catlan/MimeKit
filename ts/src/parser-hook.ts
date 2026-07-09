@@ -21,10 +21,15 @@ import type { MimeFormat } from './mime-reader.js';
 import type { ParserOptions } from './parser-options.js';
 import type { Result } from './result.js';
 
+/** Minimal parser surface used by model classes without importing MimeParser directly. */
 export interface ParserLike {
+  /** Gets whether the parser has reached end-of-stream. */
   readonly isEndOfStream: boolean;
+  /** Parses a complete message. */
   parseMessage(): Result<MimeMessage>;
+  /** Parses a MIME entity. */
   parseEntity(): Result<MimeEntity>;
+  /** Parses a block of headers. */
   parseHeaders(): Result<HeaderList>;
 }
 
@@ -32,12 +37,24 @@ type ParserFactory = (options: ParserOptions, stream: Stream, format: MimeFormat
 
 let factory: ParserFactory | null = null;
 
-/** Called by mime-parser.ts at module load. */
+/**
+ * Registers the parser factory.
+ *
+ * @param f The factory installed by `mime-parser.ts` at module load.
+ */
 export function setParserFactory(f: ParserFactory): void {
   factory = f;
 }
 
-/** Construct a parser lazily (the concrete MimeParser, once registered). */
+/**
+ * Constructs a parser lazily once the concrete MimeParser has registered.
+ *
+ * @param options Parser options.
+ * @param stream The input stream.
+ * @param format The MIME input format.
+ * @param persistent Whether parsed content should reference the source stream.
+ * @returns A parser instance.
+ */
 export function newMimeParser(
   options: ParserOptions,
   stream: Stream,

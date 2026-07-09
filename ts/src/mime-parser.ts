@@ -32,6 +32,12 @@ import { type Result, err, ok } from './result.js';
 
 type StackItem = MimeMessage | MimeEntity;
 
+/**
+ * Parses MIME streams into messages, entities, or headers.
+ *
+ * Parser data errors are returned as {@link Result} values. Programmer errors,
+ * such as invalid constructor arguments, still throw.
+ */
 export class MimeParser extends MimeReader {
   private readonly stack: StackItem[] = [];
 
@@ -56,6 +62,14 @@ export class MimeParser extends MimeReader {
 
   private persistent = false;
 
+  /**
+   * Initializes a new MIME parser.
+   *
+   * @param stream The input stream.
+   * @param options Parser options.
+   * @param format The MIME input format.
+   * @param persistent Whether parsed content should reference the source stream.
+   */
   constructor(stream: Stream, format?: MimeFormat, persistent?: boolean);
   constructor(options: ParserOptions, stream: Stream, format?: MimeFormat, persistent?: boolean);
   constructor(a: Stream | ParserOptions, b?: Stream | MimeFormat, c?: MimeFormat | boolean, d?: boolean) {
@@ -78,19 +92,19 @@ export class MimeParser extends MimeReader {
     this.onSetStream(stream, format, persistent);
   }
 
-  /** C#: MboxMarkerOffset. */
+  /** Gets the offset of the current mbox marker, or `-1` if none was read. */
   get mboxMarkerOffset(): number {
     return this.mboxMarkerOffsetValue;
   }
 
-  /** C#: MboxMarker. */
+  /** Gets the current mbox marker line, if one was read. */
   get mboxMarker(): string | null {
     return this.mboxMarkerOffsetValue !== -1
       ? new TextDecoder().decode(this.mboxMarkerBuffer!.subarray(0, this.mboxMarkerLength))
       : null;
   }
 
-  /** C#: Position (camelCase alias of the reader's Position). */
+  /** Gets the current parser position. */
   get position(): number {
     return this.Position;
   }
@@ -101,6 +115,13 @@ export class MimeParser extends MimeReader {
     if (format === 'mbox' && this.mboxMarkerBuffer === null) this.mboxMarkerBuffer = new Uint8Array(64);
   }
 
+  /**
+   * Resets the parser to use a new input stream.
+   *
+   * @param stream The input stream.
+   * @param format The MIME input format.
+   * @param persistent Whether parsed content should reference the source stream.
+   */
   override setStream(stream: Stream, format: MimeFormat = 'entity', persistent = false): void {
     super.setStream(stream, format);
     this.onSetStream(stream, format, persistent);
@@ -363,7 +384,11 @@ export class MimeParser extends MimeReader {
 
   // #region Public API ----------------------------------------------------------
 
-  /** C#: ParseHeaders. */
+  /**
+   * Parses a header block.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   parseHeaders(): Result<HeaderList> {
     this.initializeState(false);
 
@@ -381,7 +406,11 @@ export class MimeParser extends MimeReader {
     return ok(parsed);
   }
 
-  /** C#: ParseEntity. */
+  /**
+   * Parses a MIME entity.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   parseEntity(): Result<MimeEntity> {
     this.initializeState(false);
 
@@ -395,7 +424,11 @@ export class MimeParser extends MimeReader {
     return ok(this.stack.pop() as MimeEntity);
   }
 
-  /** C#: ParseMessage. */
+  /**
+   * Parses a MIME message.
+   *
+   * @returns A {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+   */
   parseMessage(): Result<MimeMessage> {
     this.initializeState(true);
 

@@ -35,9 +35,25 @@ function sequenceEqual(input: Uint8Array, startIndex: number, length: number, ma
   return true;
 }
 
+/**
+ * A filter that munges lines beginning with `"From "` by stuffing a `>` into the beginning of the line.
+ *
+ * Munging mbox-style `"From "` lines prevents mbox parsers from misinterpreting message content
+ * as an mbox marker delineating messages. This munging is not reversible, but is necessary when
+ * formatting a message for saving to an mbox file.
+ */
 export class MboxFromFilter extends MimeFilterBase {
   private midline = false;
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     const fromOffsets: number[] = [];
     const spanEnd = startIndex + length;
@@ -107,6 +123,9 @@ export class MboxFromFilter extends MimeFilterBase {
     return { buffer: input, index: startIndex, length: endIndex };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.midline = false;
     super.reset();

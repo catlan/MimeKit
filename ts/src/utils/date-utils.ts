@@ -1,7 +1,12 @@
 import { err, ok, type Result } from '../result.js';
 
+/**
+ * Date and UTC offset value used by MIME Date header helpers.
+ */
 export interface DateTimeOffset {
+  /** UTC epoch milliseconds. */
   readonly epochMillis: number;
+  /** Offset from UTC in minutes. */
   readonly offsetMinutes: number;
 }
 
@@ -482,6 +487,14 @@ function inputToBytes(text: string | Uint8Array): Uint8Array {
   return typeof text === 'string' ? utf8.encode(text) : text;
 }
 
+/**
+ * Try to parse input into a DateTimeOffset value.
+ *
+ * Parses an RFC 822 date and time from the supplied text or byte buffer.
+ *
+ * @param text - Input text or bytes.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+ */
 export function parseDate(text: string | Uint8Array): Result<DateTimeOffset> {
   const buffer = inputToBytes(text);
   const tokens = tokenizeDate(buffer, 0, buffer.length);
@@ -502,6 +515,14 @@ function pad4(value: number): string {
   return `${value}`;
 }
 
+/**
+ * Format a DateTimeOffset as an RFC 822 date string.
+ *
+ * The result is suitable for use in a MIME Date header.
+ *
+ * @param dto - The date value to format.
+ * @returns The formatted date string.
+ */
 export function formatDate(dto: DateTimeOffset): string {
   const local = new Date(dto.epochMillis + (dto.offsetMinutes * 60_000));
   const sign = dto.offsetMinutes < 0 ? '-' : '+';

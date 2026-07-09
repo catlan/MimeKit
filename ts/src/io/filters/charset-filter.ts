@@ -49,12 +49,25 @@ function assertSupportedTarget(target: CharsetEncoding): void {
   );
 }
 
+/**
+ * A charset filter for incrementally converting text streams from one charset encoding to another.
+ */
 export class CharsetFilter extends MimeFilterBase {
   private decoder: CharsetStreamDecoder;
 
+  /** The source charset encoding. */
   readonly sourceEncoding: CharsetEncoding;
+  /** The target charset encoding. */
   readonly targetEncoding: CharsetEncoding;
 
+  /**
+   * Create a charset filter to convert text from the source encoding into the target encoding.
+   *
+   * @param sourceEncoding The source encoding name, code page, or charset encoding.
+   * @param targetEncoding The target encoding name, code page, or charset encoding.
+   * @throws {TypeError} An encoding is null, unsupported, or not a charset encoding.
+   * @throws {RangeError} A code page is outside the valid range.
+   */
   constructor(sourceEncoding: string | number | CharsetEncoding, targetEncoding: string | number | CharsetEncoding) {
     super();
 
@@ -65,6 +78,15 @@ export class CharsetFilter extends MimeFilterBase {
     this.decoder = createStreamDecoder(this.sourceEncoding);
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     const decoded = this.decoder.decode(input.subarray(startIndex, startIndex + length), flush);
     const encoded = this.targetEncoding.encode(decoded);
@@ -75,6 +97,9 @@ export class CharsetFilter extends MimeFilterBase {
     return { buffer: output, index: 0, length: encoded.length };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.decoder = createStreamDecoder(this.sourceEncoding);
     super.reset();

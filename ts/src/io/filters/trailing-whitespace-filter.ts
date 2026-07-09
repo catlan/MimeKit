@@ -5,6 +5,9 @@ import type { MimeFilterResult } from './mime-filter.js';
 const CR = 0x0d;
 const LF = 0x0a;
 
+/**
+ * A filter for stripping trailing whitespace from lines in a textual stream.
+ */
 export class TrailingWhitespaceFilter extends MimeFilterBase {
   private lwsp: number[] = [];
 
@@ -42,6 +45,15 @@ export class TrailingWhitespaceFilter extends MimeFilterBase {
     return count;
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input The input buffer.
+   * @param startIndex The starting index of the input buffer.
+   * @param length The length of the input buffer, starting at `startIndex`.
+   * @param flush Whether all internally buffered data should be flushed to the output buffer.
+   * @returns The filtered output range.
+   */
   protected filterInternal(input: Uint8Array, startIndex: number, length: number, flush: boolean): MimeFilterResult {
     if (length === 0) {
       if (flush)
@@ -59,6 +71,9 @@ export class TrailingWhitespaceFilter extends MimeFilterBase {
     return { buffer: output, index: 0, length: outputLength };
   }
 
+  /**
+   * Reset the filter.
+   */
   override reset(): void {
     this.lwsp.length = 0;
     super.reset();

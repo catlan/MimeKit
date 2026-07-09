@@ -9,9 +9,16 @@ import type { MimeEntityConstructorArgs } from './mime-entity.js';
 import type { MimeVisitor } from './mime-visitor.js';
 import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
 
+/**
+ * A message/delivery-status MIME part.
+ *
+ * Delivery status notifications are machine-readable reports describing the
+ * delivery status of a message.
+ */
 export class MessageDeliveryStatus extends MimePart {
   private groupsValue: HeaderListCollection | null = null;
 
+  /** Initializes a new message/delivery-status part. */
   constructor();
   constructor(args: MimeEntityConstructorArgs);
   constructor(args?: MimeEntityConstructorArgs) {
@@ -22,7 +29,9 @@ export class MessageDeliveryStatus extends MimePart {
     super('message', 'delivery-status');
   }
 
+  /** Gets the delivery status header groups. */
   get StatusGroups(): HeaderListCollection { return this.statusGroups; }
+  /** Gets the delivery status header groups. */
   get statusGroups(): HeaderListCollection {
     this.checkDisposed('MessageDeliveryStatus');
     if (this.groupsValue == null) {
@@ -79,6 +88,11 @@ export class MessageDeliveryStatus extends MimePart {
     return groups;
   }
 
+  /**
+   * Dispatches to the visitor method for delivery status parts.
+   *
+   * @param visitor The visitor.
+   */
   override accept(visitor: MimeVisitor): void {
     if (visitor == null) throw new TypeError('visitor cannot be null or undefined');
     this.checkDisposed('MessageDeliveryStatus');

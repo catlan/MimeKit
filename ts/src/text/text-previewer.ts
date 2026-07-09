@@ -47,16 +47,32 @@ function htmlBodyText(html: string): string {
   return body.replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<style\b[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ');
 }
 
+/** An abstract class for generating a text preview of a message. */
 export abstract class TextPreviewer {
   private maximumPreviewLengthValue = 230;
+  /** The input format. */
   abstract get inputFormat(): TextFormat;
 
+  /**
+   * Gets or sets the maximum text preview length.
+   *
+   * The default value is `230`, matching the value used by the Gmail web API.
+   *
+   * @throws {RangeError} `value` is less than `1` or greater than `1024`.
+   */
   get maximumPreviewLength(): number { return this.maximumPreviewLengthValue; }
   set maximumPreviewLength(value: number) {
     if (!Number.isInteger(value) || value < 1 || value > 1024) throw new RangeError('value');
     this.maximumPreviewLengthValue = value;
   }
 
+  /**
+   * Gets a text preview of a text part.
+   *
+   * @param body The text part.
+   * @returns A shortened preview of the original text.
+   * @throws {TypeError} `body` is `null` or `undefined`.
+   */
   static getPreviewText(body: TextPart): string {
     if (body === null || body === undefined) throw new TypeError('body');
     if (body.content === null) return '';
@@ -78,7 +94,20 @@ export abstract class TextPreviewer {
     }
   }
 
+  /**
+   * Gets a text preview of a string of text.
+   *
+   * @param text The original text.
+   * @returns A shortened preview of the original text.
+   */
   getPreviewText(text: string): string;
+  /**
+   * Gets a text preview of a stream of text in the specified charset.
+   *
+   * @param stream The original text stream.
+   * @param charset The charset encoding of the stream.
+   * @returns A shortened preview of the original text.
+   */
   getPreviewText(stream: Stream, charset: string | CharsetEncoding): string;
   getPreviewText(input: string | Stream, charset?: string | CharsetEncoding): string {
     if (input === null || input === undefined) throw new TypeError('input');
@@ -95,5 +124,11 @@ export abstract class TextPreviewer {
     return this.getPreviewTextCore(encoding.decode(readAll(input)));
   }
 
+  /**
+   * Gets a text preview of a string that has already been decoded.
+   *
+   * @param text The original text.
+   * @returns A shortened preview of the original text.
+   */
   protected abstract getPreviewTextCore(text: string): string;
 }

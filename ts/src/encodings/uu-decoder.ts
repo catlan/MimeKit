@@ -20,6 +20,13 @@ function uudecodeRank(c: number): number {
   return (c - 0x20) & 0x3f;
 }
 
+/**
+ * Incrementally decodes content encoded with Unix-to-Unix encoding.
+ *
+ * UUEncoding predates MIME and was used to encode binary content so data
+ * remained intact over 7-bit transports such as SMTP. It is largely deprecated
+ * in favor of base64, though some older mail clients still use it.
+ */
 export class UUDecoder implements MimeDecoder {
   private readonly initial: UUDecoderState;
   private state: UUDecoderState;
@@ -27,15 +34,26 @@ export class UUDecoder implements MimeDecoder {
   private uulen = 0;
   private saved = 0;
 
+  /**
+   * Creates a new Unix-to-Unix decoder.
+   *
+   * @param payloadOnly - If true, decoding begins immediately rather than after finding a `begin` line.
+   */
   constructor(payloadOnly = false) {
     this.initial = payloadOnly ? UUDecoderState.Payload : UUDecoderState.ExpectBegin;
     this.state = this.initial;
   }
 
+  /** The encoding that this decoder supports. */
   get encoding(): ContentEncoding {
     return 'uuencode';
   }
 
+  /**
+   * Creates a new UU decoder with exactly the same state as this decoder.
+   *
+   * @returns A new decoder with identical state.
+   */
   clone(): MimeDecoder {
     const decoder = new UUDecoder(this.initial === UUDecoderState.Payload);
     decoder.state = this.state;
@@ -45,6 +63,12 @@ export class UUDecoder implements MimeDecoder {
     return decoder;
   }
 
+  /**
+   * Estimates the number of bytes needed to decode the specified number of input bytes.
+   *
+   * @param inputLength - The input length.
+   * @returns The estimated output length.
+   */
   estimateOutputLength(inputLength: number): number {
     return inputLength + 3;
   }
@@ -152,6 +176,16 @@ export class UUDecoder implements MimeDecoder {
     return inptr;
   }
 
+  /**
+   * Decodes the specified input into the output buffer.
+   *
+   * @param input - The input buffer.
+   * @param startIndex - The starting index of the input buffer.
+   * @param length - The length of the input range.
+   * @param output - The output buffer.
+   * @returns The number of bytes written to the output buffer.
+   * @throws {RangeError} The input range is invalid or the output buffer is too small.
+   */
   decode(input: Uint8Array, startIndex: number, length: number, output: Uint8Array): number {
     validateCodecArguments(input, startIndex, length, output, this.estimateOutputLength(length));
 
@@ -233,6 +267,7 @@ export class UUDecoder implements MimeDecoder {
     return outptr;
   }
 
+  /** Resets the state of the decoder. */
   reset(): void {
     this.state = this.initial;
     this.nsaved = 0;
