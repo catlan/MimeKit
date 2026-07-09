@@ -241,11 +241,18 @@ export class HtmlEntityDecoder {
     return decoded;
   }
 
-  /** Get the decoded entity value. */
+  /**
+   * Get the decoded entity value.
+   * @returns The decoded value, or the original pushed input when the entity is not valid.
+   */
   getValue(): string {
     return this.numeric ? this.getNumericEntityValue() : this.getNamedEntityValue();
   }
 
+  /**
+   * Get the input characters pushed into the decoder.
+   * @returns The pushed input.
+   */
   getPushedInput(): string {
     return this.pushedString(this.index);
   }

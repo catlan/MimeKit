@@ -1,26 +1,53 @@
 import { Trie } from './trie.js';
 
+/** The kind of URL pattern to scan for. */
 export enum UrlPatternType {
+  /** An email address pattern. */
   Addrspec = 'addrspec',
+  /** A `mailto:` URL pattern. */
   MailTo = 'mailto',
+  /** A `file:` URL pattern. */
   File = 'file',
+  /** A web URL pattern. */
   Web = 'web',
 }
 
+/** A URL scanning pattern and the prefix to use for generated links. */
 export class UrlPattern {
+  /**
+   * Creates a new URL pattern.
+   *
+   * @param type The URL pattern type.
+   * @param pattern The text pattern to search for.
+   * @param prefix The prefix to prepend to generated links.
+  */
   constructor(
+    /** The URL pattern type. */
     readonly type: UrlPatternType,
+    /** The text pattern to search for. */
     readonly pattern: string,
+    /** The prefix to prepend to generated links. */
     readonly prefix: string,
   ) {}
 }
 
+/** A URL match found in scanned text. */
 export class UrlMatch {
+  /** The starting index of the match. */
   startIndex = 0;
+  /** The ending index of the match. */
   endIndex = 0;
 
+  /**
+   * Creates a new URL match.
+   *
+   * @param pattern The pattern that matched.
+   * @param prefix The prefix to prepend to generated links.
+  */
   constructor(
+    /** The pattern that matched. */
     readonly pattern: string,
+    /** The prefix to prepend to generated links. */
     readonly prefix: string,
   ) {}
 }
@@ -168,15 +195,29 @@ function skipIPv6Literal(text: string, endIndex: number, index: { value: number 
 
 type IndexFn = (match: UrlMatch, text: string, startIndex: number, matchIndex: number, endIndex: number) => boolean;
 
+/** Scans text for URLs and email addresses using configured patterns. */
 export class UrlScanner {
   private readonly patterns = new Map<string, UrlPattern>();
   private readonly trie = new Trie(true);
 
+  /**
+   * Adds a URL pattern to the scanner.
+   *
+   * @param pattern The URL pattern.
+   */
   add(pattern: UrlPattern): void {
     this.patterns.set(pattern.pattern, pattern);
     this.trie.add(pattern.pattern);
   }
 
+  /**
+   * Scans text for the next URL match.
+   *
+   * @param text The text to scan.
+   * @param startIndex The starting index of the text.
+   * @param count The number of characters to scan, starting at `startIndex`.
+   * @returns The URL match, or `null` if no match was found.
+   */
   scan(text: string, startIndex = 0, count = text.length - startIndex): UrlMatch | null {
     const endIndex = startIndex + count;
     const result = this.trie.search(text, startIndex, count);

@@ -16,14 +16,30 @@ import {
   writeLinkedText,
 } from './html-converter-utils.js';
 
+/**
+ * A text to HTML converter.
+ *
+ * Used to convert plain text into HTML.
+ */
 export class TextToHtml extends TextConverter {
+  /** Gets or sets the footer format. */
   footerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the header format. */
   headerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the callback used for custom filtering of HTML tags and content. */
   htmlTagCallback: HtmlTagCallback | null = null;
+  /**
+   * Gets or sets whether the converter should output only an HTML fragment.
+   *
+   * When `false`, the converter outputs an entire HTML document; when `true`,
+   * it outputs only the HTML body content.
+   */
   outputHtmlFragment = false;
   private readonly scanner = buildUrlScanner();
 
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Plain; }
+  /** The output format. */
   override get outputFormat(): TextFormat { return TextFormat.Html; }
 
   private writeHeaderFooter(value: string, format: HeaderFooterFormat, writer: TextWriter): void {
@@ -36,6 +52,13 @@ export class TextToHtml extends TextConverter {
     }
   }
 
+  /**
+   * Converts the text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   * @throws {TypeError} `text` or `writer` is `null` or `undefined`.
+   */
   override convertText(text: string, writer: TextWriter): void {
     if (text === null || text === undefined) throw new TypeError('text');
     if (writer === null || writer === undefined) throw new TypeError('writer');

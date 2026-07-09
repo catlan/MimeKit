@@ -49,10 +49,24 @@ function getFlowedLine(line: string, state: { index: number }, quoteDepth: numbe
   return flowed;
 }
 
+/**
+ * A text to flowed text converter.
+ *
+ * Converts plain text to the flowed text format described in RFC 3676.
+ */
 export class TextToFlowed extends TextConverter {
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Plain; }
+  /** The output format. */
   override get outputFormat(): TextFormat { return TextFormat.Flowed; }
 
+  /**
+   * Converts the text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   * @throws {TypeError} `text` or `writer` is `null` or `undefined`.
+   */
   override convertText(text: string, writer: TextWriter): void {
     if (text === null || text === undefined) throw new TypeError('text');
     if (writer === null || writer === undefined) throw new TypeError('writer');

@@ -4,6 +4,7 @@ import { tryGetEncoding, utf8, type CharsetEncoding } from '../utils/charset-uti
 import { StringWriter, StreamTextWriter, type TextWriter } from './text-io.js';
 import { UrlPattern, UrlPatternType } from './url-scanner.js';
 
+/** URL patterns recognized by text converters when linkifying plain text. */
 export const UrlPatterns: UrlPattern[] = [
   new UrlPattern(UrlPatternType.Addrspec, '@', 'mailto:'),
   new UrlPattern(UrlPatternType.MailTo, 'mailto:', ''),
@@ -53,36 +54,73 @@ function readAll(stream: Stream): Uint8Array {
   return all;
 }
 
+/** An abstract class for converting text from one format to another. */
 export abstract class TextConverter {
+  /**
+   * Gets or sets whether byte input encoding is detected from the byte order mark
+   * or determined by {@link inputEncoding}.
+   */
   detectEncodingFromByteOrderMark = false;
+  /**
+   * Gets or sets text prepended to the beginning of the output.
+   *
+   * The header must be set before conversion begins.
+   */
   header: string | null = null;
+  /**
+   * Gets or sets text appended to the end of the output.
+   *
+   * The footer must be set before conversion begins.
+   */
   footer: string | null = null;
   private inputEncodingValue: CharsetEncoding = utf8;
   private outputEncodingValue: CharsetEncoding = utf8;
   private inputStreamBufferSizeValue = 4096;
   private outputStreamBufferSizeValue = 4096;
 
+  /** The input format. */
   abstract get inputFormat(): TextFormat;
+  /** The output format. */
   abstract get outputFormat(): TextFormat;
 
+  /**
+   * Gets or sets the input encoding.
+   *
+   * @throws {TypeError} `value` is `null` or `undefined`.
+   */
   get inputEncoding(): CharsetEncoding { return this.inputEncodingValue; }
   set inputEncoding(value: CharsetEncoding) {
     if (value === null || value === undefined) throw new TypeError('value');
     this.inputEncodingValue = value;
   }
 
+  /**
+   * Gets or sets the output encoding.
+   *
+   * @throws {TypeError} `value` is `null` or `undefined`.
+   */
   get outputEncoding(): CharsetEncoding { return this.outputEncodingValue; }
   set outputEncoding(value: CharsetEncoding) {
     if (value === null || value === undefined) throw new TypeError('value');
     this.outputEncodingValue = value;
   }
 
+  /**
+   * Gets or sets the input stream buffer size.
+   *
+   * @throws {RangeError} `value` is less than or equal to zero.
+   */
   get inputStreamBufferSize(): number { return this.inputStreamBufferSizeValue; }
   set inputStreamBufferSize(value: number) {
     if (!Number.isInteger(value) || value <= 0) throw new RangeError('value');
     this.inputStreamBufferSizeValue = value;
   }
 
+  /**
+   * Gets or sets the output stream buffer size.
+   *
+   * @throws {RangeError} `value` is less than or equal to zero.
+   */
   get outputStreamBufferSize(): number { return this.outputStreamBufferSizeValue; }
   set outputStreamBufferSize(value: number) {
     if (!Number.isInteger(value) || value <= 0) throw new RangeError('value');
@@ -102,6 +140,13 @@ export abstract class TextConverter {
     return encoding.decode(body);
   }
 
+  /**
+   * Converts source text from the input format to the output format and writes the result.
+   *
+   * @param source The source text, bytes, or stream.
+   * @param writer The text writer.
+   * @throws {TypeError} `source` or `writer` is `null` or `undefined`.
+   */
   convertToWriter(source: string | Uint8Array | Stream, writer: TextWriter): void {
     if (source === null || source === undefined) throw new TypeError('source');
     if (writer === null || writer === undefined) throw new TypeError('writer');
@@ -113,6 +158,13 @@ export abstract class TextConverter {
     this.convertText(text, writer);
   }
 
+  /**
+   * Converts source text from the input format to the output format and writes the result to a stream.
+   *
+   * @param source The source text, bytes, or stream.
+   * @param destination The destination stream.
+   * @throws {TypeError} `destination` is `null` or `undefined`.
+   */
   convertToStream(source: string | Uint8Array | Stream, destination: Stream): void {
     if (destination === null || destination === undefined) throw new TypeError('destination');
     const writer = new StreamTextWriter(destination, true);
@@ -120,6 +172,13 @@ export abstract class TextConverter {
     writer.flush();
   }
 
+  /**
+   * Converts text from the input format to the output format.
+   *
+   * @param text The text, bytes, or stream to convert.
+   * @returns The converted text.
+   * @throws {TypeError} `text` is `null` or `undefined`.
+   */
   convert(text: string | Uint8Array | Stream): string {
     if (text === null || text === undefined) throw new TypeError('text');
     const writer = new StringWriter();
@@ -127,5 +186,11 @@ export abstract class TextConverter {
     return writer.toString();
   }
 
+  /**
+   * Converts text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   */
   abstract convertText(text: string, writer: TextWriter): void;
 }

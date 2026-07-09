@@ -77,9 +77,17 @@ function getListItemContext(stack: PreviewTagContext[]): PreviewTagContext | nul
   return null;
 }
 
+/** A text previewer for HTML content. */
 export class HtmlTextPreviewer extends TextPreviewer {
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Html; }
 
+  /**
+   * Gets a text preview of a string of HTML text.
+   *
+   * @param text The original HTML text.
+   * @returns A shortened preview of the original text.
+   */
   protected override getPreviewTextCore(text: string): string {
     const tokenizer = new HtmlTokenizer(text);
     tokenizer.ignoreTruncatedTagsEnabled = true;

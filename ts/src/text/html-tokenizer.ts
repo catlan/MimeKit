@@ -153,7 +153,11 @@ export function decodeHtml(bytes: Uint8Array, label: string, detectBOM: boolean)
   return new TextDecoder(enc).decode(body);
 }
 
-/** An HTML tokenizer. */
+/**
+ * An HTML tokenizer.
+ *
+ * Tokenizes HTML text, emitting an {@link HtmlToken} for each token it encounters.
+ */
 export class HtmlTokenizer {
   private readonly entity = new HtmlEntityDecoder();
   private readonly data = new CharBuffer(2048);
@@ -185,20 +189,42 @@ export class HtmlTokenizer {
   private ignoreTruncatedTags = false;
   private state: HtmlTokenizerState = HtmlTokenizerState.Data;
 
-  /** Create a tokenizer over the given decoded HTML string. */
+  /**
+   * Creates a tokenizer over the given decoded HTML string.
+   *
+   * @param text The decoded HTML text.
+   * @throws {TypeError} `text` is `null` or `undefined`.
+   */
   constructor(text: string) {
     if (text === null || text === undefined) throw new TypeError('text');
     this.text = text;
     this.end = text.length;
   }
 
-  /** Create a tokenizer from raw bytes with the given charset and BOM handling. */
+  /**
+   * Creates a tokenizer from raw bytes with the given charset and BOM handling.
+   *
+   * If byte-order-mark detection is enabled, UTF-8, little-endian UTF-16,
+   * big-endian UTF-16, little-endian UTF-32, and big-endian UTF-32 BOMs override
+   * the supplied encoding. Otherwise the supplied encoding is used.
+   *
+   * @param bytes The input bytes.
+   * @param encoding The charset encoding of the bytes.
+   * @param detectEncodingFromByteOrderMarks `true` if byte order marks should be detected.
+   * @returns A tokenizer over the decoded HTML text.
+   * @throws {TypeError} `bytes` or `encoding` is `null` or `undefined`.
+   */
   static fromBytes(bytes: Uint8Array, encoding = 'utf-8', detectEncodingFromByteOrderMarks = true): HtmlTokenizer {
     if (bytes === null || bytes === undefined) throw new TypeError('bytes');
     if (encoding === null || encoding === undefined) throw new TypeError('encoding');
     return new HtmlTokenizer(decodeHtml(bytes, encoding, detectEncodingFromByteOrderMarks));
   }
 
+  /**
+   * Gets or sets whether the tokenizer should decode character references.
+   *
+   * Character references in attribute values are still decoded even when this is `false`.
+   */
   get decodeCharacterReferencesEnabled(): boolean {
     return this.decodeCharacterReferences;
   }
@@ -206,10 +232,17 @@ export class HtmlTokenizer {
     this.decodeCharacterReferences = value;
   }
 
+  /** Gets the current HTML namespace detected by the tokenizer. */
   get currentHtmlNamespace(): HtmlNamespace {
     return this.htmlNamespace;
   }
 
+  /**
+   * Gets or sets whether the tokenizer should ignore truncated tags.
+   *
+   * If `false` and the input abruptly ends in the middle of an HTML tag, it is
+   * treated as an {@link HtmlDataToken} instead.
+   */
   get ignoreTruncatedTagsEnabled(): boolean {
     return this.ignoreTruncatedTags;
   }
@@ -217,20 +250,38 @@ export class HtmlTokenizer {
     this.ignoreTruncatedTags = value;
   }
 
+  /**
+   * Gets the current line number.
+   *
+   * This is most commonly used for error reporting. The starting value is `1`;
+   * together with {@link currentLinePosition}, `1,1` indicates the start of the document.
+   */
   get currentLineNumber(): number {
     return this.lineNumber;
   }
 
+  /**
+   * Gets the current line position.
+   *
+   * This is most commonly used for error reporting. The starting value is `1`;
+   * together with {@link currentLineNumber}, `1,1` indicates the start of the document.
+   */
   get currentLinePosition(): number {
     return this.linePosition;
   }
 
+  /** Gets the current state of the tokenizer. */
   get tokenizerState(): HtmlTokenizerState {
     return this.state;
   }
 
   // --- token/attribute factories (protected virtual in C#) ---
 
+  /**
+   * Creates a DOCTYPE token.
+   *
+   * @returns The DOCTYPE token.
+   */
   protected createDocType(): HtmlDocTypeToken {
     return new HtmlDocTypeToken();
   }
@@ -241,26 +292,64 @@ export class HtmlTokenizer {
     return token;
   }
 
+  /**
+   * Creates an HTML comment token.
+   *
+   * @param comment The comment.
+   * @param bogus `true` if the comment is bogus; otherwise, `false`.
+   * @returns The HTML comment token.
+   */
   protected createCommentToken(comment: string, bogus = false): HtmlCommentToken {
     return new HtmlCommentToken(comment, bogus);
   }
 
+  /**
+   * Creates an HTML character data token.
+   *
+   * @param data The character data.
+   * @returns The HTML character data token.
+   */
   protected createDataToken(data: string): HtmlDataToken {
     return new HtmlDataToken(data);
   }
 
+  /**
+   * Creates an HTML CDATA token.
+   *
+   * @param cdata The character data.
+   * @returns The HTML CDATA token.
+   */
   protected createCDataToken(cdata: string): HtmlCDataToken {
     return new HtmlCDataToken(cdata);
   }
 
+  /**
+   * Creates an HTML script data token.
+   *
+   * @param scriptData The script data.
+   * @returns The HTML script data token.
+   */
   protected createScriptDataToken(scriptData: string): HtmlScriptDataToken {
     return new HtmlScriptDataToken(scriptData);
   }
 
+  /**
+   * Creates an HTML tag token.
+   *
+   * @param tagName The tag name.
+   * @param isEndTag `true` if the tag is an end tag; otherwise, `false`.
+   * @returns The HTML tag token.
+   */
   protected createTagToken(tagName: string, isEndTag = false): HtmlTagToken {
     return new HtmlTagToken(tagName, isEndTag);
   }
 
+  /**
+   * Creates an attribute.
+   *
+   * @param attributeName The attribute name.
+   * @returns The attribute.
+   */
   protected createAttribute(attributeName: string): HtmlAttribute {
     return new HtmlAttribute(attributeName);
   }
@@ -2485,7 +2574,11 @@ export class HtmlTokenizer {
     return this.emitCDataToken();
   }
 
-  /** Read the next token. Returns the token, or null at end-of-file. */
+  /**
+   * Reads the next token.
+   *
+   * @returns The token that was read, or `null` at end-of-file.
+   */
   readNextToken(): HtmlToken | null {
     let token: HtmlToken | null;
 

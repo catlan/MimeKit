@@ -31,6 +31,11 @@ function isTextWriter(value: unknown): value is TextWriter {
   return typeof value === 'object' && value !== null && typeof (value as TextWriter).write === 'function';
 }
 
+/**
+ * Check whether a string is a valid HTML attribute name.
+ * @param name The attribute name.
+ * @returns `true` if the name is valid; otherwise, `false`.
+ */
 export function isValidAttributeName(name: string): boolean {
   if (name === null || name === undefined || name.length === 0) return false;
 
@@ -41,6 +46,11 @@ export function isValidAttributeName(name: string): boolean {
   return true;
 }
 
+/**
+ * Check whether a string is a valid HTML tag name.
+ * @param name The tag name.
+ * @returns `true` if the name is valid; otherwise, `false`.
+ */
 export function isValidTagName(name: string): boolean {
   if (name === null || name === undefined || name.length === 0) return false;
 
@@ -192,10 +202,45 @@ function validateRange(length: number, startIndex: number, count: number): void 
 
 // --- HtmlAttributeEncode ---
 
+/**
+ * Encode an HTML attribute value.
+ * @param output The text writer to output the result.
+ * @param value The attribute value to encode.
+ * @param quote The character to use for quoting the attribute value.
+ * @throws {TypeError} `output`, `value`, or `quote` is invalid.
+ */
 export function htmlAttributeEncode(output: TextWriter, value: string, quote?: string): void;
+/**
+ * Encode a range of an HTML attribute value.
+ * @param output The text writer to output the result.
+ * @param value The attribute value to encode.
+ * @param startIndex The starting index of the attribute value.
+ * @param count The number of characters in the attribute value.
+ * @param quote The character to use for quoting the attribute value.
+ * @throws {TypeError} `output`, `value`, or `quote` is invalid.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlAttributeEncode(output: TextWriter, value: string, startIndex: number, count: number, quote?: string): void;
+/**
+ * Encode an HTML attribute value.
+ * @param value The attribute value to encode.
+ * @param quote The character to use for quoting the attribute value.
+ * @returns The encoded attribute value.
+ * @throws {TypeError} `value` or `quote` is invalid.
+ */
 export function htmlAttributeEncode(value: string, quote?: string): string;
+/**
+ * Encode a range of an HTML attribute value.
+ * @param value The attribute value to encode.
+ * @param startIndex The starting index of the attribute value.
+ * @param count The number of characters in the attribute value.
+ * @param quote The character to use for quoting the attribute value.
+ * @returns The encoded attribute value.
+ * @throws {TypeError} `value` or `quote` is invalid.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlAttributeEncode(value: string, startIndex: number, count: number, quote?: string): string;
+/** Encode an HTML attribute value. */
 export function htmlAttributeEncode(
   a: TextWriter | string,
   b?: string | number,
@@ -241,10 +286,41 @@ export function htmlAttributeEncode(
 
 // --- HtmlEncode ---
 
+/**
+ * Encode HTML character data.
+ * @param output The text writer to output the result.
+ * @param data The character data to encode.
+ * @throws {TypeError} `output` or `data` is null or undefined.
+ */
 export function htmlEncode(output: TextWriter, data: string): void;
+/**
+ * Encode a range of HTML character data.
+ * @param output The text writer to output the result.
+ * @param data The character data to encode.
+ * @param startIndex The starting index of the character data.
+ * @param count The number of characters in the data.
+ * @throws {TypeError} `output` or `data` is null or undefined.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlEncode(output: TextWriter, data: string, startIndex: number, count: number): void;
+/**
+ * Encode HTML character data.
+ * @param data The character data to encode.
+ * @returns The encoded character data.
+ * @throws {TypeError} `data` is null or undefined.
+ */
 export function htmlEncode(data: string): string;
+/**
+ * Encode a range of HTML character data.
+ * @param data The character data to encode.
+ * @param startIndex The starting index of the character data.
+ * @param count The number of characters in the data.
+ * @returns The encoded character data.
+ * @throws {TypeError} `data` is null or undefined.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlEncode(data: string, startIndex: number, count: number): string;
+/** Encode HTML character data. */
 export function htmlEncode(
   a: TextWriter | string,
   b?: string | number,
@@ -301,10 +377,41 @@ function decodeData(output: TextWriter, data: string, startIndex: number, count:
   }
 }
 
+/**
+ * Decode HTML character data.
+ * @param output The text writer to output the result.
+ * @param data The character data to decode.
+ * @throws {TypeError} `output` or `data` is null or undefined.
+ */
 export function htmlDecode(output: TextWriter, data: string): void;
+/**
+ * Decode a range of HTML character data.
+ * @param output The text writer to output the result.
+ * @param data The character data to decode.
+ * @param startIndex The starting index of the character data.
+ * @param count The number of characters in the data.
+ * @throws {TypeError} `output` or `data` is null or undefined.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlDecode(output: TextWriter, data: string, startIndex: number, count: number): void;
+/**
+ * Decode HTML character data.
+ * @param data The character data to decode.
+ * @returns The decoded character data.
+ * @throws {TypeError} `data` is null or undefined.
+ */
 export function htmlDecode(data: string): string;
+/**
+ * Decode a range of HTML character data.
+ * @param data The character data to decode.
+ * @param startIndex The starting index of the character data.
+ * @param count The number of characters in the data.
+ * @returns The decoded character data.
+ * @throws {TypeError} `data` is null or undefined.
+ * @throws {RangeError} `startIndex` and `count` do not specify a valid range.
+ */
 export function htmlDecode(data: string, startIndex: number, count: number): string;
+/** Decode HTML character data. */
 export function htmlDecode(
   a: TextWriter | string,
   b?: string | number,

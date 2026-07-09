@@ -14,10 +14,22 @@ import { isValidAttributeName } from './html-utils.js';
 export class HtmlAttribute {
   private idCache: HtmlAttributeId | undefined;
   private readonly _name: string;
-  /** internal set */
+  /** Get the value of the attribute. */
   value: string | null;
 
+  /**
+   * Create an HTML attribute from an attribute identifier and value.
+   * @param id The attribute identifier.
+   * @param value The attribute value.
+   * @throws {RangeError} `id` is not a valid HTML attribute identifier.
+   */
   constructor(id: HtmlAttributeId, value: string | null);
+  /**
+   * Create an HTML attribute from an attribute name and value.
+   * @param name The attribute name.
+   * @param value The attribute value.
+   * @throws {TypeError} `name` is null, undefined, empty, or invalid.
+   */
   constructor(name: string, value: string | null);
   /** internal: name only, no validation (used by the tokenizer). */
   constructor(name: string);

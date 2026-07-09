@@ -10,8 +10,14 @@ import { StringWriter } from './text-io.js';
 
 /** An abstract HTML token class. */
 export abstract class HtmlToken {
+  /** The kind of HTML token that this object represents. */
   readonly kind: HtmlTokenKind;
 
+  /**
+   * Creates a new HTML token.
+   *
+   * @param kind The kind of token.
+   */
   protected constructor(kind: HtmlTokenKind) {
     this.kind = kind;
   }
@@ -19,6 +25,11 @@ export abstract class HtmlToken {
   /** Write the HTML token to a TextWriter. */
   abstract writeTo(output: TextWriter): void;
 
+  /**
+   * Returns a string that represents the current HTML token.
+   *
+   * @returns The serialized HTML token.
+   */
   toString(): string {
     const output = new StringWriter();
     this.writeTo(output);
@@ -28,11 +39,20 @@ export abstract class HtmlToken {
 
 /** An HTML comment token. */
 export class HtmlCommentToken extends HtmlToken {
+  /** The comment text. */
   readonly comment: string;
+  /** Whether the comment is a bogus comment. */
   readonly isBogusComment: boolean;
   /** internal */
   isBangComment = false;
 
+  /**
+   * Creates a new HTML comment token.
+   *
+   * @param comment The comment text.
+   * @param bogus `true` if the comment is bogus; otherwise, `false`.
+   * @throws {TypeError} `comment` is `null` or `undefined`.
+   */
   constructor(comment: string, bogus = false) {
     super(HtmlTokenKind.Comment);
     if (comment === null || comment === undefined) throw new TypeError('comment');
@@ -40,6 +60,12 @@ export class HtmlCommentToken extends HtmlToken {
     this.comment = comment;
   }
 
+  /**
+   * Writes the HTML comment to a text writer.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 
@@ -60,9 +86,24 @@ export class HtmlCommentToken extends HtmlToken {
 export class HtmlDataToken extends HtmlToken {
   /** internal */
   encodeEntities = false;
+  /** The character data. */
   readonly data: string;
 
+  /**
+   * Creates a new HTML data token.
+   *
+   * @param kind The kind of character data.
+   * @param data The character data.
+   * @throws {RangeError} `kind` is not a character-data token kind.
+   * @throws {TypeError} `data` is `null` or `undefined`.
+   */
   constructor(kind: HtmlTokenKind, data: string);
+  /**
+   * Creates a new HTML data token.
+   *
+   * @param data The character data.
+   * @throws {TypeError} `data` is `null` or `undefined`.
+   */
   constructor(data: string);
   constructor(a: HtmlTokenKind | string, b?: string) {
     const kindForm = arguments.length >= 2;
@@ -88,6 +129,12 @@ export class HtmlDataToken extends HtmlToken {
     }
   }
 
+  /**
+   * Writes the HTML character data to a text writer, encoding it if needed.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 
@@ -102,10 +149,22 @@ export class HtmlDataToken extends HtmlToken {
 
 /** An HTML token consisting of [CDATA[. */
 export class HtmlCDataToken extends HtmlDataToken {
+  /**
+   * Creates a new HTML CDATA token.
+   *
+   * @param data The character data.
+   * @throws {TypeError} `data` is `null` or `undefined`.
+   */
   constructor(data: string) {
     super(HtmlTokenKind.CData, data);
   }
 
+  /**
+   * Writes the HTML character data to a text writer.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 
@@ -117,10 +176,22 @@ export class HtmlCDataToken extends HtmlDataToken {
 
 /** An HTML token consisting of script data. */
 export class HtmlScriptDataToken extends HtmlDataToken {
+  /**
+   * Creates a new HTML script data token.
+   *
+   * @param data The script data.
+   * @throws {TypeError} `data` is `null` or `undefined`.
+   */
   constructor(data: string) {
     super(HtmlTokenKind.ScriptData, data);
   }
 
+  /**
+   * Writes the HTML script data to a text writer.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 
@@ -131,13 +202,31 @@ export class HtmlScriptDataToken extends HtmlDataToken {
 /** An HTML tag token. */
 export class HtmlTagToken extends HtmlToken {
   private idCache: HtmlTagId | undefined;
+  /** The tag attributes. */
   readonly attributes: HtmlAttributeCollection;
-  /** internal set */
+  /** Whether this tag is an empty element tag. */
   isEmptyElement: boolean;
+  /** Whether this tag is an end tag. */
   readonly isEndTag: boolean;
+  /** The tag name. */
   readonly name: string;
 
+  /**
+   * Creates a new HTML start tag token.
+   *
+   * @param name The tag name.
+   * @param attributes The tag attributes.
+   * @param isEmptyElement `true` if the tag is an empty element; otherwise, `false`.
+   * @throws {TypeError} `name` or `attributes` is `null` or `undefined`.
+   */
   constructor(name: string, attributes: Iterable<HtmlAttribute>, isEmptyElement: boolean);
+  /**
+   * Creates a new HTML tag token.
+   *
+   * @param name The tag name.
+   * @param isEndTag `true` if the tag is an end tag; otherwise, `false`.
+   * @throws {TypeError} `name` is `null` or `undefined`.
+   */
   constructor(name: string, isEndTag: boolean);
   constructor(name: string, b: Iterable<HtmlAttribute> | boolean, isEmptyElement?: boolean) {
     super(HtmlTokenKind.Tag);
@@ -160,12 +249,18 @@ export class HtmlTagToken extends HtmlToken {
     }
   }
 
-  /** Get the HTML tag identifier. */
+  /** The HTML tag identifier. */
   get id(): HtmlTagId {
     if (this.idCache === undefined) this.idCache = toHtmlTagId(this.name);
     return this.idCache;
   }
 
+  /**
+   * Writes the HTML tag to a text writer.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 
@@ -195,20 +290,24 @@ export class HtmlDocTypeToken extends HtmlToken {
   /** internal */
   rawTagName = 'DOCTYPE';
   forceQuirksMode = false;
+  /** The DOCTYPE name. */
   name: string | null = null;
   /** internal set */
   publicKeyword: string | null = null;
   /** internal set */
   systemKeyword: string | null = null;
 
+  /** Creates a new HTML DOCTYPE token. */
   constructor() {
     super(HtmlTokenKind.DocType);
   }
 
+  /** The DOCTYPE public identifier. */
   get publicIdentifier(): string | null {
     return this._publicIdentifier;
   }
 
+  /** The DOCTYPE public identifier. */
   set publicIdentifier(value: string | null) {
     this._publicIdentifier = value;
     if (value !== null && value !== undefined) {
@@ -218,10 +317,12 @@ export class HtmlDocTypeToken extends HtmlToken {
     }
   }
 
+  /** The DOCTYPE system identifier. */
   get systemIdentifier(): string | null {
     return this._systemIdentifier;
   }
 
+  /** The DOCTYPE system identifier. */
   set systemIdentifier(value: string | null) {
     this._systemIdentifier = value;
     if (value !== null && value !== undefined) {
@@ -231,6 +332,12 @@ export class HtmlDocTypeToken extends HtmlToken {
     }
   }
 
+  /**
+   * Writes the HTML DOCTYPE to a text writer.
+   *
+   * @param output The output writer.
+   * @throws {TypeError} `output` is `null` or `undefined`.
+   */
   override writeTo(output: TextWriter): void {
     if (output === null || output === undefined) throw new TypeError('output');
 

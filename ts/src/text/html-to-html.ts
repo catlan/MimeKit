@@ -53,14 +53,35 @@ function isUnsafe(id: HtmlTagId): boolean {
   }
 }
 
+/**
+ * An HTML to HTML converter.
+ *
+ * Used to convert HTML into HTML.
+ */
 export class HtmlToHtml extends TextConverter {
+  /** Gets or sets whether the converter should remove HTML comments from the output. */
   filterComments = false;
+  /**
+   * Gets or sets whether undesirable tags should be stripped from the output.
+   *
+   * This is an incomplete solution for protecting against Cross-Site Scripting
+   * (XSS) attacks and should not be relied upon as a comprehensive security
+   * measure. It only removes certain known dangerous or undesirable HTML tags and
+   * does not validate attribute values, filter event handler attributes, sanitize
+   * inline CSS, or protect against newly discovered XSS techniques. For robust
+   * XSS protection, pass the HTML output through a dedicated sanitizer library.
+   */
   filterHtml = false;
+  /** Gets or sets the footer format. */
   footerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the header format. */
   headerFormat = HeaderFooterFormat.Text;
+  /** Gets or sets the callback used for custom filtering of HTML tags and content. */
   htmlTagCallback: HtmlTagCallback | null = null;
 
+  /** The input format. */
   override get inputFormat(): TextFormat { return TextFormat.Html; }
+  /** The output format. */
   override get outputFormat(): TextFormat { return TextFormat.Html; }
 
   private writeHeaderFooter(value: string, format: HeaderFooterFormat, writer: TextWriter): void {
@@ -73,6 +94,13 @@ export class HtmlToHtml extends TextConverter {
     }
   }
 
+  /**
+   * Converts the text from the input format to the output format and writes the result.
+   *
+   * @param text The text to convert.
+   * @param writer The text writer.
+   * @throws {TypeError} `text` or `writer` is `null` or `undefined`.
+   */
   override convertText(text: string, writer: TextWriter): void {
     if (text === null || text === undefined) throw new TypeError('text');
     if (writer === null || writer === undefined) throw new TypeError('writer');
