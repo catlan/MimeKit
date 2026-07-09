@@ -26,6 +26,7 @@ import {
   OID_ATTR_SIGNING_TIME, OID_ATTR_SMIME_CAPABILITIES, OID_ATTR_CONTENT_TYPE, OID_EC_PUBLIC_KEY,
   DIGEST_OID, DIGEST_BY_OID,
   contentEncryptionOid, webCryptoHashName, OID_RC2_CBC, rc2EffectiveBits, RC2_BITS_TO_VERSION,
+  RC2_VERSION_TO_BITS, encryptionAlgorithmFromOid,
 } from './smime-oids.js';
 import { ensureEngine, ab, digest } from './smime-webcrypto.js';
 
@@ -259,16 +260,19 @@ export function extractSmimeCapabilities(si: SignerInfo): EncryptionAlgorithm[] 
   const seq = attr?.values[0] as asn1js.Sequence | undefined;
   if (!seq || !(seq instanceof asn1js.Sequence)) return [];
   const out: EncryptionAlgorithm[] = [];
-  const OID_MAP: Record<string, EncryptionAlgorithm> = {
-    '2.16.840.1.101.3.4.1.42': EncryptionAlgorithm.Aes256,
-    '2.16.840.1.101.3.4.1.22': EncryptionAlgorithm.Aes192,
-    '2.16.840.1.101.3.4.1.2': EncryptionAlgorithm.Aes128,
-    '1.2.840.113549.3.7': EncryptionAlgorithm.TripleDes,
-  };
   for (const cap of seq.valueBlock.value as asn1js.Sequence[]) {
     const oid = (cap.valueBlock.value[0] as asn1js.ObjectIdentifier).getValue();
-    const mapped = OID_MAP[oid];
-    if (mapped !== undefined) out.push(mapped);
+    let rc2Bits: number | undefined;
+    const parameter = cap.valueBlock.value[1];
+    if (oid === OID_RC2_CBC && parameter instanceof asn1js.Integer) {
+      const version = parameter.valueBlock.valueDec;
+      rc2Bits = RC2_VERSION_TO_BITS[version] ?? version;
+    }
+    try {
+      out.push(encryptionAlgorithmFromOid(oid, rc2Bits));
+    } catch {
+      // Ignore capabilities for algorithms outside this S/MIME engine.
+    }
   }
   return out;
 }
