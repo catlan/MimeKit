@@ -304,6 +304,27 @@ the whole crypto surface.
     SHIP (all 12 tampers rejected; message-digest attr binds content).
   - Deferred to C2b-2b: full PKIX chain/trust + CRL/OCSP, DSA signing, certs-only
     Export, ECDH recipients (see `tests/smime/DEFERRED.md`).
+- 2026-07-09: **Wave C2b-2b (full SecureMimeTests + ApplicationPkcs7MimeTests port)
+  COMPLETE + merged.** Behavioral-parity port of the two base test classes against
+  `PkijsSecureMimeContext` (codex, opus/fable review). Every C# base method PORTED or
+  skipped-with-reason (no silent drops); sync/async pairs collapse to one async test.
+  Suite: 3026 passed + 24 skipped. Engine fixes surfaced by the port: signAndEncrypt
+  now produces multipart/signed-inside-enveloped matching C# (was encapsulated); full
+  SMIMECapabilities parsing (RC2/DES); DNS-name domain cert/key resolution; no-ctx
+  ApplicationPkcs7Mime overloads. Independent review verdict SHIP-WITH-FIXES — all
+  required fixes applied (encapsulated-signing no-ctx-mailbox path, TripleDes capability
+  assertion, no-ctx encrypt/decryptTo coverage).
+  - **Two engine bugs found + filed (still skipped, see DEFERRED.md):** detached
+    `MultipartSigned.verify` re-serializes the signed part instead of hashing its
+    original on-wire bytes — (1) `Multipart.writeTo` emits raw parsed boundary bytes
+    verbatim instead of regenerating `--boundary`+newLine (breaks Thunderbird verify;
+    proven a ~4-byte boundary-ending diff — the CMS pipeline itself verifies correctly);
+    (2) no `VerifyingSignature` mixed-newline pass-through in `MimePart.writeTo`
+    (MimeKit issue #569) breaks mixed-line-endings verify. Both fixes are well-specified
+    but touch CORE serialization → byte-parity gate re-validation required; NOT yet done.
+  - Deferred onward to C2b-2b-followups / later waves: full PKIX chain/trust + CRL/OCSP,
+    DSA, ECDH recipients, certs-only Export, DES-CBC content encryption, the two
+    detached-verify bugs above.
 
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
