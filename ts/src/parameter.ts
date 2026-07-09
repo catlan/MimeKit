@@ -16,6 +16,16 @@ const enum EncodeMethod {
   Rfc2231,
 }
 
+// C# Math.Round default = banker's rounding (round-half-to-even) — wire-byte
+// parity for rfc2231 continuation split points (final-review #5).
+function roundHalfToEven(value: number): number {
+  const floor = Math.floor(value);
+  const diff = value - floor;
+  if (diff > 0.5) return floor + 1;
+  if (diff < 0.5) return floor;
+  return floor % 2 === 0 ? floor : floor + 1;
+}
+
 export class Parameter {
   private encodingValue: CharsetEncoding | null = null;
   private encodingMethodValue: ParameterEncodingMethod = 'default';
@@ -283,7 +293,7 @@ export class Parameter {
       const slice = this.value.slice(index, index + length);
       const bytes = this.getBytes(encoding, slice);
       if (bytes.length > maxLength && length > 1) {
-        const ratio = Math.round(bytes.length / length);
+        const ratio = roundHalfToEven(bytes.length / length);
         length -= ratio > 1 ? Math.max(Math.trunc((bytes.length - maxLength) / ratio), 1) : 1;
         continue;
       }
@@ -302,7 +312,7 @@ export class Parameter {
         let x = 0;
         for (let i = n - 1; i >= 0 && i >= maxLength; i--)
           x += encodedBytes[i] === 0x25 ? -1 : 1;
-        const ratio = Math.round(bytes.length / length);
+        const ratio = roundHalfToEven(bytes.length / length);
         length -= ratio > 1 ? Math.max(Math.trunc(x / ratio), 1) : 1;
         continue;
       }
@@ -365,7 +375,8 @@ export class Parameter {
         charCount++;
         nchars = 1;
       } else {
-        if (c >= 0xd800 && c <= 0xdbff && index < this.value.length) {
+        const next = index < this.value.length ? this.value.charCodeAt(index) : 0;
+        if (c >= 0xd800 && c <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
           index++;
           nchars = 2;
         } else {
