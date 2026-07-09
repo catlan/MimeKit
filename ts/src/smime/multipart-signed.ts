@@ -219,6 +219,7 @@ export class MultipartSigned extends Multipart {
     // rfc2015 / rfc3156, section 5.1.
     const options = FormatOptions.default.clone();
     options.newLineFormat = 'dos';
+    options.verifyingSignature = true;
     this.at(0).writeTo(options, cleartext);
 
     return ctx.verifyDetached(cleartext.toArray(), signatureData.toArray());

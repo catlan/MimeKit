@@ -57,6 +57,15 @@ export class FormatOptions {
    */
   ensureNewLine = false;
   /**
+   * Whether a signature is currently being verified.
+   *
+   * C#: FormatOptions.VerifyingSignature (internal). When set, a `MimePart`
+   * whose content has mixed line endings is written verbatim rather than
+   * canonicalized, so the bytes fed to the signature verifier match the exact
+   * bytes that were signed (see MimeKit issue #569).
+   */
+  verifyingSignature = false;
+  /**
    * Whether internationalized email formatting rules should be used.
    *
    * This corresponds to the RFC 6530/RFC 6532 formatting mode and is intended
@@ -122,6 +131,7 @@ export class FormatOptions {
     options.maxLineLength = this.maxLineLength;
     options.newLineFormat = this.newLineFormat;
     options.ensureNewLine = this.ensureNewLine;
+    options.verifyingSignature = this.verifyingSignature;
     options.international = this.international;
     options.allowMixedHeaderCharsets = this.allowMixedHeaderCharsets;
     options.parameterEncodingMethod = this.parameterEncodingMethod;

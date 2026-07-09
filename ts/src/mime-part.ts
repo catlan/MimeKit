@@ -353,6 +353,11 @@ export class MimePart extends MimeEntity {
       }
     } else if (transferEncoding === 'binary') {
       this.content.writeTo(stream!);
+    } else if (options.verifyingSignature && this.content.newLineFormat === 'mixed') {
+      // Pass the original parsed content through without canonicalization when verifying a
+      // signature over content that has a mix of line endings, so the verifier sees the exact
+      // bytes that were signed. See https://github.com/jstedfast/MimeKit/issues/569.
+      this.content.writeTo(stream!);
     } else {
       const filtered = new FilteredStream(stream!);
       filtered.add(options.createNewLineFilter(this.ensureNewLine));
