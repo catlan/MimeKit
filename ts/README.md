@@ -16,6 +16,8 @@ the core runtime, so the same code runs on Node, browsers, Bun, Deno, and edge
 runtimes. The core install has a single dependency (`punycode`, zero transitive
 deps); crypto libraries are optional peers you install only if you use them.
 
+📖 **API documentation:** <https://catlan.github.io/MimeKit/>
+
 ## An AI port, standing on MimeKit's shoulders
 
 This port was written by AI (Claude). That was only possible because of the years
@@ -165,6 +167,17 @@ await message.sign(pgp);                               // body -> multipart/sign
 pnpm install
 pnpm typecheck && pnpm vitest run   # full suite incl. differential gates
 node gates/oracle-gen.mjs           # (re)generate C# oracle outputs (needs dotnet)
+```
+
+### Releasing
+
+The package lives in `ts/` of a fork of MimeKit, so publishing runs from `ts/`
+(`pnpm publish` — `prepack` builds `dist/`). Release tags are prefixed to avoid
+colliding with upstream MimeKit's `X.Y.Z` C# tags:
+
+```sh
+cd ts && pnpm publish           # packs dist/ + LICENSE + README only
+git tag ts/v1.0.0 && git push --tags
 ```
 
 ## License

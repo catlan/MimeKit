@@ -1,11 +1,19 @@
 {
   "name": "mimekit",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "TypeScript port of MimeKit (Lite scope): non-throwing Result-based MIME parsing/creation, byte-parity verified against the C# implementation",
   "license": "MIT",
   "type": "module",
-  "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/smime/index.js",
+    "./dist/smime/mime-message-crypto.js",
+    "./dist/openpgp/index.js"
+  ],
+  "homepage": "https://catlan.github.io/MimeKit/",
+  "bugs": "https://github.com/catlan/MimeKit/issues",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
@@ -34,6 +42,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

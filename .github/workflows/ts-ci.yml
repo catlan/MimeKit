@@ -1,0 +1,35 @@
+# Continuous integration for the `mimekit` package (in ts/): typecheck + build on
+# every push/PR that touches ts/. The full differential test suite additionally needs
+# the .NET oracle (dotnet + `node gates/oracle-gen.mjs`); that is intentionally left as
+# a follow-up so the baseline CI stays fast and dependency-light.
+name: ts-ci
+
+on:
+  push:
+    branches: [ts-port, main, master]
+    paths: ['ts/**']
+  pull_request:
+    paths: ['ts/**']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: ts/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run build
