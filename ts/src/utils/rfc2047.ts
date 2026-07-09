@@ -679,6 +679,31 @@ export function foldUnstructuredHeader(options: FormatOptions, field: string, te
   return asciiBytes(output.toString());
 }
 
+export function encodeUnstructuredHeader(_options: ParserOptions, format: FormatOptions, charset: CharsetEncoding, field: string, value: string): Uint8Array {
+  if (format.international) return utf8.encode(foldRawUnstructuredHeader(format, field, value));
+  return foldUnstructuredHeader(format, field, encodeText(format, charset, value));
+}
+
+function foldRawUnstructuredHeader(format: FormatOptions, field: string, value: string): string {
+  const folded: string[] = [' '];
+  let lineLength = field.length + 2;
+  const words = value.match(/\s+|\S+/g) ?? [];
+  for (const word of words) {
+    if (lineLength + word.length > format.maxLineLength && lineLength > 1) {
+      folded.push(format.newLine, '\t');
+      lineLength = 1;
+      const trimmed = word.replace(/^\s+/, '');
+      folded.push(trimmed);
+      lineLength += trimmed.length;
+    } else {
+      folded.push(word);
+      lineLength += word.length;
+    }
+  }
+  folded.push(format.newLine);
+  return folded.join('');
+}
+
 function charsetConvert(charset: CharsetEncoding, text: string, startIndex: number, length: number): Uint8Array {
   return charset.encode(text.slice(startIndex, startIndex + length));
 }
