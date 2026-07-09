@@ -1,6 +1,10 @@
 # MimeKit → TypeScript port plan
 
-Status: **approved scope, not yet started** (say "start" to begin wave 0)
+Status: **COMPLETE** — all 9 waves done (2026-07-09). 2,605 tests + 15
+policy-attributed skips; every differential gate byte/value-identical to the
+C# oracle over corpus + witnesses; known-divergent ratchet EMPTY; dist
+verified in Node + web-platform-only VM. Final adversarial + behavioral
+reviews: SHIP-READY, all findings addressed or attributed.
 Method: [csharp-to-typescript-port-playbook.md](csharp-to-typescript-port-playbook.md) (docxodus port, 2026-07)
 Working title: `mimekit-ts` (final npm name → follow-up Q1)
 
@@ -210,6 +214,16 @@ publish (Q2).
   LEGACY MimeParser — switched to ExperimentalMimeParser (the port
   target). Suite: 1922 passed + 16 skipped. Next: wave 5 serializer
   byte-parity (roundtrip artifacts already generated).
+
+- 2026-07-09 (close-out): **Wave 9 complete — PORT DONE.** Witness corpus
+  (9 synthesized edge files) 9/9 parity first-run. Debt sweep: every skip
+  policy-attributed. dist built (zero node: imports), Node smoke + browser
+  VM smoke pass. Final reviews: opus adversarial (SHIP-READY, 13 minor/
+  note findings — all fixed or attributed) + codex behavioral (20
+  adversarial fixtures, zero true divergences). Q5 closed: the legacy
+  MimeParserTests suite is NOT ported — the Experimental suite (the port
+  target) is 1:1 and the corpus tree/roundtrip gates subsume the legacy
+  assertions; veto if you want it anyway.
 
 ## Attributed deferrals (living — each names its blocking feature)
 
