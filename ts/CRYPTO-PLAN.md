@@ -325,8 +325,17 @@ the whole crypto surface.
     hypothesis would have DIVERGED from C# — the real fix was the fixture. Core-writer
     change is verify-only (defaults off), byte-parity gates unaffected.
   - Deferred onward to later waves: full PKIX chain/trust + CRL/OCSP, DSA, ECDH
-    recipients, certs-only Export, DES-CBC content encryption, C2c message-level
-    integration (MimeMessage.sign/encrypt).
+    recipients, certs-only Export, DES-CBC content encryption.
+- 2026-07-09: **Wave C2c (message-level S/MIME integration) COMPLETE + merged.**
+  Ported C# MimeMessage.Sign/Encrypt/SignAndEncrypt as a prototype augmentation
+  installed by the `mimekit-ts/smime` entry (declaration-merged), so the core `.`
+  entry stays crypto-free — mirrors C#'s `#if ENABLE_CRYPTO` gating. Signer/recipient
+  resolution helpers (getMessageSigner / getEncryptionRecipients) are pure address
+  logic in core. Un-deferred TestSecureMimeMessageSigning + TestSecureMimeMessageEncryption
+  and made TestSecureMimeSignAndEncrypt message-level. Suite: 3030 passed + 20 skipped.
+  Browser legacy opt-in (`allowLegacyDecryption`) mechanism is implemented (defaults
+  off); doc prose deferred to C4. Remaining S/MIME skips are genuine feature gaps
+  (certs-export, missing decrypt fixtures) — see DEFERRED.md.
 
 ### C2b-2 crypto requirements (from the C2b-1 review — MUST honor)
 
