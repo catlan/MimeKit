@@ -10,14 +10,25 @@
 import { err, ok, type MimeError, type Result } from '../result.js';
 import { isAtom, isDomain, isPhraseAtom, isToken, isWhitespace } from './byte-extensions.js';
 
+/**
+ * Mutable byte-position cursor used by parser helpers.
+ */
 export interface ParseCursor {
+  /** Current byte index. Helpers advance this value in place. */
   index: number;
 }
 
+/**
+ * Structured parser error with both token and error positions when known.
+ */
 export interface ParseError extends MimeError {
+  /** Stable machine-readable discriminator. */
   readonly kind: string;
+  /** Human-readable error message. */
   readonly message: string;
+  /** Index where the logical token started. */
   readonly tokenIndex?: number;
+  /** Index where the error was detected. */
   readonly errorIndex?: number;
 }
 
@@ -58,6 +69,16 @@ function asciiBytes(value: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * Try to parse a 32-bit integer from the current cursor position.
+ *
+ * @param text - Input byte buffer.
+ * @param cursor - Cursor advanced past the parsed integer.
+ * @param endIndex - Exclusive end index.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on malformed input or integer overflow.
+ * @throws {TypeError} `text`, `cursor`, or `endIndex` has an invalid type.
+ * @throws {RangeError} `cursor.index` or `endIndex` is outside `text`.
+ */
 export function tryParseInt32(text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<number> {
   validateRange(text, cursor, endIndex);
   const startIndex = cursor.index;
@@ -82,6 +103,11 @@ export function tryParseInt32(text: Uint8Array, cursor: ParseCursor, endIndex: n
   return ok(value);
 }
 
+/**
+ * Skip whitespace from the current cursor position.
+ *
+ * @returns `true` if any whitespace was skipped.
+ */
 export function skipWhiteSpace(text: Uint8Array, cursor: ParseCursor, endIndex: number): boolean {
   validateRange(text, cursor, endIndex);
   const startIndex = cursor.index;
@@ -92,6 +118,11 @@ export function skipWhiteSpace(text: Uint8Array, cursor: ParseCursor, endIndex: 
   return cursor.index > startIndex;
 }
 
+/**
+ * Skip an RFC 822 comment from the current cursor position.
+ *
+ * @returns `true` if a complete comment was skipped; otherwise `false`.
+ */
 export function skipComment(text: Uint8Array, cursor: ParseCursor, endIndex: number): boolean {
   validateRange(text, cursor, endIndex, false);
   let escaped = false;
@@ -117,6 +148,11 @@ export function skipComment(text: Uint8Array, cursor: ParseCursor, endIndex: num
   return depth === 0;
 }
 
+/**
+ * Skip comments and whitespace from the current cursor position.
+ *
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+ */
 export function skipCommentsAndWhiteSpace(text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<true> {
   validateRange(text, cursor, endIndex);
   skipWhiteSpace(text, cursor, endIndex);
@@ -133,6 +169,11 @@ export function skipCommentsAndWhiteSpace(text: Uint8Array, cursor: ParseCursor,
   return ok(true);
 }
 
+/**
+ * Skip a quoted-string from the current cursor position.
+ *
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on an incomplete quoted-string.
+ */
 export function skipQuoted(text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<true> {
   validateRange(text, cursor, endIndex, false);
   const startIndex = cursor.index;
@@ -161,6 +202,11 @@ export function skipQuoted(text: Uint8Array, cursor: ParseCursor, endIndex: numb
   return ok(true);
 }
 
+/**
+ * Skip an atom from the current cursor position.
+ *
+ * @returns `true` if an atom was skipped.
+ */
 export function skipAtom(text: Uint8Array, cursor: ParseCursor, endIndex: number): boolean {
   validateRange(text, cursor, endIndex);
   const start = cursor.index;
@@ -171,6 +217,11 @@ export function skipAtom(text: Uint8Array, cursor: ParseCursor, endIndex: number
   return cursor.index > start;
 }
 
+/**
+ * Skip a phrase atom from the current cursor position.
+ *
+ * @returns `true` if a phrase atom was skipped.
+ */
 export function skipPhraseAtom(text: Uint8Array, cursor: ParseCursor, endIndex: number): boolean {
   validateRange(text, cursor, endIndex);
   const start = cursor.index;
@@ -181,6 +232,11 @@ export function skipPhraseAtom(text: Uint8Array, cursor: ParseCursor, endIndex: 
   return cursor.index > start;
 }
 
+/**
+ * Skip a MIME token from the current cursor position.
+ *
+ * @returns `true` if a token was skipped.
+ */
 export function skipToken(text: Uint8Array, cursor: ParseCursor, endIndex: number): boolean {
   validateRange(text, cursor, endIndex);
   const start = cursor.index;
@@ -191,6 +247,11 @@ export function skipToken(text: Uint8Array, cursor: ParseCursor, endIndex: numbe
   return cursor.index > start;
 }
 
+/**
+ * Skip either a quoted-string or atom word from the current cursor position.
+ *
+ * @returns a {@link Result}; successful `false` means no word was present.
+ */
 export function skipWord(text: Uint8Array, cursor: ParseCursor, endIndex: number): Result<boolean> {
   validateRange(text, cursor, endIndex, false);
 
@@ -205,6 +266,13 @@ export function skipWord(text: Uint8Array, cursor: ParseCursor, endIndex: number
   return ok(false);
 }
 
+/**
+ * Check whether a byte matches one of the sentinel bytes.
+ *
+ * @param c - Byte to test.
+ * @param sentinels - Sentinel bytes.
+ * @returns `true` if `c` is present in `sentinels`.
+ */
 export function isSentinel(c: number, sentinels: Uint8Array): boolean {
   for (let i = 0; i < sentinels.length; i++) {
     if (c === sentinels[i])
@@ -295,6 +363,15 @@ function tryParseDomainLiteral(text: Uint8Array, cursor: ParseCursor, endIndex: 
   return ok(token.join(''));
 }
 
+/**
+ * Try to parse a domain token or domain literal.
+ *
+ * @param text - Input byte buffer.
+ * @param cursor - Cursor advanced past the parsed domain.
+ * @param endIndex - Exclusive end index.
+ * @param sentinels - Bytes that terminate parsing.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+ */
 export function tryParseDomain(text: Uint8Array, cursor: ParseCursor, endIndex: number, sentinels: Uint8Array): Result<string> {
   validateRange(text, cursor, endIndex, false);
 
@@ -304,6 +381,15 @@ export function tryParseDomain(text: Uint8Array, cursor: ParseCursor, endIndex: 
   return tryParseDotAtom(text, cursor, endIndex, sentinels, 'domain');
 }
 
+/**
+ * Try to parse a Message-Id or Content-Id token.
+ *
+ * @param text - Input byte buffer.
+ * @param cursor - Cursor advanced past the parsed msg-id.
+ * @param endIndex - Exclusive end index.
+ * @param requireAngleAddr - Whether the msg-id must start with `<`.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` on malformed input.
+ */
 export function tryParseMsgId(text: Uint8Array, cursor: ParseCursor, endIndex: number, requireAngleAddr: boolean): Result<string> {
   validateRange(text, cursor, endIndex);
   let squareBrackets = false;
@@ -425,6 +511,16 @@ export function tryParseMsgId(text: Uint8Array, cursor: ParseCursor, endIndex: n
   return ok(token.join(''));
 }
 
+/**
+ * Check whether a string range contains non-ASCII characters.
+ *
+ * @param value - String to inspect.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to inspect.
+ * @returns `true` if the range contains a non-ASCII character.
+ * @throws {TypeError} `startIndex` or `count` is not an integer.
+ * @throws {RangeError} The requested range is outside `value`.
+ */
 export function isInternational(value: string, startIndex = 0, count = value.length - startIndex): boolean {
   const endIndex = startIndex + count;
 
@@ -441,6 +537,12 @@ export function isInternational(value: string, startIndex = 0, count = value.len
   return false;
 }
 
+/**
+ * Check whether a domain string contains an IDN punycode label.
+ *
+ * @param value - Domain string.
+ * @returns `true` if the value starts with or contains an `xn--` label.
+ */
 export function isIdnEncoded(value: string): boolean {
   return value.startsWith('xn--') || value.includes('.xn--');
 }

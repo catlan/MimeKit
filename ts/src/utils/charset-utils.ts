@@ -24,7 +24,11 @@
 
 import { SINGLE_BYTE_TABLES } from './single-byte-tables.js';
 
+/**
+ * Small encoding abstraction used in place of .NET's Encoding type.
+ */
 export interface CharsetEncoding {
+  /** Numeric code page identifier. */
   readonly codePage: number;
   /** Canonical MIME charset name (C#: Encoding.WebName, lowercase). */
   readonly webName: string;
@@ -36,7 +40,17 @@ export interface CharsetEncoding {
   encode(text: string): Uint8Array;
 }
 
+/**
+ * Stateful decoder for streaming charset conversion.
+ */
 export interface CharsetStreamDecoder {
+  /**
+   * Decode a chunk of bytes.
+   *
+   * @param bytes - Bytes to decode.
+   * @param flush - Whether this is the final chunk.
+   * @returns Decoded text.
+   */
   decode(bytes: Uint8Array, flush?: boolean): string;
 }
 
@@ -321,7 +335,12 @@ export function getTextDecoderLabel(encoding: CharsetEncoding): string | null {
   return entry ? entry[1] : null;
 }
 
-/** C#: Encoding.GetEncoding(codepage), null instead of throwing. */
+/**
+ * Resolve a code page into a charset encoding.
+ *
+ * @param codepage - Numeric code page.
+ * @returns The encoding, or `null` when unsupported.
+ */
 export function getEncodingForCodePage(codepage: number): CharsetEncoding | null {
   let cached = encodingCache.get(codepage);
   if (cached === undefined) {
@@ -409,7 +428,12 @@ function parseIsoCodePage(charset: string, startIndex: number): number {
   }
 }
 
-/** C#: CharsetUtils.ParseCodePage. */
+/**
+ * Parse a code page number from a charset name.
+ *
+ * @param charset - Charset name.
+ * @returns The parsed code page, or `-1` if the name cannot be parsed.
+ */
 export function parseCodePage(charset: string): number {
   const lower = charset.toLowerCase();
   let i: number;
@@ -456,7 +480,13 @@ const WHATWG_NAME_CODEPAGES: Record<string, number> = {
   'windows-874': 874, 'koi8-r': 20866, 'koi8-u': 21866, 'koi8': 20866,
 };
 
-/** C#: CharsetUtils.GetCodePage (alias table + ParseCodePage + name lookup). */
+/**
+ * Get the code page for a charset name using MimeKit aliases and runtime
+ * charset lookup.
+ *
+ * @param charset - Charset name.
+ * @returns The code page, or `-1` when unsupported.
+ */
 export function getCodePage(charset: string): number {
   const key = charset.toLowerCase();
   const cached = aliases.get(key);
@@ -476,7 +506,12 @@ export function getCodePage(charset: string): number {
   return codepage;
 }
 
-/** C#: CharsetUtils.GetEncoding(charset), null instead of NotSupportedException. */
+/**
+ * Resolve a charset name into an encoding.
+ *
+ * @param charset - Charset name.
+ * @returns The encoding, or `null` when unsupported.
+ */
 export function tryGetEncoding(charset: string): CharsetEncoding | null {
   const codepage = getCodePage(charset);
   if (codepage === -1)
@@ -484,7 +519,12 @@ export function tryGetEncoding(charset: string): CharsetEncoding | null {
   return getEncodingForCodePage(codepage);
 }
 
-/** C#: CharsetUtils.GetMimeCharset. */
+/**
+ * Get the canonical MIME charset name for an encoding or charset name.
+ *
+ * @param charset - Charset name or encoding.
+ * @returns The MIME charset name.
+ */
 export function getMimeCharset(charset: string | CharsetEncoding): string {
   const encoding = typeof charset === 'string' ? tryGetEncoding(charset) : charset;
   if (encoding === null)
@@ -501,7 +541,9 @@ export function getMimeCharset(charset: string | CharsetEncoding): string {
   }
 }
 
+/** ISO-8859-1 encoding instance. */
 export const latin1 = new Latin1Encoding();
+/** UTF-8 encoding instance. */
 export const utf8 = new Utf8Encoding();
 
 /**
@@ -533,6 +575,10 @@ export function createStreamDecoder(encoding: CharsetEncoding): CharsetStreamDec
  * sequences (strict '<', so earlier candidates win ties), then decode with
  * '?'-style replacement (here: U+FFFD normalized to match TextDecoder;
  * C# uses '?' — normalized at the gate layer if it ever matters).
+ *
+ * @param bytes - Bytes to decode.
+ * @param userCharset - Optional user-supplied fallback charset.
+ * @returns Unicode text decoded using the best candidate charset.
  */
 export function convertToUnicode(bytes: Uint8Array, userCharset?: CharsetEncoding | null): string {
   const candidates: CharsetEncoding[] = [];
@@ -558,7 +604,13 @@ export function convertToUnicode(bytes: Uint8Array, userCharset?: CharsetEncodin
   return best.decode(bytes);
 }
 
-/** C#: CharsetUtils.TryGetBomEncoding. */
+/**
+ * Try to detect a Unicode byte-order mark.
+ *
+ * @param buffer - Buffer to inspect.
+ * @param length - Number of bytes from `buffer` to inspect.
+ * @returns The detected encoding, or `null` when no supported BOM is present.
+ */
 export function tryGetBomEncoding(buffer: Uint8Array, length = buffer.length): CharsetEncoding | null {
   if (length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe)
     return getEncodingForCodePage(1200); // UTF-16LE

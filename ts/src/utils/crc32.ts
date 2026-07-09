@@ -37,24 +37,58 @@ const crc32Table = new Uint32Array([
   0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 ]);
 
+/**
+ * The 32-bit cyclic redundancy check (CRC) algorithm.
+ *
+ * A cyclic redundancy check is an integrity check used to detect corrupted
+ * blocks of data.
+ */
 export class Crc32 {
   private crc: number;
 
+  /**
+   * Create a new CRC32 context.
+   *
+   * @param initialValue - Initial checksum value.
+   */
   constructor(private readonly initialValue = 0) {
     this.crc = initialValue >>> 0;
   }
 
+  /**
+   * Clone the CRC32 context and current state.
+   *
+   * @returns A copy of this CRC32 context.
+   */
   clone(): Crc32 {
     const crc = new Crc32(this.initialValue);
     crc.crc = this.crc >>> 0;
     return crc;
   }
 
+  /**
+   * The computed checksum.
+   */
   get checksum(): number {
     return this.crc >>> 0;
   }
 
+  /**
+   * Update the CRC based on a block of data.
+   *
+   * @param buffer - Buffer to read data from.
+   * @param offset - Offset into `buffer` to start reading.
+   * @param count - Number of bytes to read.
+   * @returns The updated checksum.
+   * @throws {RangeError} `offset` or `count` is outside `buffer`.
+   */
   update(buffer: Uint8Array, offset?: number, count?: number): number;
+  /**
+   * Update the CRC based on one byte.
+   *
+   * @param value - Byte value.
+   * @returns The updated checksum.
+   */
   update(value: number): number;
   update(valueOrBuffer: Uint8Array | number, offset = 0, count?: number): number {
     if (typeof valueOrBuffer === 'number') {
@@ -76,6 +110,9 @@ export class Crc32 {
     return this.crc;
   }
 
+  /**
+   * Reset the checksum so this CRC32 context can be reused.
+   */
   reset(): void {
     this.crc = this.initialValue >>> 0;
   }

@@ -595,13 +595,45 @@ function validateByteRange(input: Uint8Array, startIndex: number, count: number)
     throw new RangeError(`count ${count} out of range [0, ${input.length - startIndex}]`);
 }
 
+/**
+ * Decoded header value plus the most common code page observed in encoded
+ * words.
+ */
 export interface DecodedHeaderValue {
+  /** Decoded header text. */
   readonly value: string;
+  /** Most common decoded code page, or UTF-8 when no encoded words exist. */
   readonly codePage: number;
 }
 
+/**
+ * Decode an RFC 2047 phrase using supplied parser options.
+ *
+ * @param options - Parser options to use.
+ * @param phrase - Phrase bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded phrase.
+ * @throws {RangeError} `startIndex` or `count` is outside `phrase`.
+ */
 export function decodePhrase(options: ParserOptions, phrase: Uint8Array, startIndex: number, count: number): string;
+/**
+ * Decode an RFC 2047 phrase using supplied parser options.
+ *
+ * @param options - Parser options to use.
+ * @param phrase - Phrase bytes to decode.
+ * @returns The decoded phrase.
+ */
 export function decodePhrase(options: ParserOptions, phrase: Uint8Array): string;
+/**
+ * Decode an RFC 2047 phrase using default parser options.
+ *
+ * @param phrase - Phrase bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded phrase.
+ * @throws {RangeError} `startIndex` or `count` is outside `phrase`.
+ */
 export function decodePhrase(phrase: Uint8Array, startIndex?: number, count?: number): string;
 export function decodePhrase(a: ParserOptions | Uint8Array, b?: Uint8Array | number, c?: number, d?: number): string {
   let options: ParserOptions;
@@ -624,6 +656,16 @@ export function decodePhrase(a: ParserOptions | Uint8Array, b?: Uint8Array | num
   return decodePhraseWithCodePage(options, phrase, startIndex, count).value;
 }
 
+/**
+ * Decode an RFC 2047 phrase and report the most common encoded-word code page.
+ *
+ * @param options - Parser options to use.
+ * @param phrase - Phrase bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded phrase and code page.
+ * @throws {RangeError} `startIndex` or `count` is outside `phrase`.
+ */
 export function decodePhraseWithCodePage(options: ParserOptions, phrase: Uint8Array, startIndex = 0, count = phrase.length - startIndex): DecodedHeaderValue {
   validateByteRange(phrase, startIndex, count);
   if (count === 0)
@@ -636,8 +678,34 @@ export function decodePhraseWithCodePage(options: ParserOptions, phrase: Uint8Ar
   return { value: decoded.toString(), codePage: decoder.getMostCommonCodePage() };
 }
 
+/**
+ * Decode RFC 2047 unstructured text using supplied parser options.
+ *
+ * @param options - Parser options to use.
+ * @param text - Text bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded text.
+ * @throws {RangeError} `startIndex` or `count` is outside `text`.
+ */
 export function decodeText(options: ParserOptions, text: Uint8Array, startIndex: number, count: number): string;
+/**
+ * Decode RFC 2047 unstructured text using supplied parser options.
+ *
+ * @param options - Parser options to use.
+ * @param text - Text bytes to decode.
+ * @returns The decoded text.
+ */
 export function decodeText(options: ParserOptions, text: Uint8Array): string;
+/**
+ * Decode RFC 2047 unstructured text using default parser options.
+ *
+ * @param text - Text bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded text.
+ * @throws {RangeError} `startIndex` or `count` is outside `text`.
+ */
 export function decodeText(text: Uint8Array, startIndex?: number, count?: number): string;
 export function decodeText(a: ParserOptions | Uint8Array, b?: Uint8Array | number, c?: number, d?: number): string {
   let options: ParserOptions;
@@ -660,6 +728,17 @@ export function decodeText(a: ParserOptions | Uint8Array, b?: Uint8Array | numbe
   return decodeTextWithCodePage(options, text, startIndex, count).value;
 }
 
+/**
+ * Decode RFC 2047 unstructured text and report the most common encoded-word
+ * code page.
+ *
+ * @param options - Parser options to use.
+ * @param text - Text bytes to decode.
+ * @param startIndex - Starting byte index.
+ * @param count - Number of bytes to decode.
+ * @returns The decoded text and code page.
+ * @throws {RangeError} `startIndex` or `count` is outside `text`.
+ */
 export function decodeTextWithCodePage(options: ParserOptions, text: Uint8Array, startIndex = 0, count = text.length - startIndex): DecodedHeaderValue {
   validateByteRange(text, startIndex, count);
   if (count === 0)
@@ -672,6 +751,14 @@ export function decodeTextWithCodePage(options: ParserOptions, text: Uint8Array,
   return { value: decoded.toString(), codePage: decoder.getMostCommonCodePage() };
 }
 
+/**
+ * Fold RFC 2047 unstructured header bytes using formatting options.
+ *
+ * @param options - Formatting options.
+ * @param field - Header field name.
+ * @param text - Header value bytes.
+ * @returns Folded header value bytes.
+ */
 export function foldUnstructuredHeader(options: FormatOptions, field: string, text: Uint8Array): Uint8Array {
   const output = new StringBuilder();
   const folder = new TokenFolder(options, field, text);
@@ -679,6 +766,16 @@ export function foldUnstructuredHeader(options: FormatOptions, field: string, te
   return asciiBytes(output.toString());
 }
 
+/**
+ * Encode and fold an unstructured header value.
+ *
+ * @param _options - Parser options retained for API parity.
+ * @param format - Formatting options.
+ * @param charset - Charset encoding.
+ * @param field - Header field name.
+ * @param value - Header value.
+ * @returns Encoded header value bytes.
+ */
 export function encodeUnstructuredHeader(_options: ParserOptions, format: FormatOptions, charset: CharsetEncoding, field: string, value: string): Uint8Array {
   if (format.international) return utf8.encode(foldRawUnstructuredHeader(format, field, value));
   return foldUnstructuredHeader(format, field, encodeText(format, charset, value));
@@ -762,6 +859,16 @@ function appendEncodedWord(builder: StringBuilder, charset: CharsetEncoding, tex
   return builder.length - startLength;
 }
 
+/**
+ * Encode a string range as a single RFC 2047 encoded-word.
+ *
+ * @param charset - Charset encoding.
+ * @param text - Text containing the range to encode.
+ * @param startIndex - Starting character index.
+ * @param length - Number of characters to encode.
+ * @param mode - Q-encoding mode.
+ * @returns The encoded-word string.
+ */
 export function appendEncodedWordAsString(charset: CharsetEncoding, text: string, startIndex: number, length: number, mode: QEncodeMode): string {
   const builder = new StringBuilder();
   appendEncodedWord(builder, charset, text, startIndex, length, mode);
@@ -1271,20 +1378,70 @@ function normalizeCharset(charset: CharsetEncoding | string): CharsetEncoding {
   return charset;
 }
 
+/**
+ * Encode comment text and wrap it in parentheses according to RFC 2047.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param text - Text to encode.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to encode.
+ * @returns The encoded comment text.
+ * @throws {TypeError} `options`, `charset`, or `text` is invalid.
+ * @throws {RangeError} `startIndex` or `count` is outside `text`.
+ */
 export function encodeComment(options: FormatOptions, charset: CharsetEncoding | string, text: string, startIndex = 0, count = text.length - startIndex): string {
   const encoding = normalizeCharset(charset);
   validateEncodeArguments(options, encoding, text, startIndex, count);
   return encodeAsString(options, encoding, text, startIndex, count, EncodeType.Comment);
 }
 
+/**
+ * Encode a phrase according to RFC 2047 and return it as a string.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param phrase - Phrase to encode.
+ * @returns The encoded phrase.
+ * @throws {TypeError} `options`, `charset`, or `phrase` is invalid.
+ */
 export function encodePhraseAsString(options: FormatOptions, charset: CharsetEncoding | string, phrase: string): string {
   const encoding = normalizeCharset(charset);
   validateEncodeArguments(options, encoding, phrase, 0, phrase.length);
   return encodeAsString(options, encoding, phrase, 0, phrase.length, EncodeType.Phrase);
 }
 
+/**
+ * Encode a phrase according to RFC 2047 using supplied formatting options.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param phrase - Phrase to encode.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to encode.
+ * @returns The encoded phrase bytes.
+ * @throws {TypeError} `options`, `charset`, or `phrase` is invalid.
+ * @throws {RangeError} `startIndex` or `count` is outside `phrase`.
+ */
 export function encodePhrase(options: FormatOptions, charset: CharsetEncoding | string, phrase: string, startIndex: number, count: number): Uint8Array;
+/**
+ * Encode a phrase according to RFC 2047 using supplied formatting options.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param phrase - Phrase to encode.
+ * @returns The encoded phrase bytes.
+ */
 export function encodePhrase(options: FormatOptions, charset: CharsetEncoding | string, phrase: string): Uint8Array;
+/**
+ * Encode a phrase according to RFC 2047 using default formatting options.
+ *
+ * @param charset - Charset encoding or name.
+ * @param phrase - Phrase to encode.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to encode.
+ * @returns The encoded phrase bytes.
+ */
 export function encodePhrase(charset: CharsetEncoding | string, phrase: string, startIndex?: number, count?: number): Uint8Array;
 export function encodePhrase(a: FormatOptions | CharsetEncoding | string, b: CharsetEncoding | string, c?: string | number, d?: number, e?: number): Uint8Array {
   const hasOptions = a instanceof FormatOptions;
@@ -1297,8 +1454,40 @@ export function encodePhrase(a: FormatOptions | CharsetEncoding | string, b: Cha
   return encodeAsBytes(options, charset, phrase, startIndex, count, EncodeType.Phrase);
 }
 
+/**
+ * Encode unstructured text according to RFC 2047 using supplied formatting
+ * options.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param text - Text to encode.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to encode.
+ * @returns The encoded text bytes.
+ * @throws {TypeError} `options`, `charset`, or `text` is invalid.
+ * @throws {RangeError} `startIndex` or `count` is outside `text`.
+ */
 export function encodeText(options: FormatOptions, charset: CharsetEncoding | string, text: string, startIndex: number, count: number): Uint8Array;
+/**
+ * Encode unstructured text according to RFC 2047 using supplied formatting
+ * options.
+ *
+ * @param options - Formatting options.
+ * @param charset - Charset encoding or name.
+ * @param text - Text to encode.
+ * @returns The encoded text bytes.
+ */
 export function encodeText(options: FormatOptions, charset: CharsetEncoding | string, text: string): Uint8Array;
+/**
+ * Encode unstructured text according to RFC 2047 using default formatting
+ * options.
+ *
+ * @param charset - Charset encoding or name.
+ * @param text - Text to encode.
+ * @param startIndex - Starting character index.
+ * @param count - Number of characters to encode.
+ * @returns The encoded text bytes.
+ */
 export function encodeText(charset: CharsetEncoding | string, text: string, startIndex?: number, count?: number): Uint8Array;
 export function encodeText(a: FormatOptions | CharsetEncoding | string, b: CharsetEncoding | string, c?: string | number, d?: number, e?: number): Uint8Array {
   const hasOptions = a instanceof FormatOptions;
@@ -1321,6 +1510,12 @@ function asciiBytes(text: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * Decode bytes as ASCII text.
+ *
+ * @param bytes - Bytes to decode.
+ * @returns ASCII string.
+ */
 export function asciiString(bytes: Uint8Array): string {
   return asciiDecoder.decode(bytes);
 }

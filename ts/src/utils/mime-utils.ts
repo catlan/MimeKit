@@ -26,11 +26,23 @@ const unquoteChars = new Set(['\r', '\n', '\t', '\\', '"']);
 const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
+/**
+ * Parsed MIME version value.
+ */
 export interface MimeVersion {
+  /** Major version number. */
   readonly major: number;
+  /** Minor version number. */
   readonly minor: number;
+  /** Optional build component. */
   readonly build: number | undefined;
+  /** Optional revision component. */
   readonly revision: number | undefined;
+  /**
+   * Format the version components separated by periods.
+   *
+   * @returns The version string.
+   */
   toString(): string;
 }
 
@@ -210,6 +222,16 @@ function toBuffer(input: string | Uint8Array): Uint8Array {
   return typeof input === 'string' ? utf8Encoder.encode(input) : input;
 }
 
+/**
+ * Try to parse a version from a header such as Mime-Version.
+ *
+ * Parses a MIME version string from the supplied text or byte buffer.
+ *
+ * @param input - Text or bytes to parse.
+ * @param startIndex - Index into the buffer to start parsing.
+ * @param length - Number of bytes or characters to parse.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` when the version cannot be parsed.
+ */
 export function tryParseVersion(
   input: string | Uint8Array | null | undefined,
   startIndex = 0,
@@ -258,6 +280,12 @@ export function tryParseVersion(
   }
 }
 
+/**
+ * Try to parse a Content-Transfer-Encoding header value.
+ *
+ * @param text - Header value to parse.
+ * @returns a {@link Result}; `{ ok: false }` with a `MimeError` when the encoding cannot be parsed.
+ */
 export function tryParse(text: string | null | undefined): Result<ContentEncoding> {
   if (text == null)
     return err('invalid-content-encoding', 'The content encoding could not be parsed.');
@@ -299,7 +327,26 @@ export function tryParse(text: string | null | undefined): Result<ContentEncodin
     : err('invalid-content-encoding', 'The content encoding could not be parsed.', { offset: startIndex });
 }
 
+/**
+ * Quote text and append it to an array builder.
+ *
+ * Encloses the text in double quotes and escapes any backslashes and
+ * double-quotes within it.
+ *
+ * @param builder - String array builder.
+ * @param text - Text to quote.
+ * @returns The same builder.
+ * @throws {TypeError} `builder` or `text` is null or undefined.
+ */
 export function appendQuoted(builder: string[], text: string): string[];
+/**
+ * Quote text and append it to an object builder.
+ *
+ * @param builder - Builder with an `append()` method.
+ * @param text - Text to quote.
+ * @returns The same builder.
+ * @throws {TypeError} `builder` or `text` is null or undefined.
+ */
 export function appendQuoted(builder: { append(value: string): unknown }, text: string): { append(value: string): unknown };
 export function appendQuoted(
   builder: string[] | { append(value: string): unknown } | null | undefined,
@@ -325,6 +372,16 @@ export function appendQuoted(
   return builder;
 }
 
+/**
+ * Quote the specified text.
+ *
+ * Encloses the text in double quotes and escapes any backslashes and
+ * double-quotes within it.
+ *
+ * @param text - Text to quote.
+ * @returns The quoted text.
+ * @throws {TypeError} `text` is null or undefined.
+ */
 export function quote(text: string | null | undefined): string {
   if (text == null)
     throw new TypeError('text cannot be null or undefined');
@@ -406,7 +463,27 @@ function unquoteBytes(text: Uint8Array, startIndex: number, length: number, conv
   return Uint8Array.from(output);
 }
 
+/**
+ * Unquote the specified text.
+ *
+ * Removes escaped backslashes within the text.
+ *
+ * @param text - Text to unquote.
+ * @param convertTabsToSpaces - Whether tab characters should be converted to spaces.
+ * @returns The unquoted text.
+ * @throws {TypeError} `text` is null or undefined.
+ */
 export function unquote(text: string, convertTabsToSpaces?: boolean): string;
+/**
+ * Unquote a byte range.
+ *
+ * @param text - Bytes to unquote.
+ * @param startIndex - Starting index in `text`.
+ * @param length - Number of bytes to unquote.
+ * @param convertTabsToSpaces - Whether tab bytes should be converted to spaces.
+ * @returns The unquoted bytes.
+ * @throws {RangeError} `startIndex` or `length` is outside `text`.
+ */
 export function unquote(text: Uint8Array, startIndex?: number, length?: number, convertTabsToSpaces?: boolean): Uint8Array;
 export function unquote(
   text: string | Uint8Array | null | undefined,
@@ -435,6 +512,18 @@ export function unquote(
   return unquoteBytes(text, startIndex, count, convertTabsToSpaces);
 }
 
+/**
+ * Parse a Message-Id or Content-Id header value.
+ *
+ * Returns the addr-spec portion of the msg-id token.
+ *
+ * @param input - Text or bytes to parse.
+ * @param startIndex - Index into the buffer to start parsing.
+ * @param length - Number of bytes or characters to parse.
+ * @returns a {@link Result}; successful `null` means no msg-id token was found.
+ * @throws {TypeError} `input` is null or undefined.
+ * @throws {RangeError} `startIndex` or `length` is outside the input.
+ */
 export function tryParseMessageId(
   input: string | Uint8Array | null | undefined,
   startIndex = 0,
@@ -453,6 +542,19 @@ export function tryParseMessageId(
   return ok(msgid ?? null);
 }
 
+/**
+ * Enumerate Message-Id references such as those found in In-Reply-To or
+ * References headers.
+ *
+ * Incrementally parses msg-id tokens from the supplied text or byte buffer.
+ *
+ * @param input - Text or bytes to parse.
+ * @param startIndex - Index into the buffer to start parsing.
+ * @param length - Number of bytes or characters to parse.
+ * @returns An iterator over parsed message identifiers.
+ * @throws {TypeError} `input` is null or undefined.
+ * @throws {RangeError} `startIndex` or `length` is outside the input.
+ */
 export function* enumerateReferences(
   input: string | Uint8Array | null | undefined,
   startIndex = 0,
@@ -495,6 +597,16 @@ function appendBase36(value: bigint, output: string[]): void {
   } while (value !== 0n);
 }
 
+/**
+ * Generate a Message-Id or Content-Id.
+ *
+ * Generates a new identifier using the supplied domain. In this isomorphic
+ * port the default domain is `localhost`.
+ *
+ * @param domain - Domain to use in the identifier.
+ * @returns The generated message identifier.
+ * @throws {TypeError} `domain` is null, undefined, or empty.
+ */
 export function generateMessageId(domain = 'localhost'): string {
   if (domain == null)
     throw new TypeError('domain cannot be null or undefined');
