@@ -106,7 +106,7 @@ export class FormatOptions {
    * with a new-line sequence.
    * @returns A DOS-to-Unix or Unix-to-DOS new-line filter.
    */
-  createNewLineFilter(ensureNewLine = this.ensureNewLine): Dos2UnixFilter | Unix2DosFilter {
+  createNewLineFilter(ensureNewLine = false): Dos2UnixFilter | Unix2DosFilter {
     return this.newLineFormat === 'dos'
       ? new Unix2DosFilter(ensureNewLine)
       : new Dos2UnixFilter(ensureNewLine);
