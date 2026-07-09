@@ -165,6 +165,7 @@ export class DesKey {
  * {@link tripleDesCbcDecrypt}; used by the S/MIME EnvelopedData encrypt path.
  */
 export function tripleDesCbcEncrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (iv.length !== 8) throw new RangeError('Triple-DES CBC IV must be 8 bytes.');
   if (key.length !== 24) throw new Error('Triple-DES requires a 24-byte key.');
   if (data.length % 8 !== 0) throw new Error('Triple-DES CBC input must be a multiple of 8 bytes.');
 
@@ -193,6 +194,7 @@ export function tripleDesCbcEncrypt(key: Uint8Array, iv: Uint8Array, data: Uint8
  * The key must be 24 bytes; the IV 8 bytes. PKCS#7 padding is NOT removed here.
  */
 export function tripleDesCbcDecrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (iv.length !== 8) throw new RangeError('Triple-DES CBC IV must be 8 bytes.');
   if (key.length !== 24) throw new Error('Triple-DES requires a 24-byte key.');
   if (data.length % 8 !== 0) throw new Error('Triple-DES CBC input must be a multiple of 8 bytes.');
 

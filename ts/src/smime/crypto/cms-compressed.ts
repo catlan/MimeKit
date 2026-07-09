@@ -15,10 +15,32 @@ async function deflate(data: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-async function inflate(data: Uint8Array): Promise<Uint8Array> {
+/**
+ * Default ceiling on inflated CompressedData size (128 MiB), guarding against a
+ * decompression bomb — a small compressed part that expands to exhaust memory.
+ */
+export const DEFAULT_MAX_INFLATED_BYTES = 128 * 1024 * 1024;
+
+async function inflate(data: Uint8Array, maxBytes: number): Promise<Uint8Array> {
   const ds = new DecompressionStream('deflate');
   const stream = new Blob([data as BlobPart]).stream().pipeThrough(ds);
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = (stream as ReadableStream<Uint8Array>).getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error(`CompressedData inflates past the ${maxBytes}-byte limit (possible decompression bomb).`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let pos = 0;
+  for (const c of chunks) { out.set(c, pos); pos += c.length; }
+  return out;
 }
 
 function explicit0(inner: asn1js.BaseBlock): asn1js.Constructed {
@@ -60,12 +82,21 @@ function gatherOctet(block: asn1js.BaseBlock): Uint8Array {
   return new Uint8Array(octet.valueBlock.valueHexView);
 }
 
-/** Parse a CMS CompressedData ContentInfo (DER) and inflate the content. */
-export async function decompressCompressedData(der: Uint8Array): Promise<Uint8Array> {
+/**
+ * Parse a CMS CompressedData ContentInfo (DER) and inflate the content.
+ *
+ * @param der The DER-encoded CompressedData ContentInfo.
+ * @param maxInflatedBytes Ceiling on the inflated size (default
+ *   {@link DEFAULT_MAX_INFLATED_BYTES}); inflation past it throws.
+ */
+export async function decompressCompressedData(
+  der: Uint8Array,
+  maxInflatedBytes: number = DEFAULT_MAX_INFLATED_BYTES,
+): Promise<Uint8Array> {
   const contentInfo = new ContentInfo({ schema: asn1js.fromBER(ab(der)).result });
   const compressedData = contentInfo.content as asn1js.Sequence;
   const encapContentInfo = compressedData.valueBlock.value[2] as asn1js.Sequence;
   const eContent = encapContentInfo.valueBlock.value[1] as asn1js.BaseBlock;
   const compressed = gatherOctet(eContent);
-  return inflate(compressed);
+  return inflate(compressed, maxInflatedBytes);
 }

@@ -137,6 +137,7 @@ function encryptBlock(k: number[], data: Uint8Array, offset: number): Uint8Array
  * S/MIME EnvelopedData encrypt path.
  */
 export function rc2CbcEncrypt(key: Uint8Array, effectiveBits: number, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (iv.length !== 8) throw new RangeError('RC2 CBC IV must be 8 bytes.');
   if (data.length % 8 !== 0) throw new Error('RC2 CBC input must be a multiple of 8 bytes.');
   const k = expandKey(key, effectiveBits);
   const out = new Uint8Array(data.length);
@@ -159,6 +160,7 @@ export function rc2CbcEncrypt(key: Uint8Array, effectiveBits: number, iv: Uint8A
  * removed here.
  */
 export function rc2CbcDecrypt(key: Uint8Array, effectiveBits: number, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  if (iv.length !== 8) throw new RangeError('RC2 CBC IV must be 8 bytes.');
   if (data.length % 8 !== 0) throw new Error('RC2 CBC input must be a multiple of 8 bytes.');
   const k = expandKey(key, effectiveBits);
   const out = new Uint8Array(data.length);
