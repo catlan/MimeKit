@@ -27,6 +27,7 @@ import { Multipart } from './multipart.js';
 import type { ParserOptions } from './parser-options.js';
 import { TextPart } from './text-part.js';
 import { TextRfc822Headers } from './text-rfc822-headers.js';
+import { TnefPart } from './tnef/tnef-part.js';
 import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
 
 function isEncodedEncoding(encoding: ContentEncoding): boolean {
@@ -114,7 +115,7 @@ export function createEntity(
       if (depth < maxDepth && !isEncoded(headers)) return new TextRfc822Headers(args);
     }
   } else if (eqIgnoreCase(type, 'application')) {
-    // application/ms-tnef -> TnefPart (wave-7); application/rtf -> TextPart.
+    if (eqIgnoreCase(subtype, 'ms-tnef', 'vnd.ms-tnef')) return new TnefPart(args);
     if (eqIgnoreCase(subtype, 'rtf')) return new TextPart(args);
   }
 
