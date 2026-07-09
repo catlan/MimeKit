@@ -10,7 +10,18 @@ const DICTIONARY_INITIALIZER = new TextEncoder().encode(DICTIONARY_INITIALIZER_T
 
 type State = 'compressedSize' | 'uncompressedSize' | 'magic' | 'crc32' | 'beginControlRun' | 'readControlOffset' | 'processControl' | 'readLiteral' | 'complete';
 
+/**
+ * A filter to decompress a compressed RTF stream.
+ *
+ * Used to decompress a compressed RTF stream.
+ */
 export class RtfCompressedToRtf extends MimeFilterBase {
+  /**
+   * Gets the compression mode.
+   *
+   * At least 12 bytes from the stream must be processed before this property
+   * value will be accurate.
+   */
   compressionMode: number = RtfCompressionMode.Unknown;
   private readonly dict = new Uint8Array(4096);
   private readonly crc32 = new Crc32();
@@ -26,15 +37,32 @@ export class RtfCompressedToRtf extends MimeFilterBase {
   private saved = 0;
   private size = 0;
 
+  /**
+   * Creates a new {@link RtfCompressedToRtf} converter filter.
+   */
   constructor() {
     super();
     this.resetDictionary();
   }
 
+  /**
+   * Gets whether the CRC32 is valid.
+   *
+   * Until all data has been processed, this property will always return `false`.
+   */
   get isValidCrc32(): boolean {
     return this.crc32.checksum === (this.checksum >>> 0);
   }
 
+  /**
+   * Filter the specified input buffer.
+   *
+   * @param input the input buffer.
+   * @param startIndex the starting index of the input buffer.
+   * @param length the number of bytes to filter.
+   * @param _flush whether to flush the filter.
+   * @returns the filtered output.
+   */
   protected override filterInternal(input: Uint8Array, startIndex: number, length: number, _flush: boolean): MimeFilterResult {
     const endIndex = startIndex + length;
     let index = startIndex;
@@ -135,6 +163,9 @@ export class RtfCompressedToRtf extends MimeFilterBase {
     return { buffer: output, index: 0, length: outputLength };
   }
 
+  /**
+   * Reset the filter state.
+   */
   override reset(): void {
     this.resetDictionary();
     this.state = 'compressedSize';

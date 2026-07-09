@@ -10,16 +10,46 @@ import { TnefPropertyType } from './tnef-property-type.js';
 import { TnefReaderStream } from './tnef-reader-stream.js';
 import type { TnefReader } from './tnef-reader.js';
 
+/**
+ * The JavaScript value category for the current TNEF value.
+ */
 export type TnefValueType = 'object' | 'boolean' | 'number' | 'date' | 'string' | 'bytes' | 'guid' | 'null';
 
+/**
+ * A TNEF property reader.
+ */
 export class TnefPropertyReader {
+  /**
+   * Gets the current property tag.
+   */
   propertyTag = TnefPropertyTag.Null;
+  /**
+   * Gets the current property name identifier.
+   */
   propertyNameId = new TnefNameId();
+  /**
+   * Gets the raw value stream offset.
+   */
   rawValueStreamOffset = 0;
+  /**
+   * Gets the length of the raw value.
+   */
   rawValueLength = 0;
+  /**
+   * Gets the property count.
+   */
   propertyCount = 0;
+  /**
+   * Gets the value count.
+   */
   valueCount = 0;
+  /**
+   * Gets the row count.
+   */
   rowCount = 0;
+  /**
+   * Gets or sets the current attachment method.
+   */
   attachMethod: number = TnefAttachMethod.None;
 
   private propertyIndex = 0;
@@ -27,20 +57,46 @@ export class TnefPropertyReader {
   private rowIndex = 0;
   private textDecoder: TextDecoder | null = null;
 
+  /**
+   * Creates a new TNEF property reader for a TNEF reader.
+   *
+   * @param reader the TNEF reader.
+   */
   constructor(private readonly reader: TnefReader) {}
 
+  /**
+   * Gets whether the current property is an embedded TNEF message.
+   */
   get isEmbeddedMessage(): boolean {
     return this.propertyTag.id === TnefPropertyId.AttachData && this.attachMethod === TnefAttachMethod.EmbeddedMessage;
   }
 
+  /**
+   * Gets whether the current property has multiple values.
+   */
   get isMultiValuedProperty(): boolean { return this.propertyTag.isMultiValued; }
+  /**
+   * Gets whether the current property is a named property.
+   */
   get isNamedProperty(): boolean { return this.propertyTag.isNamed; }
+  /**
+   * Gets whether the current property contains object values.
+   */
   get isObjectProperty(): boolean { return this.propertyTag.valueTnefType === TnefPropertyType.Object; }
 
+  /**
+   * Gets the type of the current value.
+   */
   get valueType(): TnefValueType {
     return this.propertyCount > 0 ? this.getPropertyValueType() : this.getAttributeValueType();
   }
 
+  /**
+   * Get a stream for reading the current raw value.
+   *
+   * @returns the raw value stream.
+   * @throws {TypeError} the property does not contain any more values.
+   */
   getRawValueReadStream(): TnefReaderStream {
     if (this.valueIndex >= this.valueCount) throw new TypeError('The property does not contain any more values.');
     const startOffset = this.rawValueStreamOffset;
@@ -61,6 +117,12 @@ export class TnefPropertyReader {
     return new TnefReaderStream(this.reader, startOffset + length, startOffset + this.rawValueLength);
   }
 
+  /**
+   * Get a TNEF reader for the current embedded message value.
+   *
+   * @returns the embedded TNEF message reader.
+   * @throws {TypeError} the property value is not an embedded message.
+   */
   getEmbeddedMessageReader(): TnefReader {
     if (!this.isEmbeddedMessage) throw new TypeError('The property value is not an embedded message.');
     const stream = this.getRawValueReadStream();
@@ -74,6 +136,11 @@ export class TnefPropertyReader {
     return new (this.reader.constructor as typeof import('./tnef-reader.js').TnefReader)(stream, this.reader.messageCodepage, this.reader.complianceMode);
   }
 
+  /**
+   * Read the next property.
+   *
+   * @returns `true` if there is another property available to read; otherwise, `false`.
+   */
   readNextProperty(): boolean {
     while (this.readNextValue()) {}
     if (this.propertyIndex >= this.propertyCount) return false;
@@ -96,6 +163,11 @@ export class TnefPropertyReader {
     return this.checkRawValueLength();
   }
 
+  /**
+   * Read the next row.
+   *
+   * @returns `true` if there is another row available to read; otherwise, `false`.
+   */
   readNextRow(): boolean {
     while (this.readNextProperty()) {}
     if (this.rowIndex >= this.rowCount) return false;
@@ -109,6 +181,11 @@ export class TnefPropertyReader {
     return true;
   }
 
+  /**
+   * Read the next value.
+   *
+   * @returns `true` if there is another value available to read; otherwise, `false`.
+   */
   readNextValue(): boolean {
     if (this.valueIndex >= this.valueCount || this.propertyCount === 0) return false;
     const offset = this.rawValueStreamOffset + this.rawValueLength;
@@ -125,6 +202,14 @@ export class TnefPropertyReader {
     return true;
   }
 
+  /**
+   * Read bytes from the current raw value.
+   *
+   * @param buffer the buffer to read data into.
+   * @param offset the offset into the buffer to start reading data.
+   * @param count the number of bytes to read.
+   * @returns the number of bytes read into the buffer.
+   */
   readRawValue(buffer: Uint8Array, offset: number, count: number): number {
     if (this.propertyCount > 0 && this.reader.streamOffset === this.rawValueStreamOffset && isLengthPrefixed(this.propertyTag.valueTnefType))
       this.readInt32();
@@ -133,6 +218,16 @@ export class TnefPropertyReader {
     return n > 0 ? this.reader.readAttributeRawValue(buffer, offset, n) : 0;
   }
 
+  /**
+   * Read characters from the current text value.
+   *
+   * @param buffer the buffer to read data into.
+   * @param offset the offset into the buffer to start reading data.
+   * @param count the number of characters to read.
+   * @returns the number of characters read into the buffer.
+   * @throws {TypeError} `buffer` is invalid or the value is not readable as text.
+   * @throws {RangeError} `offset` or `count` is out of range.
+   */
   readTextValue(buffer: string[], offset: number, count: number): number {
     if (!Array.isArray(buffer)) throw new TypeError('buffer must be an array');
     if (offset < 0 || offset >= buffer.length) throw new RangeError('offset out of range');
@@ -191,6 +286,12 @@ export class TnefPropertyReader {
     return n;
   }
 
+  /**
+   * Read the current value.
+   *
+   * @returns the value.
+   * @throws {TypeError} there are no more values to read.
+   */
   readValue(): unknown {
     this.ensureReadable();
     if (this.propertyCount > 0) return this.readPropertyValue();
@@ -210,6 +311,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a boolean.
+   *
+   * @returns the value as a boolean.
+   * @throws {TypeError} the value cannot be read as a boolean.
+   */
   readValueAsBoolean(): boolean {
     this.ensureReadable();
     let value: boolean;
@@ -237,6 +344,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as bytes.
+   *
+   * @returns the value as a byte array.
+   * @throws {TypeError} the value cannot be read as bytes.
+   */
   readValueAsBytes(): Uint8Array {
     this.ensureReadable();
     let bytes: Uint8Array;
@@ -262,6 +375,12 @@ export class TnefPropertyReader {
     return bytes;
   }
 
+  /**
+   * Read the current value as a date and time.
+   *
+   * @returns the value as a date.
+   * @throws {TypeError} the value cannot be read as a date.
+   */
   readValueAsDateTime(): Date {
     this.ensureReadable();
     let value: Date;
@@ -280,6 +399,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a double.
+   *
+   * @returns the value as a number.
+   * @throws {TypeError} the value cannot be read as a number.
+   */
   readValueAsDouble(): number {
     this.ensureReadable();
     let value: number;
@@ -309,6 +434,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a float.
+   *
+   * @returns the value as a number.
+   * @throws {TypeError} the value cannot be read as a number.
+   */
   readValueAsFloat(): number {
     this.ensureReadable();
     let value: number;
@@ -338,6 +469,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a signed 16-bit integer.
+   *
+   * @returns the value as a 16-bit integer.
+   * @throws {TypeError} the value cannot be read as an integer.
+   */
   readValueAsInt16(): number {
     this.ensureReadable();
     let value: number;
@@ -367,6 +504,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a signed 32-bit integer.
+   *
+   * @returns the value as a 32-bit integer.
+   * @throws {TypeError} the value cannot be read as an integer.
+   */
   readValueAsInt32(): number {
     this.ensureReadable();
     let value: number;
@@ -396,6 +539,12 @@ export class TnefPropertyReader {
     return value | 0;
   }
 
+  /**
+   * Read the current value as a signed 64-bit integer.
+   *
+   * @returns the value as a 64-bit integer.
+   * @throws {TypeError} the value cannot be read as an integer.
+   */
   readValueAsInt64(): number {
     this.ensureReadable();
     let value: number;
@@ -425,6 +574,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a GUID string.
+   *
+   * @returns the value as a GUID.
+   * @throws {TypeError} the value cannot be read as a GUID.
+   */
   readValueAsGuid(): string {
     this.ensureReadable();
     if (this.propertyCount <= 0 || this.propertyTag.valueTnefType !== TnefPropertyType.ClassId)
@@ -434,6 +589,12 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a string.
+   *
+   * @returns the value as a string.
+   * @throws {TypeError} the value cannot be read as a string.
+   */
   readValueAsString(): string {
     this.ensureReadable();
     let value: string;
@@ -456,6 +617,11 @@ export class TnefPropertyReader {
     return value;
   }
 
+  /**
+   * Read the current value as a URL or relative URI string.
+   *
+   * @returns the value as a URL, a relative URI string, or null.
+   */
   readValueAsUri(): URL | string | null {
     const value = this.readValueAsString();
     if (value.length === 0) return null;
@@ -464,6 +630,9 @@ export class TnefPropertyReader {
     }
   }
 
+  /**
+   * Load property reader state for the current attribute.
+   */
   load(): void {
     this.propertyTag = TnefPropertyTag.Null;
     this.rawValueStreamOffset = 0;
