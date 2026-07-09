@@ -120,8 +120,18 @@ describe('Header', () => {
     expect(raw).toBe(expected);
   });
 
-  test.skip('TestArcAuthenticationResultsHeaderFolding', () => {
-    // deferred(wave-8): requires AuthenticationResults parser/encoder.
+  const arcAuthenticationResultsHeaderValues = [
+    ' i=1; lists.example.org;\n\tspf=pass smtp.mfrom=jqd@d1.example;\n\tdkim=pass (1024 - bit key) header.i=@d1.example; dmarc=pass',
+    ' i=2; gmail.example;\n\tspf=fail smtp.from=jqd@d1.example;\n\tdkim=fail (512-bit key) header.i=@example.org; dmarc=fail;\n\tarc=pass (as.1.lists.example.org=pass, ams.1.lists.example.org=pass)',
+    ' i=3; gmail.example;\n\tspf=fail smtp.from=jqd@d1.example;\n\tdkim=fail (512-bit key) header.i=@example.org; dmarc=fail\n\t(this-is-a-really-really-really-long-unbroken-comment-that-will-be-on-a-line-by-itself);\n\tarc=pass (as.1.lists.example.org=pass, ams.1.lists.example.org=pass)',
+  ];
+
+  test('TestArcAuthenticationResultsHeaderFolding', () => {
+    const header = new Header('ARC-Authentication-Results', '');
+    for (const authResults of arcAuthenticationResultsHeaderValues) {
+      header.setValue(ascii, authResults.replace(/\n\t/g, ' ').trim());
+      expect(byteArrayToString(header.rawValue)).toBe(`${authResults}\n`);
+    }
   });
 
   test('TestMessageIdHeaderFolding', () => {
