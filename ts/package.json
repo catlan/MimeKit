@@ -24,10 +24,13 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs": "typedoc",
+    "docs:json": "typedoc --json docs/api.json --out docs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "typedoc": "^0.28.20",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   },
