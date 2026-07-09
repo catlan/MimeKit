@@ -7,3 +7,8 @@
 *.yml text
 *.cs text
 *.md text
+
+# S/MIME signature test vectors: signatures cover exact on-wire bytes (incl. CRLF),
+# so git must NOT normalize line endings for these fixtures.
+UnitTests/TestData/smime/thunderbird-signed.txt -text
+UnitTests/TestData/smime/thunderbird-signed-encrypted.txt -text
