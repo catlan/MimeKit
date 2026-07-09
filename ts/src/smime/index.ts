@@ -100,6 +100,9 @@ import { registerSecureMimeContext } from './secure-mime-context.js';
 import { PkijsSecureMimeContext } from './pkijs-secure-mime-context.js';
 registerSecureMimeContext(() => new PkijsSecureMimeContext());
 
+// Install the message-level S/MIME crypto methods (MimeMessage.sign/encrypt/signAndEncrypt).
+import './mime-message-crypto.js';
+
 // Wire the S/MIME MIME types into the core parser's create-entity dispatch.
 registerEntityType('multipart', 'signed', (args) => new MultipartSigned(args));
 registerEntityType('application', 'pkcs7-mime', (args) => new ApplicationPkcs7Mime(args));
