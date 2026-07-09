@@ -19,6 +19,7 @@ const testData = join(repoRoot, 'UnitTests', 'TestData');
 const outRoot = join(tsRoot, 'gates', 'out', 'oracle');
 const oracleDll = join(repoRoot, 'oracle', 'bin', 'Release', 'net10.0', 'oracle.dll');
 const dkimDll = join(repoRoot, 'oracle-dkim', 'bin', 'Release', 'net10.0', 'oracle-dkim.dll');
+const smimeDll = join(repoRoot, 'oracle-smime', 'bin', 'Release', 'net10.0', 'oracle-smime.dll');
 
 function oracle(...args) {
   execFileSync('dotnet', [oracleDll, ...args], { stdio: ['ignore', 'inherit', 'inherit'] });
@@ -26,6 +27,10 @@ function oracle(...args) {
 
 function dkimOracle(...args) {
   return execFileSync('dotnet', [dkimDll, ...args], { encoding: 'utf8' });
+}
+
+function smimeOracle(...args) {
+  return execFileSync('dotnet', [smimeDll, ...args], { encoding: 'utf8' });
 }
 
 function ensureOracleBuilt() {
@@ -39,6 +44,13 @@ function ensureDkimOracleBuilt() {
   if (!existsSync(dkimDll)) {
     console.log('building oracle-dkim (Release)...');
     execFileSync('dotnet', ['build', join(repoRoot, 'oracle-dkim'), '-c', 'Release', '-v', 'q'], { stdio: 'inherit' });
+  }
+}
+
+function ensureSmimeOracleBuilt() {
+  if (!existsSync(smimeDll)) {
+    console.log('building oracle-smime (Release)...');
+    execFileSync('dotnet', ['build', join(repoRoot, 'oracle-smime'), '-c', 'Release', '-v', 'q'], { stdio: 'inherit' });
   }
 }
 
@@ -170,6 +182,34 @@ const modes = {
     }
     writeFileSync(join(dir, 'sign.json'), JSON.stringify({ domain, selector, t: Number(t), sign }, null, 2) + '\n');
     console.log(`dkim: ${Object.keys(sign).length} signatures + ${Object.keys(sign).length} full messages`);
+  },
+
+  smime() {
+    // S/MIME crypto is non-deterministic (random session keys/IVs, signing
+    // time), so gates are cross-verification, not byte-parity. We emit oracle-
+    // produced parts here for the oracle->TS direction (TS verifies/decrypts
+    // them); the smime gate test also runs the oracle live for the TS->oracle
+    // direction (oracle verifies/decrypts TS output). See tests/gates/smime.gate.test.ts.
+    ensureSmimeOracleBuilt();
+    const dir = join(outRoot, 'smime');
+    mkdirSync(join(dir, 'signed'), { recursive: true });
+    mkdirSync(join(dir, 'encrypted'), { recursive: true });
+
+    const entityPath = join(dir, 'entity.txt');
+    writeFileSync(entityPath, 'Content-Type: text/plain\r\n\r\nThe quick brown fox jumps over the lazy dog.\r\n');
+
+    const signAlgos = ['rsa-sha256', 'rsa-pss-sha256', 'ecdsa-sha256'];
+    for (const algo of signAlgos) {
+      smimeOracle('smime-sign', entityPath, algo, join(dir, 'signed', `${algo}.txt`));
+      smimeOracle('smime-encapsulated-sign', entityPath, algo, join(dir, 'signed', `${algo}.p7m.txt`));
+    }
+
+    const encCombos = [['aes256', 'oaep'], ['aes128', 'v1.5'], ['3des', 'v1.5'], ['rc2-128', 'v1.5']];
+    for (const [enc, pad] of encCombos)
+      smimeOracle('smime-encrypt', entityPath, enc, pad, join(dir, 'encrypted', `${enc}.${pad}.txt`));
+
+    smimeOracle('smime-compress', entityPath, join(dir, 'compressed.txt'));
+    console.log(`smime: signed x${signAlgos.length}, encrypted x${encCombos.length}, compressed`);
   },
 
   headers() {
