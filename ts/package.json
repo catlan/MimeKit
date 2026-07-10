@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "sideEffects": [
+    "./dist/mime-parser.js",
     "./dist/smime/index.js",
     "./dist/smime/mime-message-crypto.js",
     "./dist/openpgp/index.js"
