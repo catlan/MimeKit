@@ -225,6 +225,16 @@ publish (Q2).
   target) is 1:1 and the corpus tree/roundtrip gates subsume the legacy
   assertions; veto if you want it anyway.
 
+- 2026-07-12: **I/O edge adapters shipped** (the deferred wave-9 surface,
+  lifted back from the Letter Opener web app's mbox v2 work where the design
+  was proven): random-access reader contract + `RandomAccessStream` bridge to
+  the sync parser core, browser `File`/`Blob` readers (async +
+  worker-`FileReaderSync` sync variant), and `NodeFileReader` behind a new
+  `mimekit/node` subpath export. 20 new tests incl. mbox parse-parity
+  (RandomAccessStream vs MemoryStream) and persistent-listing entry re-parse;
+  suite 3074 passed / 130 files; dist main entry verified still free of
+  `node:` imports.
+
 ## Attributed deferrals (living — each names its blocking feature)
 
 - `UnitTests/Encodings/YEncodingTests.cs` → wave 4 (needs MimeMessage.Load).
@@ -262,13 +272,22 @@ publish (Q2).
   bytes yield U+FFFD (TextDecoder) where C# GetEncoding fallback yields
   '?'. None corpus-reachable; recorded here since the ratchet only covers
   gate-visible cases.
-- `MimeMessage.WriteTo(fileName)` overloads — node-entry (filesystem)
-  surface, deferred with the Node adapter entry point.
+- `MimeMessage.WriteTo(fileName)` overloads — the Node adapter entry point
+  now exists (`mimekit/node`, 2026-07-12); the WriteTo(fileName) convenience
+  overloads themselves remain unported.
 - ~~idnDecode no-op / mime-utils-parse-utils dedup~~ RESOLVED (Punycode
   wrapper gated 27/27; dedup executed wave-2C; survivors carry documented
   contract rationale).
 - Async API pairs, Stream timeout/cancellation members — omitted per plan
-  (sync core; Web Streams adapters at edges, wave 9).
+  (sync core). Edge adapters shipped 2026-07-12 as random-access readers
+  rather than Web Streams: `RandomAccessReader`/`SyncRandomAccessReader` +
+  `RandomAccessStream` (chunk-cached sync Stream over a reader),
+  `FileSliceReader`/`SyncFileSliceReader`/`createFileSliceReader` (browser
+  File/Blob; sync reads via worker-only FileReaderSync), and `NodeFileReader`
+  behind the new `mimekit/node` subpath (fd-backed, keeps the main entry free
+  of `node:` imports). Still open: incremental parse of a *non-seekable async*
+  source (network stream) — today's answer is buffer-then-parse; a
+  Web-Streams `parseStream` would need an async or push-parser surface.
 
 ## Follow-up questions (living section — answered entries move to Locked decisions)
 

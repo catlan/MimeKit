@@ -65,6 +65,51 @@ if (!result.ok) {
 }
 ```
 
+## Parse large files without loading them (mbox, big messages)
+
+The parser core is synchronous and pull-based; it reads through any seekable
+`Stream`. For sources bigger than you want in memory, wrap a random-access
+reader in `RandomAccessStream` — bytes are pulled through a bounded chunk
+cache, so a multi-GB mbox is parsed by seeking, never materialized whole.
+
+In Node, via the `mimekit/node` entry point:
+
+```ts
+import { MimeParser, RandomAccessStream } from 'mimekit';
+import { NodeFileReader } from 'mimekit/node';
+
+const reader = NodeFileReader.open('archive.mbox');
+const parser = new MimeParser(new RandomAccessStream(reader), 'mbox');
+while (!parser.isEndOfStream) {
+  const result = parser.parseMessage();
+  if (!result.ok) break;
+  console.log(result.value.subject);
+}
+reader.close();
+```
+
+In the browser, run the parser in a Web Worker — `createFileSliceReader`
+returns a `SyncFileSliceReader` there (bounded synchronous reads via the
+worker-only `FileReaderSync` API) and an async-only `FileSliceReader` on the
+main thread, where you can fall back to buffering (`Blob.arrayBuffer()` +
+`MemoryStream`):
+
+```ts
+// inside a worker, given a File/Blob posted from the page:
+import { MimeParser, RandomAccessStream, createFileSliceReader, isSyncReader } from 'mimekit';
+
+const reader = createFileSliceReader(file);
+if (isSyncReader(reader)) {
+  const parser = new MimeParser(new RandomAccessStream(reader), 'mbox');
+  // ...
+}
+```
+
+Construct `MimeParser` with `persistent: true` to keep part bodies as bounded
+views of the seekable stream (instead of copying them out), and use
+`parser.mboxMarkerOffset` / `parser.position` to record each entry's byte
+range for lazy re-parsing later.
+
 ## Create a message
 
 ```ts
