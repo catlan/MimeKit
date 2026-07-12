@@ -19,6 +19,7 @@ export type { MimeEncoder, MimeDecoder } from './encodings/types.js';
 export { Stream, MemoryStream, type SeekOrigin } from './io/stream.js';
 export { isSyncReader, type RandomAccessReader, type SyncRandomAccessReader } from './io/random-access-reader.js';
 export { RandomAccessStream } from './io/random-access-stream.js';
+export { FileSliceReader, SyncFileSliceReader, createFileSliceReader } from './io/file-slice-reader.js';
 export { BoundStream } from './io/bound-stream.js';
 export { ChainedStream } from './io/chained-stream.js';
 export { FilteredStream } from './io/filtered-stream.js';
