@@ -21,6 +21,7 @@ import {
   parseCodePage,
   tryGetEncoding,
 } from '../../src/utils/charset-utils.js';
+import * as charsetUtils from '../../src/utils/charset-utils.js';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
@@ -95,6 +96,33 @@ describe('CharsetUtils', () => {
       expect(getMimeCharset(iso2022kr)).toBe('euc-kr');
 
     expect(getMimeCharset(getEncodingForCodePage(949)!)).toBe('euc-kr');
+  });
+
+  test('utf-7 resolves through its IANA aliases and decodes with .NET semantics', () => {
+    // .NET resolves these via Encoding.GetEncoding (EnableUnsafeUTF7Encoding);
+    // the port registers them explicitly.
+    expect(getCodePage('utf-7')).toBe(65000);
+    expect(getCodePage('unicode-1-1-utf-7')).toBe(65000);
+    const utf7 = tryGetEncoding('utf-7')!;
+    expect(utf7).not.toBeNull();
+    expect(utf7.webName).toBe('utf-7');
+
+    const decode = (text: string): string =>
+      utf7.decode(Uint8Array.from([...text], (character) => character.charCodeAt(0)));
+    expect(decode('A+ImIDkQ.')).toBe('A≢Α.'); // RFC 2152 sample
+    expect(decode('Hi Mom -+Jjo--!')).toBe('Hi Mom -☺-!');
+    expect(decode('+ZeVnLIqe-')).toBe('日本語');
+    expect(decode('+-')).toBe('+');
+    expect(decode('+2D3cvg-')).toBe('\u{1F4BE}'); // surrogate pair round trip
+  });
+
+  test('utf-7 stream decoding survives a base64 run split across chunks', () => {
+    const { createStreamDecoder } = charsetUtils;
+    const decoder = createStreamDecoder(tryGetEncoding('utf-7')!);
+    const bytes = Uint8Array.from([...'+ZeVnLIqe-'], (character) => character.charCodeAt(0));
+    const first = decoder.decode(bytes.subarray(0, 4));
+    const second = decoder.decode(bytes.subarray(4), true);
+    expect(first + second).toBe('日本語');
   });
 
   test('convertToUnicode picks utf-8 over latin1 for valid utf-8', () => {

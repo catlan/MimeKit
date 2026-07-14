@@ -169,6 +169,88 @@ class Latin1StreamDecoder implements CharsetStreamDecoder {
   }
 }
 
+const UTF7_BASE64_VALUES = (() => {
+  const values = new Int8Array(256).fill(-1);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  for (let i = 0; i < alphabet.length; i++) values[alphabet.charCodeAt(i)] = i;
+  return values;
+})();
+
+/**
+ * UTF-7 decoding with .NET `UTF7Encoding` semantics (C# resolves the
+ * charset through the runtime, gated behind `EnableUnsafeUTF7Encoding`;
+ * decoding legacy mail is exactly this port's use case): `+-` is a literal
+ * `+`, a base64 run ends at `-` (consumed) or any invalid character
+ * (processed as itself), leftover bits are dropped silently, and invalid
+ * bytes pass through as their own code unit. The state machine lives in the
+ * stream decoder so runs survive chunk boundaries; the one-shot decode is a
+ * single flushed chunk. Decode-only, like every non-Unicode charset here.
+ */
+class Utf7StreamDecoder implements CharsetStreamDecoder {
+  private inBase64 = false;
+  private justShifted = false;
+  private bits = 0;
+  private bitCount = 0;
+
+  decode(bytes: Uint8Array, _flush = false): string {
+    let out = '';
+    for (let i = 0; i < bytes.length; i++) {
+      const byte = bytes[i]!;
+      if (this.inBase64) {
+        const value = UTF7_BASE64_VALUES[byte]!;
+        if (value >= 0) {
+          this.justShifted = false;
+          this.bits = (this.bits << 6) | value;
+          this.bitCount += 6;
+          if (this.bitCount >= 16) {
+            this.bitCount -= 16;
+            out += String.fromCharCode((this.bits >> this.bitCount) & 0xffff);
+          }
+          continue;
+        }
+        this.inBase64 = false;
+        this.bits = 0;
+        this.bitCount = 0;
+        if (byte === 0x2d) { // '-'
+          if (this.justShifted) out += '+';
+          this.justShifted = false;
+          continue;
+        }
+        this.justShifted = false;
+        // Fall through: the terminating character is data of its own.
+      }
+      if (byte === 0x2b) { // '+'
+        this.inBase64 = true;
+        this.justShifted = true;
+        this.bits = 0;
+        this.bitCount = 0;
+      } else {
+        out += String.fromCharCode(byte);
+      }
+    }
+    return out;
+  }
+}
+
+class Utf7Encoding implements CharsetEncoding {
+  readonly codePage = 65000;
+  readonly webName = 'utf-7';
+
+  decode(bytes: Uint8Array, _fatal = false): string {
+    // .NET's UTF-7 decoder never rejects input (its fallback passes invalid
+    // bytes through), so fatal mode has nothing to throw on.
+    return new Utf7StreamDecoder().decode(bytes, true);
+  }
+
+  countInvalid(_bytes: Uint8Array): number {
+    return 0;
+  }
+
+  encode(_text: string): Uint8Array {
+    throw new TypeError("encoding to 'utf-7' is not supported (utf-8-only generation, see plan Q3)");
+  }
+}
+
 /**
  * Table-driven single-byte decoder generated from the C# oracle — exact
  * .NET parity for every byte (host TextDecoders deviate: Node/ICU passes
@@ -303,6 +385,7 @@ const encodingCache = new Map<number, CharsetEncoding | null>();
 function createEncoding(codepage: number): CharsetEncoding | null {
   switch (codepage) {
   case 65001: return new Utf8Encoding();
+  case 65000: return new Utf7Encoding();
   case 20127: return new AsciiEncoding();
   case 28591: return new Latin1Encoding();
   default: {
@@ -361,6 +444,9 @@ function addAliases(codepage: number, fallback: number, ...names: string[]): num
 }
 
 addAliases(65001, -1, 'utf-8', 'utf8', 'unicode');
+// C# resolves these through Encoding.GetEncoding at runtime; the port needs
+// them registered explicitly (IANA aliases per RFC 2152 registration).
+addAliases(65000, -1, 'utf-7', 'utf7', 'csunicode11utf7', 'unicode-1-1-utf-7', 'unicode-2-0-utf-7', 'x-unicode-2-0-utf-7');
 addAliases(20127, -1, 'ansi_x3.4-1968');
 addAliases(28591, -1, 'ansi_x3.110-1983', 'latin1');
 addAliases(10000, -1, 'macintosh');
@@ -554,6 +640,7 @@ export const utf8 = new Utf8Encoding();
 export function createStreamDecoder(encoding: CharsetEncoding): CharsetStreamDecoder {
   switch (encoding.codePage) {
   case 65001: return new Utf8StreamDecoder();
+  case 65000: return new Utf7StreamDecoder();
   case 20127: return new AsciiStreamDecoder();
   case 28591: return new Latin1StreamDecoder();
   default: {
