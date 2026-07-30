@@ -55,8 +55,10 @@ donations through [GitHub Sponsors](https://github.com/sponsors/jstedfast).
   [`ExperimentalMimeParser.cs`](https://github.com/jstedfast/MimeKit/blob/master/MimeKit/ExperimentalMimeParser.cs)
   — experimental in name only; it is the modern implementation). This port ports
   [`MimeReader`](https://github.com/jstedfast/MimeKit/blob/master/MimeKit/MimeReader.cs)
-  and that rewrite as the single [`MimeParser`](./src/mime-parser.ts) /
-  [`MimeReader`](./src/mime-reader.ts); the original parser is not ported. The
+  and that rewrite as the single
+  [`MimeParser`](https://github.com/catlan/MimeKit/blob/ts-port/ts/src/mime-parser.ts) /
+  [`MimeReader`](https://github.com/catlan/MimeKit/blob/ts-port/ts/src/mime-reader.ts);
+  the original parser is not ported. The
   differential gates run the C# oracle on that same rewrite, so the byte-parity
   claims above are against it.
 - **Dependency-light & MIT** — the core is MIT with one zero-transitive-dep runtime
