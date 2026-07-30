@@ -29,6 +29,11 @@ port was checked against the C# original by running MimeKit's own tests and a
 differential oracle. The correctness here is theirs; the translation is the
 machine's. Enormous thanks to everyone who built and tested MimeKit.
 
+If this port saves you time, send the thanks upstream: Jeffrey Stedfast accepts
+donations through [GitHub Sponsors](https://github.com/sponsors/jstedfast).
+
+[![Sponsor MimeKit](https://img.shields.io/badge/Sponsor-MimeKit-EA4AAA?logo=githubsponsors&logoColor=white&style=flat-square)](https://github.com/sponsors/jstedfast)
+
 ## Why this port
 
 - **Non-throwing** — MimeKit's `Parse`/`TryParse` pairs collapse into a single
