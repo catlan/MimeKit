@@ -35,7 +35,7 @@ import { tryParse as tryParseContentEncoding } from './utils/mime-utils.js';
  * `mediaType/mediaSubtype`). This is the seam that lets the optional S/MIME
  * subsystem teach the crypto-free core parser to produce `MultipartSigned`,
  * `ApplicationPkcs7Mime`, and `ApplicationPkcs7Signature` — without the core
- * statically importing any crypto code. `mimekit/smime`'s entry point calls
+ * statically importing any crypto code. `mimekit-ts/smime`'s entry point calls
  * {@link registerEntityType}; a core-only install never registers anything and
  * these content types fall through to the built-in dispatch.
  */

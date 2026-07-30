@@ -1,5 +1,5 @@
 /**
- * Public API barrel for mimekit.
+ * Public API barrel for mimekit-ts.
  *
  * Re-exports parser, formatter, MIME entity, stream/filter, encoding, text,
  * utility, and TNEF APIs from their implementation modules.

@@ -1,5 +1,5 @@
 {
-  "name": "mimekit",
+  "name": "mimekit-ts",
   "version": "1.0.0",
   "description": "TypeScript port of MimeKit (Lite scope): non-throwing Result-based MIME parsing/creation, byte-parity verified against the C# implementation",
   "license": "MIT",
@@ -80,7 +80,7 @@
     "mime",
     "email",
     "parser",
-    "mimekit",
+    "mimekit-ts",
     "rfc2822",
     "rfc2045",
     "rfc2047",

@@ -1,6 +1,6 @@
-# mimekit
+# mimekit-ts
 
-`mimekit` parses, creates, edits, and serializes MIME messages: the RFC 822/2045
+`mimekit-ts` parses, creates, edits, and serializes MIME messages: the RFC 822/2045
 message model (`MimeMessage`, `MimePart`, `Multipart`), headers and addresses,
 rfc2047/rfc2231 encoding, every content transfer codec, text conversion
 (HTML ⇄ plain, format=flowed), TNEF (`winmail.dat`), and message anonymization. On
@@ -67,13 +67,13 @@ donations through [GitHub Sponsors](https://github.com/sponsors/jstedfast).
 ## Install
 
 ```sh
-npm install mimekit
+npm install mimekit-ts
 ```
 
 ## Parse a message
 
 ```ts
-import { MimeMessage } from 'mimekit';
+import { MimeMessage } from 'mimekit-ts';
 
 const result = MimeMessage.load(bytes); // bytes: Uint8Array of an RFC 822 message
 if (!result.ok) {
@@ -95,11 +95,11 @@ The parser core is synchronous and pull-based; it reads through any seekable
 reader in `RandomAccessStream` — bytes are pulled through a bounded chunk
 cache, so a multi-GB mbox is parsed by seeking, never materialized whole.
 
-In Node, via the `mimekit/node` entry point:
+In Node, via the `mimekit-ts/node` entry point:
 
 ```ts
-import { MimeParser, RandomAccessStream } from 'mimekit';
-import { NodeFileReader } from 'mimekit/node';
+import { MimeParser, RandomAccessStream } from 'mimekit-ts';
+import { NodeFileReader } from 'mimekit-ts/node';
 
 const reader = NodeFileReader.open('archive.mbox');
 const parser = new MimeParser(new RandomAccessStream(reader), 'mbox');
@@ -119,7 +119,7 @@ main thread, where you can fall back to buffering (`Blob.arrayBuffer()` +
 
 ```ts
 // inside a worker, given a File/Blob posted from the page:
-import { MimeParser, RandomAccessStream, createFileSliceReader, isSyncReader } from 'mimekit';
+import { MimeParser, RandomAccessStream, createFileSliceReader, isSyncReader } from 'mimekit-ts';
 
 const reader = createFileSliceReader(file);
 if (isSyncReader(reader)) {
@@ -136,12 +136,12 @@ range for lazy re-parsing later.
 ## Create a message
 
 ```ts
-import { MimeMessage, MailboxAddress, TextPart, MemoryStream } from 'mimekit';
+import { MimeMessage, MailboxAddress, TextPart, MemoryStream } from 'mimekit-ts';
 
 const message = new MimeMessage();
 message.from.add(new MailboxAddress('Alice', 'alice@example.com'));
 message.to.add(new MailboxAddress('Bob', 'bob@example.com'));
-message.subject = 'Hello from mimekit';
+message.subject = 'Hello from mimekit-ts';
 
 const body = new TextPart('plain');
 body.text = 'This is the message body.\r\n';
@@ -154,15 +154,15 @@ const bytes = out.toArray();              // Uint8Array, ready to send
 
 ## Cryptography
 
-Cryptography lives behind three subpath imports, so `import 'mimekit'` never
+Cryptography lives behind three subpath imports, so `import 'mimekit-ts'` never
 pulls in a crypto dependency. Each entry declares its libraries as **optional peer
 dependencies** — install only what you use.
 
 | Entry | Feature | Peer install |
 |---|---|---|
-| `mimekit/dkim` | DKIM & ARC signing / verification | `@noble/hashes @noble/curves` |
-| `mimekit/smime` | S/MIME (CMS) sign / verify / encrypt / decrypt | `pkijs asn1js @noble/hashes @noble/curves` |
-| `mimekit/openpgp` | OpenPGP (PGP/MIME, RFC 3156) | `openpgp` |
+| `mimekit-ts/dkim` | DKIM & ARC signing / verification | `@noble/hashes @noble/curves` |
+| `mimekit-ts/smime` | S/MIME (CMS) sign / verify / encrypt / decrypt | `pkijs asn1js @noble/hashes @noble/curves` |
+| `mimekit-ts/openpgp` | OpenPGP (PGP/MIME, RFC 3156) | `openpgp` |
 
 Importing a crypto entry installs message-level methods on `MimeMessage`
 (`sign` / `encrypt` / `signAndEncrypt`) and registers the parser types for that
@@ -171,9 +171,9 @@ protocol.
 ### S/MIME
 
 ```ts
-import { MimeMessage } from 'mimekit';
-import 'mimekit/smime';                            // installs message crypto + types
-import { PkijsSecureMimeContext, loadPkcs12 } from 'mimekit/smime';
+import { MimeMessage } from 'mimekit-ts';
+import 'mimekit-ts/smime';                            // installs message crypto + types
+import { PkijsSecureMimeContext, loadPkcs12 } from 'mimekit-ts/smime';
 
 const ctx = new PkijsSecureMimeContext();
 const { certificateChain, privateKey } = loadPkcs12(pfxBytes, 'password');
@@ -194,9 +194,9 @@ for (const sig of signatures) {
 ### OpenPGP
 
 ```ts
-import { MimeMessage } from 'mimekit';
-import 'mimekit/openpgp';
-import { OpenPgpContext } from 'mimekit/openpgp';
+import { MimeMessage } from 'mimekit-ts';
+import 'mimekit-ts/openpgp';
+import { OpenPgpContext } from 'mimekit-ts/openpgp';
 
 const pgp = new OpenPgpContext({ getPassword: () => 'passphrase' });
 await pgp.import(armoredKeyring);                      // armored or binary public/secret keys
@@ -227,7 +227,7 @@ await message.sign(pgp);                               // body -> multipart/sign
 
   Leave it `false` (the default) unless you must open legacy archives.
 - **OpenPGP is LGPL.** The `openpgp` package (LGPL-3.0) is loaded via dynamic
-  `import()` and is never bundled into `mimekit`, keeping the core MIT-clean.
+  `import()` and is never bundled into `mimekit-ts`, keeping the core MIT-clean.
 
 ## Development
 
@@ -250,10 +250,10 @@ git tag ts/v1.0.0 && git push --tags
 
 ## License
 
-MIT — see [LICENSE](./LICENSE). `mimekit` is a TypeScript port of
+MIT — see [LICENSE](./LICENSE). `mimekit-ts` is a TypeScript port of
 [MimeKit](https://github.com/jstedfast/MimeKit) (© .NET Foundation and Contributors),
 distributed under the same MIT terms; MimeKit's copyright notice is retained as the
 license requires.
 
 The optional `openpgp` peer dependency is LGPL-3.0 and is never bundled into
-`mimekit`.
+`mimekit-ts`.

@@ -62,6 +62,6 @@ export function newMimeParser(
   persistent = false,
 ): ParserLike {
   if (factory === null)
-    throw new Error('MimeParser has not been loaded — import from the package entry point (mimekit).');
+    throw new Error('MimeParser has not been loaded — import from the package entry point (mimekit-ts).');
   return factory(options, stream, format, persistent);
 }

@@ -1,6 +1,6 @@
 /**
- * Node adapter entry point (`mimekit/node`): filesystem-backed edge readers.
- * Kept out of the main entry so `import 'mimekit'` stays free of `node:`
+ * Node adapter entry point (`mimekit-ts/node`): filesystem-backed edge readers.
+ * Kept out of the main entry so `import 'mimekit-ts'` stays free of `node:`
  * imports and safe for browser bundling.
  */
 

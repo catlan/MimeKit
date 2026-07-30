@@ -5,7 +5,7 @@
  * the synchronous bounded reads the parser core needs (via
  * {@link RandomAccessStream}) and `fs.read` serves the async half, so a
  * multi-GB mailbox is parsed by seeking and never fully loaded into memory.
- * Lives behind the `mimekit/node` subpath export so the main entry stays free
+ * Lives behind the `mimekit-ts/node` subpath export so the main entry stays free
  * of `node:` imports.
  */
 

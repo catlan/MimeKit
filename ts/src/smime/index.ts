@@ -1,4 +1,4 @@
-// Public surface of the S/MIME foundation (mimekit/smime).
+// Public surface of the S/MIME foundation (mimekit-ts/smime).
 //
 // This is wave C2a — the portable foundation. It binds NO crypto library; the
 // concrete pkijs/WebCrypto-backed SecureMimeContext + certificate store arrive
@@ -64,8 +64,8 @@ export { ApplicationPkcs7Signature } from './application-pkcs7-signature.js';
 // ---- Concrete crypto backend (wave C2b-1: X.509 + key import) ----------------
 //
 // These bind pkijs / asn1js / @noble and back the C2a structural seams. Importing
-// this subpath (`mimekit/smime`) pulls the S/MIME crypto peers; the core
-// (`mimekit`) entry never imports this module, so it stays crypto-free.
+// this subpath (`mimekit-ts/smime`) pulls the S/MIME crypto peers; the core
+// (`mimekit-ts`) entry never imports this module, so it stays crypto-free.
 export {
   X509CertificateImpl,
 } from './x509-certificate-impl.js';

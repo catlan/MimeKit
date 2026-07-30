@@ -1,4 +1,4 @@
-// Public surface of the DKIM/ARC subsystem (mimekit/dkim).
+// Public surface of the DKIM/ARC subsystem (mimekit-ts/dkim).
 
 export { DkimSignatureAlgorithm } from './dkim-signature-algorithm.js';
 export { DkimCanonicalizationAlgorithm } from './dkim-canonicalization-algorithm.js';

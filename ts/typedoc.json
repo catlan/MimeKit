@@ -10,7 +10,7 @@
   "tsconfig": "tsconfig.json",
   "out": "docs",
   "readme": "README.md",
-  "name": "mimekit",
+  "name": "mimekit-ts",
   "includeVersion": true,
   "excludeInternal": true,
   "excludePrivate": true,
