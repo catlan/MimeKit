@@ -11,8 +11,8 @@ It is a TypeScript port of [MimeKit](https://github.com/jstedfast/MimeKit), veri
 **byte-for-byte against the original C# implementation**, with a **non-throwing,
 Result-based API**.
 
-It is **isomorphic**: pure TypeScript over `Uint8Array` with no Node built-ins in
-the core runtime, so the same code runs on Node, browsers, Bun, Deno, and edge
+It **runs anywhere JavaScript does**: pure TypeScript over `Uint8Array` with no Node
+built-ins in the core, so the same code works in Node, browsers, Bun, Deno, and edge
 runtimes. The core install has a single dependency (`punycode`, zero transitive
 deps); crypto libraries are optional peers you install only if you use them.
 
@@ -34,8 +34,14 @@ donations through [GitHub Sponsors](https://github.com/sponsors/jstedfast).
 
 [![Sponsor MimeKit](https://img.shields.io/badge/Sponsor-MimeKit-EA4AAA?logo=githubsponsors&logoColor=white&style=flat-square)](https://github.com/sponsors/jstedfast)
 
-## Why this port
+## Porting notes
 
+- **Ported in place, beside the C#** — this package lives in the `ts/` directory of a
+  fork of MimeKit; the original C# sources stay in the repo untouched. That keeps
+  upstream mergeable (`git merge upstream/master` brings in fixes and corpus updates),
+  lets the C# build the differential oracle, and makes the port diffable against its
+  source: files map 1:1, `MimeKit/ContentType.cs` → `ts/src/content-type.ts`,
+  `UnitTests/ContentTypeTests.cs` → `ts/tests/content-type.test.ts`.
 - **Non-throwing** — MimeKit's `Parse`/`TryParse` pairs collapse into a single
   `parse(): Result<T>` with lenient (TryParse) semantics. Malformed-data errors are
   structured values (`{ kind, message, offset }`), never exceptions; only programmer
@@ -43,6 +49,16 @@ donations through [GitHub Sponsors](https://github.com/sponsors/jstedfast).
 - **Byte-parity verified** — a C# oracle CLI drives differential gates over MimeKit's
   own test corpus: parse trees, reserialized bytes, codecs, header values, charsets.
   The known-divergence ratchet is **empty**.
+- **One parser: the new one** — upstream ships two, the original
+  [`MimeParser.cs`](https://github.com/jstedfast/MimeKit/blob/master/MimeKit/MimeParser.cs)
+  and the newer tokenizer-based rewrite built on `MimeReader` (upstream file
+  [`ExperimentalMimeParser.cs`](https://github.com/jstedfast/MimeKit/blob/master/MimeKit/ExperimentalMimeParser.cs)
+  — experimental in name only; it is the modern implementation). This port ports
+  [`MimeReader`](https://github.com/jstedfast/MimeKit/blob/master/MimeKit/MimeReader.cs)
+  and that rewrite as the single [`MimeParser`](./src/mime-parser.ts) /
+  [`MimeReader`](./src/mime-reader.ts); the original parser is not ported. The
+  differential gates run the C# oracle on that same rewrite, so the byte-parity
+  claims above are against it.
 - **Dependency-light & MIT** — the core is MIT with one zero-transitive-dep runtime
   dependency; cryptography ships behind optional subpath entries.
 
