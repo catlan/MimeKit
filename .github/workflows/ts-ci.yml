@@ -28,6 +28,9 @@ on:
       - 'oracle-dkim/**'
       - 'oracle-smime/**'
       - '.github/workflows/ts-ci.yml'
+  # Path filters mean an unrelated (or empty) commit runs nothing; this allows a
+  # deliberate re-run against any ref.
+  workflow_dispatch:
 
 permissions:
   contents: read
