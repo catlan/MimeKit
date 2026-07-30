@@ -1,5 +1,5 @@
 /**
- * The non-throwing error model for mimekit-ts.
+ * The non-throwing error model for mimekit.
  *
  * MimeKit (C#) exposes almost every operation as a throwing `Parse` plus a
  * non-throwing `TryParse`. This port collapses each pair into a single

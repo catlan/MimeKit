@@ -2,7 +2,7 @@
 //
 // In C# these live on MimeMessage guarded by `#if ENABLE_CRYPTO`. The TS core must
 // stay crypto-free (the `.` entry has no crypto dependency), so the methods are added
-// to MimeMessage.prototype here — they only exist once `mimekit-ts/smime` is imported.
+// to MimeMessage.prototype here — they only exist once `mimekit/smime` is imported.
 // The signer/recipient resolution helpers (getMessageSigner / getEncryptionRecipients)
 // are pure address logic and live in core.
 
@@ -16,7 +16,7 @@ import type { CryptographyContext } from './cryptography-context.js';
 import type { SecureMimeContext } from './secure-mime-context.js';
 
 /**
- * The OpenPGP message-encryption operations, registered by the `mimekit-ts/openpgp`
+ * The OpenPGP message-encryption operations, registered by the `mimekit/openpgp`
  * entry so `MimeMessage.encrypt`/`signAndEncrypt` can dispatch to PGP/MIME without the
  * (crypto-free-of-OpenPGP) S/MIME layer importing it.
  */
@@ -41,7 +41,7 @@ export function registerPgpMessageCrypto(handler: PgpMessageCrypto | null): void
 function requirePgp(ctx: CryptographyContext): PgpMessageCrypto {
   if (pgpMessageCrypto == null)
     throw new Error(
-      `The cryptography context uses the '${ctx.encryptionProtocol}' protocol, which requires the 'mimekit-ts/openpgp' entry to be imported.`,
+      `The cryptography context uses the '${ctx.encryptionProtocol}' protocol, which requires the 'mimekit/openpgp' entry to be imported.`,
     );
   return pgpMessageCrypto;
 }

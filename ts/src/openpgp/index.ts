@@ -1,4 +1,4 @@
-// The `mimekit-ts/openpgp` entry point: OpenPGP (PGP/MIME, RFC 3156) support.
+// The `mimekit/openpgp` entry point: OpenPGP (PGP/MIME, RFC 3156) support.
 //
 // Importing this module installs the OpenPGP MIME types into the parser, wires the
 // message-level PGP encryption handler, and re-exports the public OpenPGP API. It is
@@ -14,7 +14,7 @@ import type { OpenPgpContext } from './openpgp-context.js';
 
 // Wire the PGP/MIME types into the core parser's create-entity dispatch. multipart/signed
 // is also registered here (a map overwrite; harmless if the S/MIME entry registered it too)
-// so that importing only `mimekit-ts/openpgp` still parses received PGP-signed mail as a
+// so that importing only `mimekit/openpgp` still parses received PGP-signed mail as a
 // MultipartSigned (the class is protocol-agnostic).
 registerEntityType('multipart', 'signed', (args) => new MultipartSigned(args));
 registerEntityType('multipart', 'encrypted', (args) => new MultipartEncrypted(args));

@@ -1,7 +1,7 @@
 // The OpenPgpEngine seam over a concrete OpenPGP implementation.
 //
 // The default OpenPgpJsEngine loads OpenPGP.js through a dynamic `import('openpgp')`
-// so that `mimekit-ts/openpgp` is the only entry point that pulls in the (LGPL)
+// so that `mimekit/openpgp` is the only entry point that pulls in the (LGPL)
 // `openpgp` dependency, and so a future backend (e.g. an rpgp-WASM build) can be
 // swapped in without touching the PGP/MIME layer above. All OpenPGP.js specifics
 // live behind this interface.

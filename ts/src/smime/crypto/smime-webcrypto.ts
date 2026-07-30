@@ -16,7 +16,7 @@ export function ensureEngine(): SubtleCrypto {
   const webcrypto = globalThis.crypto;
   if (!webcrypto?.subtle) throw new Error('WebCrypto (crypto.subtle) is not available in this runtime.');
   if (!engineReady) {
-    pkijs.setEngine('mimekit-ts', new pkijs.CryptoEngine({ name: 'mimekit-ts', crypto: webcrypto as unknown as Crypto }));
+    pkijs.setEngine('mimekit', new pkijs.CryptoEngine({ name: 'mimekit', crypto: webcrypto as unknown as Crypto }));
     engineReady = true;
   }
   return webcrypto.subtle;
