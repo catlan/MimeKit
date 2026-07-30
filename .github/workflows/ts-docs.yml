@@ -6,7 +6,7 @@ name: ts-docs
 
 on:
   push:
-    branches: [ts-port, main, master]
+    branches: [master]
     paths: ['ts/**', '.github/workflows/ts-docs.yml']
   workflow_dispatch:
 

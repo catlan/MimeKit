@@ -10,7 +10,7 @@ name: ts-ci
 
 on:
   push:
-    branches: [ts-port, main, master]
+    branches: [master]
     paths:
       - 'ts/**'
       - 'MimeKit/**'
