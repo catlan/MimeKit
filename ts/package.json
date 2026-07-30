@@ -47,7 +47,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "pnpm run build",
+    "prepack": "pnpm run sync:readme && pnpm run build",
+    "sync:readme": "node -e \"require('fs').copyFileSync('../README.md', 'README.md')\"",
+    "check:readme": "node -e \"const fs=require('fs'); if (fs.readFileSync('../README.md','utf8') !== fs.readFileSync('README.md','utf8')) { console.error('README drift: the repo-root README.md is canonical — run: pnpm sync:readme (then commit both)'); process.exit(1) }\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

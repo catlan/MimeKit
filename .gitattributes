@@ -12,3 +12,9 @@
 # so git must NOT normalize line endings for these fixtures.
 UnitTests/TestData/smime/thunderbird-signed.txt -text
 UnitTests/TestData/smime/thunderbird-signed-encrypted.txt -text
+
+# The root README describes the TypeScript port (it is ts/README.md, copied out by
+# `pnpm sync:readme`), not upstream's C# library. Keep ours on `git merge upstream/master`
+# instead of conflicting every time upstream touches its own README.
+# Requires the driver to be defined once per clone:  git config merge.ours.driver true
+/README.md merge=ours
