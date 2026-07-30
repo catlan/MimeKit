@@ -1,15 +1,33 @@
-# Continuous integration for the `mimekit` package (in ts/): typecheck + build on
-# every push/PR that touches ts/. The full differential test suite additionally needs
-# the .NET oracle (dotnet + `node gates/oracle-gen.mjs`); that is intentionally left as
-# a follow-up so the baseline CI stays fast and dependency-light.
+# Continuous integration for the `mimekit` package (in ts/): typecheck, build, and the
+# full test suite — including the differential gates, which diff the port against the
+# C# original. The gates need the oracle CLIs (oracle/, oracle-dkim/, oracle-smime/),
+# so this job installs .NET and runs gates/oracle-gen.mjs first; that costs well under
+# a minute (cold oracle build ~5s, generation ~8s locally).
+#
+# Changes to the C# side (MimeKit/, the oracles, TestData) also trigger this, so an
+# upstream merge is checked against the port rather than landing unverified.
 name: ts-ci
 
 on:
   push:
     branches: [ts-port, main, master]
-    paths: ['ts/**']
+    paths:
+      - 'ts/**'
+      - 'MimeKit/**'
+      - 'UnitTests/TestData/**'
+      - 'oracle/**'
+      - 'oracle-dkim/**'
+      - 'oracle-smime/**'
+      - '.github/workflows/ts-ci.yml'
   pull_request:
-    paths: ['ts/**']
+    paths:
+      - 'ts/**'
+      - 'MimeKit/**'
+      - 'UnitTests/TestData/**'
+      - 'oracle/**'
+      - 'oracle-dkim/**'
+      - 'oracle-smime/**'
+      - '.github/workflows/ts-ci.yml'
 
 permissions:
   contents: read
@@ -22,14 +40,24 @@ jobs:
         working-directory: ts
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - uses: pnpm/action-setup@v4
         with:
           version: 11
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # pnpm 11 requires node:sqlite, which Node 20 does not ship.
+          node-version: 24
           cache: pnpm
           cache-dependency-path: ts/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
+      # The published README is a copy of the repo-root one; fail loudly on drift.
+      - run: pnpm run check:readme
+      # Builds the three oracle CLIs on first use, then writes gates/out/oracle/.
+      - name: Generate C# oracle outputs
+        run: node gates/oracle-gen.mjs
+      - run: pnpm test
       - run: pnpm run build
